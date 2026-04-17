@@ -1,0 +1,65 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project data (index + report gerado)
+.pdfsearchable/
+*.db
+*.sqlite
+
+# Logs e auditoria (opcional - pode versionar se quiser)
+# logs/
+# audit/
+
+# OS
+.DS_Store
+Thumbs.db
+._*
+
+# pytest / coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# mypy
+.mypy_cache/
+
+# ruff
+.ruff_cache/
+
+# Claude local
+.claude/
+
+# Processed files (user data)
+arquivos-processados/

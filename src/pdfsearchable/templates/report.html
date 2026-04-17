@@ -1,0 +1,2285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://unpkg.com https://cdnjs.cloudflare.com; img-src 'self' data: https: blob:; connect-src 'self'; frame-src 'self'; base-uri 'self';">
+  <title>{{ title }} — pdfsearchable</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <meta name="description" content="pdfsearchable — pesquise e analise os seus PDFs indexados">
+  <meta property="og:title" content="{{ title }} — pdfsearchable">
+  <meta property="og:description" content="{{ total_files }} documentos · {{ total_pages }} páginas indexadas">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <script>
+    (function(){var s=localStorage.getItem('pdfsearchable-theme');var p=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(s==='dark'||(s!=='light'&&p))document.documentElement.setAttribute('data-theme','dark');}())
+  </script>
+  <link rel="stylesheet" href="assets/leaflet.css" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'">
+  <style>
+    /* Escala tipográfica (V5–V6) */
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --text-xs: 0.75rem;
+      --text-sm: 0.875rem;
+      --text-base: 1rem;
+      --text-lg: 1.125rem;
+      --text-xl: 1.25rem;
+      --text-2xl: 1.5rem;
+      --text-3xl: 2rem;
+      --leading-tight: 1.2;
+      --leading-normal: 1.5;
+      --leading-relaxed: 1.6;
+      --tracking-tight: -0.02em;
+      --tracking-tighter: -0.03em;
+      /* Paleta Apple (HIG + apple.com): fundo fbfbfd, azul sistema 007AFF, cinzas oficiais */
+      --bg: #fbfbfd;
+      --bg-subtle: linear-gradient(180deg, #ffffff 0%, #fbfbfd 40%, #f5f5f7 100%);
+      --card: #ffffff;
+      --text: #1d1d1f;
+      --text-secondary: #86868b;
+      --accent: #007AFF;
+      --accent-hover: #0051d5;
+      --accent-muted: rgba(0,122,255,.12);
+      --success: #34c759;
+      --success-muted: rgba(52,199,89,.12);
+      --warning: #ff9f0a;
+      --warning-muted: rgba(255,159,10,.12);
+      --error: #ff3b30;
+      --error-muted: rgba(255,59,48,.12);
+      --gray-50: #f5f5f7;
+      --gray-100: #e8e8ed;
+      --gray-200: #d2d2d7;
+      --gray-400: #86868b;
+      --gray-600: #6e6e73;
+      --gray-900: #1d1d1f;
+      --border: rgba(0,0,0,.06);
+      --radius: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.06);
+      --shadow-hover: 0 4px 16px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.06);
+      --focus-ring: 0 0 0 3px rgba(0,122,255,.28);
+      /* Design system: transições e animações */
+      --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+      --duration-fast: 0.15s;
+      --duration-normal: 0.25s;
+      --duration-slow: 0.4s;
+    }
+    [data-theme="dark"] {
+      --bg: #000000;
+      --bg-subtle: linear-gradient(180deg, #0d0d0d 0%, #000 100%);
+      --card: #1c1c1e;
+      --text: #f5f5f7;
+      --text-secondary: #98989d;
+      --accent: #0a84ff;
+      --accent-hover: #409cff;
+      --accent-muted: rgba(10,132,255,.22);
+      --success: #30d158;
+      --success-muted: rgba(48,209,88,.18);
+      --warning: #ff9f0a;
+      --warning-muted: rgba(255,159,10,.18);
+      --error: #ff453a;
+      --error-muted: rgba(255,69,58,.18);
+      --gray-50: #2c2c2e;
+      --gray-100: #1c1c1e;
+      --gray-200: #3a3a3c;
+      --gray-400: #636366;
+      --gray-600: #98989d;
+      --gray-900: #f5f5f7;
+      --border: rgba(255,255,255,.08);
+      --shadow: 0 1px 2px rgba(0,0,0,.24), 0 4px 16px rgba(0,0,0,.32);
+      --shadow-hover: 0 4px 16px rgba(0,0,0,.32), 0 8px 24px rgba(0,0,0,.24);
+      --focus-ring: 0 0 0 3px rgba(10,132,255,.45);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans);
+      font-size: var(--text-base);
+      line-height: var(--leading-normal);
+      background: var(--bg-subtle);
+      color: var(--text);
+      min-height: 100vh;
+      letter-spacing: -0.01em;
+    }
+    .container { max-width: 1024px; margin: 0 auto; padding: 40px 28px; }
+    /* Hero (Apple-like: destaque e respiro) */
+    .hero {
+      margin-bottom: 48px;
+      padding-bottom: 48px;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-inner { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #007AFF 0%, #5856d6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+    .hero-text { flex: 1; min-width: 0; }
+    .hero h1 {
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 700;
+      letter-spacing: var(--tracking-tighter);
+      line-height: var(--leading-tight);
+      margin-bottom: 10px;
+    }
+    .hero .subtitle {
+      font-size: var(--text-lg);
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      line-height: var(--leading-relaxed);
+    }
+    .hero-metrics {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+    }
+    .hero-metrics strong { color: var(--accent); font-weight: 600; }
+    /* Nav âncoras (V3) */
+    .nav-anchors {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 32px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(251, 251, 253, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 10;
+    }
+    [data-theme="dark"] .nav-anchors { background: rgba(0, 0, 0, 0.88); }
+    .nav-anchors a {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 20px;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+    .nav-anchors a:hover { background: var(--accent-muted); color: var(--accent); }
+    .nav-anchors a:focus { outline: none; box-shadow: var(--focus-ring); }
+    .nav-anchors a.active { background: var(--accent-muted); color: var(--accent); font-weight: 500; }
+    .theme-toggle {
+      margin-left: auto;
+      padding: 8px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--ease-out);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 44px;
+    }
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+    .theme-toggle:focus { outline: none; box-shadow: var(--focus-ring); }
+    .theme-toggle .icon-sun, .theme-toggle .icon-moon { width: 18px; height: 18px; }
+    .theme-toggle .icon-moon { display: none; }
+    [data-theme="dark"] .theme-toggle .icon-sun { display: none; }
+    [data-theme="dark"] .theme-toggle .icon-moon { display: inline-block; }
+    /* Cards (Apple-like: mais respiro e consistência) */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 32px;
+      border: 1px solid var(--border);
+      transition: box-shadow var(--duration-normal) var(--ease-out), transform var(--duration-normal) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+    }
+    .card:hover { box-shadow: var(--shadow-hover); }
+    .card:focus-within { box-shadow: var(--shadow-hover); }
+    @media (prefers-reduced-motion: reduce) {
+      .card { transition: none; }
+      .wordcloud-tab, .top-words-list span, .remove-cmd { transition: none; }
+      .wordcloud-wrap canvas:hover { transform: none; }
+      .nav-anchors { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--bg); }
+      [data-theme="dark"] .nav-anchors { background: var(--bg); }
+    }
+    .card h2 {
+      font-size: var(--text-xl);
+      font-weight: 700;
+      letter-spacing: var(--tracking-tight);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .card h2 .card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #fff;
+    }
+    .card h2 .card-icon svg { width: 18px; height: 18px; stroke-width: 2; }
+    .card-icon.icon-search { background: linear-gradient(135deg, #007AFF 0%, #0051d5 100%); }
+    .card-icon.icon-stats  { background: linear-gradient(135deg, #34c759 0%, #28a745 100%); }
+    .card-icon.icon-cloud  { background: linear-gradient(135deg, #5856d6 0%, #af52de 100%); }
+    .card-icon.icon-map    { background: linear-gradient(135deg, #ff9500 0%, #ff6b00 100%); }
+    .card-icon.icon-clock  { background: linear-gradient(135deg, #30b0c7 0%, #0094a8 100%); }
+    .card-icon.icon-dups   { background: linear-gradient(135deg, #ff3b30 0%, #c0392b 100%); }
+    .card-icon.icon-docs   { background: linear-gradient(135deg, #007AFF 0%, #5856d6 100%); }
+    /* Stats grid com ícones */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 16px;
+    }
+    .stat {
+      background: var(--bg);
+      padding: 20px 20px 18px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stat:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,122,255,.08); transform: translateY(-1px); }
+    .stat-icon-wrap {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 10px;
+    }
+    .stat-icon { width: 18px; height: 18px; stroke-width: 2; color: #fff; }
+    .stat-icon-wrap.blue   { background: linear-gradient(135deg, #007AFF 0%, #0051d5 100%); }
+    .stat-icon-wrap.green  { background: linear-gradient(135deg, #34c759 0%, #28a745 100%); }
+    .stat-icon-wrap.purple { background: linear-gradient(135deg, #5856d6 0%, #af52de 100%); }
+    .stat-icon-wrap.orange { background: linear-gradient(135deg, #ff9500 0%, #ff6b00 100%); }
+    .stat .value { font-size: clamp(1.5rem, 2.5vw, 1.75rem); font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1; }
+    .stat .label { font-size: var(--text-sm); font-weight: 500; color: var(--text-secondary); margin-top: 2px; }
+    /* Bar chart for doc types */
+    .type-bar-chart { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+    .type-bar-row { display: flex; align-items: center; gap: 10px; font-size: var(--text-sm); }
+    .type-bar-label { width: 120px; flex-shrink: 0; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .type-bar-track { flex: 1; height: 8px; background: var(--gray-100); border-radius: 4px; overflow: hidden; }
+    .type-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent) 0%, #5856d6 100%); transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+    .type-bar-count { width: 28px; text-align: right; color: var(--text-secondary); font-variant-numeric: tabular-nums; font-weight: 600; flex-shrink: 0; }
+    .search-file-filter-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; margin-bottom: 12px; background: var(--accent-muted); border: 1px solid rgba(0,122,255,.22); border-radius: var(--radius); font-size: 0.9rem; }
+    .search-file-filter-banner a { color: var(--accent); font-weight: 600; }
+    .search-file-filter-banner a:hover { text-decoration: underline; }
+    .search-row { display: flex; gap: 12px; align-items: stretch; margin-bottom: 12px; flex-wrap: wrap; }
+    .search-input-wrap {
+      flex: 1;
+      min-width: 200px;
+      display: flex;
+      align-items: center;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .search-input-wrap:focus-within { border-color: var(--accent); box-shadow: var(--focus-ring); }
+    .search-input-wrap .search-icon { padding: 0 14px; color: var(--text-secondary); flex-shrink: 0; }
+    #searchInput {
+      flex: 1;
+      min-width: 0;
+      padding: 14px 18px 14px 0;
+      font-size: var(--text-base);
+      border: none;
+      background: transparent;
+      font-family: inherit;
+    }
+    #searchInput::placeholder { color: var(--text-secondary); }
+    .btn-advanced-filters {
+      min-height: 48px;
+      padding: 0 20px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+      font-size: var(--text-sm);
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .btn-advanced-filters:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-advanced-filters[aria-expanded="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .advanced-filters-panel { margin-top: 16px; padding: 20px; background: var(--bg); border-radius: var(--radius); border: 1px solid var(--border); transition: opacity var(--duration-normal) var(--ease-out); }
+    .advanced-filters-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .filter-group label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; }
+    .filter-group select, .filter-group input[type="date"] { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font: inherit; font-size: 0.9rem; }
+    .advanced-filters-actions { display: flex; justify-content: flex-end; }
+    .btn-apply-filters { min-height: 44px; padding: 0 24px; border-radius: var(--radius); border: none; background: var(--accent); color: #fff; font: inherit; cursor: pointer; font-size: var(--text-sm); font-weight: 600; transition: background 0.2s ease, transform 0.1s ease; }
+    .btn-apply-filters:hover { background: var(--accent-hover); }
+    .btn-apply-filters:active { transform: scale(0.98); }
+    .btn-apply-filters:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    @media (prefers-reduced-motion: reduce) { .btn-apply-filters:active { transform: none; } }
+    button:focus-visible, .remove-cmd:focus-visible, .load-more-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    .search-results-count { font-size: 0.9rem; color: var(--text-secondary); margin-top: 8px; min-height: 1.2em; }
+    #searchInput:focus { outline: none; }
+    .search-hint { font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 16px; line-height: var(--leading-relaxed); }
+    .search-shortcuts-hint { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 14px; }
+    .search-shortcuts-hint kbd { font-family: var(--font-sans); font-size: 0.75rem; padding: 2px 6px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); }
+    .search-try-hint { font-size: 0.9rem; color: var(--text-secondary); margin-top: 12px; margin-bottom: 4px; line-height: 1.6; }
+    .search-try-label { font-weight: 500; color: var(--text); margin-right: 6px; }
+    .search-try-link { color: var(--accent); text-decoration: none; transition: color var(--duration-fast) var(--ease-out); }
+    .search-try-link:hover { text-decoration: underline; color: var(--accent-hover); }
+    .search-try-link:focus-visible { outline: none; text-decoration: underline; }
+    .mask-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .mask-tag {
+      background: var(--bg);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    #searchResults { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .hit {
+      padding: 16px 18px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: var(--text-sm);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .hit:hover { border-color: var(--accent-muted); }
+    .hit .file-name { font-weight: 600; color: var(--accent); }
+    .hit .snippet { color: var(--text-secondary); margin-top: 6px; line-height: 1.45; }
+    .hit .match { background: var(--accent-muted); padding: 0 3px; border-radius: 3px; }
+    .search-empty { text-align: center; padding: 48px 24px; color: var(--text-secondary); }
+    .search-empty-icon { width: 48px; height: 48px; margin: 0 auto 12px; display: block; opacity: 0.45; }
+    .search-empty p { font-size: var(--text-base); margin-bottom: 8px; }
+    .search-empty .hint { font-size: var(--text-sm); }
+    .file-list { list-style: none; }
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .file-item:last-child { border-bottom: none; }
+    .file-info .name { font-weight: 500; }
+    .file-info .meta { font-size: 0.85rem; color: var(--text-secondary); margin-top: 2px; }
+    .file-info .file-meta { font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px; }
+    .file-meta span { margin-right: 12px; }
+    .filter-bar { margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .filter-bar label { font-size: var(--text-sm); font-weight: 500; color: var(--text-secondary); }
+    .filter-bar select { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); font-family: inherit; font-size: var(--text-sm); }
+    .remove-cmd {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      background: var(--bg);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-family: monospace;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      min-height: 44px;
+      transition: color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
+    }
+    .remove-cmd:hover { background: var(--card); border-color: var(--accent); color: var(--accent); }
+    .remove-cmd.copied { color: var(--success); border-color: var(--success); background: var(--success-muted); }
+    .fav-toggle { min-width: 44px; min-height: 44px; padding: 0; border-radius: var(--radius); border: 1px solid transparent; background: var(--bg); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out); }
+    .fav-toggle svg { width: 20px; height: 20px; }
+    .fav-toggle:hover { color: var(--accent); border-color: var(--accent-muted); }
+    .fav-toggle:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    .wordcloud-card { position: relative; overflow: hidden; }
+    .wordcloud-badge-ia { position: absolute; top: 12px; right: 12px; font-size: 0.7rem; background: linear-gradient(135deg, #5856d6 0%, #af52de 100%); color: #fff; padding: 4px 10px; border-radius: 20px; font-weight: 600; letter-spacing: 0.02em; box-shadow: 0 2px 8px rgba(88,86,214,.35); }
+    .wordcloud-wrap { text-align: center; margin-top: 16px; padding: 20px; background: linear-gradient(180deg, #ffffff 0%, #fbfbfd 50%, #f5f5f7 100%); border-radius: 16px; min-height: 360px; display: flex; align-items: center; justify-content: center; }
+    .wordcloud-wrap canvas { cursor: pointer; display: block; margin: 0 auto; border-radius: 12px; transition: transform 0.2s ease; }
+    .wordcloud-wrap canvas:hover { transform: scale(1.01); }
+    .wordcloud-wrap img { max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+    .empty { color: var(--text-secondary); text-align: center; padding: 48px 28px; }
+    .empty-icon { width: 48px; height: 48px; margin: 0 auto 16px; display: block; opacity: 0.4; }
+    .empty p { font-size: var(--text-base); line-height: var(--leading-relaxed); margin-bottom: 8px; }
+    .empty p:last-of-type { margin-bottom: 0; }
+    .empty .empty-next { font-size: var(--text-sm); margin-top: 12px; color: var(--accent); }
+    .empty code { background: var(--bg); padding: 4px 8px; border-radius: 6px; font-size: var(--text-sm); }
+    .skeleton { background: linear-gradient(90deg, var(--bg) 25%, var(--gray-200) 50%, var(--bg) 75%); background-size: 200% 100%; animation: skeleton 1.5s var(--ease-in-out) infinite; border-radius: var(--radius); }
+    @keyframes skeleton { to { background-position: 200% 0; } }
+    .skeleton-line { height: 1em; margin-bottom: 8px; }
+    .skeleton-line:last-child { width: 60%; }
+    .skeleton-hit { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; background: var(--bg); border-radius: var(--radius); }
+    .skeleton-hit .skeleton-line { margin-bottom: 0; }
+    .skeleton-hit .skeleton-line:nth-child(1) { width: 40%; height: 1.1em; }
+    .skeleton-hit .skeleton-line:nth-child(2) { width: 90%; height: 0.9em; }
+    .skeleton-hit .skeleton-line:nth-child(3) { width: 70%; height: 0.9em; }
+    @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; background: var(--bg); } }
+    .doc-type { display: inline-block; background: var(--accent-muted); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; margin-left: 8px; }
+    .lang-badge { display: inline-block; background: rgba(0,0,0,.06); color: var(--text-secondary); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-left: 6px; }
+    .count-by-type { margin-top: 24px; }
+    .count-by-type-title { font-size: var(--text-sm); font-weight: 600; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+    .type-table { width: 100%; max-width: 360px; border-collapse: collapse; font-size: var(--text-sm); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+    .type-table thead { background: var(--bg); }
+    .type-table th { padding: 12px 16px; text-align: left; font-weight: 600; color: var(--text-secondary); }
+    .type-table td { padding: 10px 16px; border-top: 1px solid var(--border); font-weight: 500; }
+    .type-table tbody tr:hover { background: var(--bg); }
+    .stats-extra { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .stat-extra-line { font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: 8px; }
+    .stat-extra-line:last-child { margin-bottom: 0; }
+    .stat-extra-label { margin-right: 6px; }
+    .load-more-btn { min-height: 44px; padding: 0 24px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font: inherit; font-size: var(--text-sm); font-weight: 500; color: var(--accent); transition: all 0.2s ease, transform 0.1s ease; }
+    .load-more-btn:hover { background: var(--accent-muted); border-color: var(--accent); }
+    .load-more-btn:active { transform: scale(0.98); }
+    @media (prefers-reduced-motion: reduce) { .load-more-btn:active { transform: none; } }
+    /* ── Timeline ──────────────────────────────────────────────────────── */
+    .timeline { display: flex; flex-direction: column; gap: 0; }
+    .timeline-year { display: flex; align-items: flex-start; gap: 20px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+    .timeline-year:last-child { border-bottom: none; }
+    .timeline-year-label { font-size: var(--text-2xl); font-weight: 700; color: var(--accent); letter-spacing: var(--tracking-tighter); min-width: 56px; line-height: 1; padding-top: 2px; }
+    .timeline-docs { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; }
+    .timeline-doc-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; text-decoration: none; color: var(--text); font-size: var(--text-xs); transition: all 0.15s ease; max-width: 280px; overflow: hidden; }
+    .timeline-doc-pill:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-muted); }
+    .timeline-doc-type { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); white-space: nowrap; }
+    .timeline-doc-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .timeline-more { font-size: var(--text-xs); color: var(--text-secondary); padding: 5px 12px; border: 1px dashed var(--border); border-radius: 20px; }
+    /* ── Quality Dashboard ──────────────────────────────────────────────── */
+    .section-badge-warn { background: var(--warning-muted); color: var(--warning); }
+    .section-badge-ok { background: var(--success-muted); color: var(--success); }
+    .quality-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .quality-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; }
+    .quality-card-warn { border-left: 3px solid var(--warning); }
+    .quality-card-info { border-left: 3px solid var(--accent); }
+    .quality-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--text); }
+    .quality-card-header svg { flex-shrink: 0; color: var(--warning); }
+    .quality-card-info .quality-card-header svg { color: var(--accent); }
+    .quality-list { list-style: none; padding: 0; margin: 0 0 12px; display: flex; flex-direction: column; gap: 4px; }
+    .quality-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--text-sm); }
+    .quality-link { color: var(--accent); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .quality-link:hover { text-decoration: underline; }
+    .quality-conf { font-size: var(--text-xs); font-weight: 600; color: var(--warning); background: var(--warning-muted); padding: 2px 7px; border-radius: 10px; white-space: nowrap; }
+    .quality-more { color: var(--text-secondary); font-size: var(--text-xs); }
+    .quality-hint { font-size: var(--text-xs); color: var(--text-secondary); margin: 0; padding-top: 10px; border-top: 1px solid var(--border); }
+    .quality-hint code { background: var(--gray-50); padding: 1px 5px; border-radius: 4px; font-size: 0.7rem; }
+    [data-theme="dark"] .quality-hint code { background: rgba(255,255,255,.07); }
+    /* ── Footer ─────────────────────────────────────────────────────────── */
+    .footer {
+      margin-top: 48px;
+      padding: 32px 24px 40px;
+      border-top: 1px solid var(--border);
+      font-size: var(--text-xs);
+      color: var(--text-secondary);
+      text-align: center;
+      line-height: 1.6;
+    }
+    .footer p { margin-bottom: 8px; }
+    .footer p:last-child { margin-bottom: 0; }
+    .footer span { margin: 0 6px; }
+    .footer-shortcuts { font-size: 0.7rem; opacity: 0.85; }
+    .footer-shortcuts kbd { font-family: var(--font-sans); padding: 1px 5px; border-radius: 4px; background: var(--bg); border: 1px solid var(--border); }
+    .activity-list { list-style: none; max-height: 280px; overflow-y: auto; }
+    .activity-item { padding: 12px 0; border-bottom: 1px solid var(--border); font-size: var(--text-sm); display: flex; align-items: flex-start; gap: 12px; }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-icon { width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px; }
+    .activity-icon.success { color: var(--success); }
+    .activity-icon.error { color: var(--error); }
+    .activity-icon.warning { color: var(--warning); }
+    .activity-icon.info { color: var(--accent); }
+    .activity-action { font-weight: 600; color: var(--text); }
+    .activity-details { color: var(--text-secondary); margin-top: 2px; font-size: var(--text-xs); }
+    .dup-group { padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .dup-group:last-child { border-bottom: none; }
+    .dup-group .activity-action { color: var(--accent); }
+    .wordcloud-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+    .wordcloud-tab { padding: 10px 18px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all var(--duration-normal) var(--ease-out); color: var(--text-secondary); }
+    .wordcloud-tab:hover { background: var(--gray-200); border-color: rgba(0,122,255,.22); color: var(--text); }
+    .wordcloud-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 2px 8px rgba(0,122,255,.28); }
+    .top-words-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; font-size: 0.85rem; }
+    .top-words-list span { background: var(--bg); padding: 6px 12px; border-radius: 20px; color: var(--text-secondary); cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent; }
+    .top-words-list span:hover { background: var(--accent-muted); color: var(--accent); border-color: rgba(0,122,255,.22); }
+    .top-words-list span.wordcloud-list-highlight { background: var(--accent-muted); border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+    .top-words-list span b { color: var(--text); }
+    .bigrams-list { margin-top: 12px; }
+    .bigrams-list span { display: inline-block; background: var(--bg); padding: 4px 10px; border-radius: 16px; margin: 4px 6px 4px 0; font-size: 0.85rem; color: var(--text-secondary); }
+    .highlight-snippets-list { margin-top: 12px; }
+    .highlight-snippet-item { margin-bottom: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .highlight-snippet-item:last-child { border-bottom: none; }
+    .highlight-snippet-text { font-size: 0.9rem; color: var(--text-secondary); margin-top: 4px; line-height: 1.4; }
+    .loading { color: var(--text-secondary); padding: 16px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .loading::before { content: ''; display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s var(--ease-in-out) infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .fade-in { animation: fadeIn var(--duration-normal) var(--ease-out) forwards; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .hit .page-num { font-size: 0.8rem; color: var(--text-secondary); margin-left: 6px; }
+    .file-summary { font-size: 0.85rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.35; }
+    .file-tags { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag-pill { background: var(--bg); color: var(--text-secondary); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
+    a.link-doc { color: var(--accent); text-decoration: none; font-weight: 500; }
+    a.link-doc:hover { text-decoration: underline; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
+    .table-wrap table { min-width: 200px; }
+    .location-refs-list { list-style: none; margin-bottom: 16px; }
+    .location-refs-list li { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; transition: background 0.2s ease; border-radius: 10px; margin-bottom: 2px; }
+    .location-refs-list li:hover { background: rgba(0,122,255,.06); }
+    .location-refs-list li[data-lat][data-lon]:hover { background: var(--accent-muted); }
+    .location-refs-list li:last-child { border-bottom: none; }
+    .location-name { font-weight: 600; color: var(--text); }
+    .location-kind { font-size: 0.7rem; color: var(--text-secondary); background: var(--bg); padding: 3px 10px; border-radius: 14px; margin-left: 8px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; }
+    .location-count { color: var(--accent); font-weight: 600; font-size: 0.875rem; }
+    #locationsMap { min-height: 480px; height: 52vh; border-radius: 16px; margin-top: 16px; background: var(--bg); box-shadow: inset 0 1px 3px rgba(0,0,0,.06); overflow: hidden; }
+    .leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.12); padding: 0; overflow: hidden; }
+    .leaflet-popup-content { margin: 14px 16px; font-size: 0.9rem; min-width: 140px; }
+    .location-popup { font-family: inherit; }
+    .location-popup strong { color: var(--text); }
+    .location-refs-list li { cursor: pointer; }
+    .location-refs-list li:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .location-refs-list li.location-list-highlight { background: var(--accent-muted); box-shadow: 0 0 0 2px var(--accent); }
+    /* Formulários — fundo e cor em dark mode */
+    .filter-group select,
+    .filter-group input[type="date"],
+    #wordcloudTopN,
+    #locationKindFilter,
+    .filter-bar select {
+      background: var(--card);
+      color: var(--text);
+    }
+    /* Histórico de buscas */
+    .search-history {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+      padding: 6px 0 2px;
+      align-items: center;
+    }
+    .search-history::before {
+      content: 'Recentes:';
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+      margin-right: 2px;
+      flex-shrink: 0;
+    }
+    .history-chip {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-family: inherit;
+      transition: background var(--duration-fast) var(--ease-out),
+                  border-color var(--duration-fast) var(--ease-out),
+                  color var(--duration-fast) var(--ease-out);
+    }
+    .history-chip:hover {
+      background: var(--accent-muted);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .history-chip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    /* Favorito ativo */
+    .fav-toggle.is-fav {
+      color: #ff9500;
+      border-color: rgba(255,149,0,.4);
+      background: rgba(255,149,0,.1);
+    }
+    .fav-toggle.is-fav:hover { background: rgba(255,149,0,.18); border-color: #ff9500; }
+    /* File item hover */
+    .file-item {
+      transition: background var(--duration-fast) var(--ease-out),
+                  padding-left var(--duration-fast) var(--ease-out);
+      border-radius: 8px;
+      padding-left: 4px;
+      margin: 0 -4px;
+    }
+    .file-item:hover { background: rgba(0,122,255,.04); padding-left: 10px; }
+    [data-theme="dark"] .file-item:hover { background: rgba(10,132,255,.07); }
+    /* Hit search result */
+    .hit { cursor: pointer; }
+    .hit:hover { border-color: var(--accent); box-shadow: 0 2px 8px var(--accent-muted); }
+    /* Animação de entrada dos cards */
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .card {
+      animation: slideUp var(--duration-slow) var(--ease-out) both;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .card { animation: none; }
+    }
+    /* Dark mode word cloud wrap */
+    [data-theme="dark"] .wordcloud-wrap {
+      background: linear-gradient(180deg, #1c1c1e 0%, #2c2c2e 100%);
+    }
+    /* Sort controls */
+    .sort-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .sort-controls label { font-size: var(--text-sm); color: var(--text-secondary); font-weight: 500; }
+    .sort-controls select {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-family: inherit;
+      font-size: var(--text-sm);
+      background: var(--card);
+      color: var(--text);
+    }
+    /* Search export wrap */
+    .search-export-wrap { display: flex; align-items: center; gap: 8px; }
+    @media (max-width: 768px) {
+      .container { padding: 16px 12px; }
+      h1 { font-size: 1.5rem; }
+      .subtitle { font-size: 0.95rem; }
+      .card { padding: 16px; margin-bottom: 16px; }
+      .stats { gap: 12px; }
+      .stat { min-width: 100px; padding: 12px 14px; }
+      .stat .value { font-size: 1.4rem; }
+      .filter-bar { flex-wrap: wrap; gap: 6px; }
+      .filter-bar label { flex: 0 0 auto; }
+      .filter-bar select { min-width: 0; }
+      .file-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px 0;
+      }
+      .file-info .name { word-break: break-word; }
+      .remove-cmd { align-self: stretch; text-align: center; }
+      .wordcloud-tabs { width: 100%; }
+      .wordcloud-tab { flex: 1; min-width: 0; text-align: center; }
+      .top-words-list, .bigrams-list { font-size: 0.8rem; }
+      .footer { font-size: 0.75rem; padding: 16px 12px; }
+    }
+    @media print {
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { background: #fff; color: #000; font-size: 11pt; }
+      .nav-anchors, .search-row, .advanced-filters-toggle, .advanced-filters,
+      .filter-bar, .fav-toggle, .remove-cmd, .load-more-wrap,
+      .search-history, .search-file-filter-banner, .footer-shortcuts { display: none !important; }
+      .card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; margin-bottom: 16pt; }
+      .stat { break-inside: avoid; }
+      .file-item { break-inside: avoid; border-bottom: 1px solid #eee; padding: 8pt 0; }
+      .hero { background: none; padding: 16pt 0 8pt; }
+      .hero h1 { font-size: 18pt; }
+      a { color: inherit; text-decoration: none; }
+      .container { max-width: 100%; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="hero">
+      <div class="hero-inner">
+        <div class="logo-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </div>
+        <div class="hero-text">
+          <h1>{{ title }}</h1>
+          <p class="subtitle">Seus PDFs processados e indexados — pesquise, analise e abra qualquer documento em um só lugar.</p>
+          <p class="hero-metrics"><strong>{{ total_files }}</strong> documentos · <strong>{{ total_pages }}</strong> páginas · <strong>{{ total_words | int | default(0) }}</strong> palavras</p>
+        </div>
+      </div>
+    </header>
+
+    <nav class="nav-anchors" aria-label="Navegação por seções">
+      <a href="#search-card">Pesquisar</a>
+      <a href="#stats-card">Estatísticas</a>
+      <a href="#wordcloud-card">Nuvem</a>
+      <a href="#locations-card">Locais</a>
+      {% if recent_activity %}<a href="#activity-card">Atividade</a>{% endif %}
+      {% if duplicate_groups %}<a href="#duplicates-card">Duplicatas</a>{% endif %}
+      <a href="#documents-card">Documentos</a>
+      <button type="button" class="theme-toggle" id="themeToggle" aria-label="Alternar tema claro/escuro" title="Alternar tema (claro/escuro)">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <span class="theme-toggle-label">Tema</span>
+      </button>
+    </nav>
+
+    <div class="card" id="search-card" aria-labelledby="search-heading">
+      <h2 id="search-heading"><span class="card-icon icon-search" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span> Pesquisar</h2>
+      <p class="search-hint">Digite um termo; use os filtros avançados para restringir por tipo, pessoa citada, páginas ou data de indexação. Os resultados mostram o documento e a página onde aparece.</p>
+      <p class="search-shortcuts-hint" aria-hidden="true">Atalhos: <kbd>Ctrl</kbd>+<kbd>K</kbd> para focar na busca · <kbd>Esc</kbd> para limpar</p>
+      <div class="mask-tags">
+        <span class="mask-tag" title="Dados sensíveis mascarados na indexação">IPv4</span>
+        <span class="mask-tag" title="Dados sensíveis mascarados">IPv6</span>
+        <span class="mask-tag" title="Dados sensíveis mascarados">CPF</span>
+        <span class="mask-tag" title="Dados sensíveis mascarados">CNPJ</span>
+        <span class="mask-tag" title="Dados sensíveis mascarados">E-mail</span>
+        <span class="mask-tag" title="Dados sensíveis mascarados">Domínio</span>
+        <span class="mask-tag" title="Dados sensíveis mascarados">URL / Redes sociais</span>
+      </div>
+      <div id="searchHistory" class="search-history" hidden aria-label="Histórico de buscas recentes"></div>
+      <div id="searchFileFilterBanner" class="search-file-filter-banner" hidden aria-live="polite">
+        <span id="searchFileFilterLabel">Buscando apenas em: <strong id="searchFileFilterName"></strong></span>
+        <a href="report.html" id="searchFileFilterClear">Ver todos os documentos</a>
+      </div>
+      <div class="search-row">
+        <div class="search-input-wrap">
+          <span class="search-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <input type="text" id="searchInput" placeholder="Pesquisar… (Ctrl+K)" autocomplete="off" aria-label="Campo de pesquisa (atalho Ctrl+K)">
+        </div>
+        <button type="button" id="btnAdvancedFilters" class="btn-advanced-filters" aria-expanded="false" aria-controls="advancedFiltersPanel" title="Filtrar por tipo, pessoa, páginas ou data">Filtros avançados</button>
+      </div>
+      {% if top_words and (top_words | length) > 0 %}
+      <p class="search-try-hint" id="searchTryHint">
+        <span class="search-try-label">Experimentar:</span>
+        {% for w in top_words[:8] %}
+        <a href="#search-card" class="search-try-link" data-term="{{ w.word | e }}" title="Pesquisar «{{ w.word | e }}»">{{ w.word }}</a>{% if not loop.last %} · {% endif %}
+        {% endfor %}
+      </p>
+      {% endif %}
+      <label class="search-option" style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;font-size:0.9rem;color:var(--text-secondary);">
+        <input type="checkbox" id="searchIgnoreAccents" checked> Ignorar acentos
+      </label>
+      <label class="search-option" style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;margin-left:16px;font-size:0.9rem;color:var(--text-secondary);">
+        <input type="checkbox" id="searchUseSynonyms"> Buscar por sinônimos
+      </label>
+      <div id="advancedFiltersPanel" class="advanced-filters-panel" hidden>
+        <div class="advanced-filters-grid">
+          <div class="filter-group">
+            <label for="filterAdvType">Tipo de documento</label>
+            <select id="filterAdvType">
+              <option value="">Todos os tipos</option>
+              {% for t in doc_types %}
+              <option value="{{ t }}">{{ t }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filterAdvPerson">Pessoa citada</label>
+            <select id="filterAdvPerson">
+              <option value="">Todas as pessoas</option>
+              {% for p in all_parties | default([]) %}
+              <option value="{{ p }}">{{ p[:50] }}{% if p | length > 50 %}…{% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filterAdvPages">Quantidade de páginas</label>
+            <select id="filterAdvPages">
+              <option value="">Qualquer</option>
+              <option value="1-5">1 a 5</option>
+              <option value="6-20">6 a 20</option>
+              <option value="21-50">21 a 50</option>
+              <option value="51+">51 ou mais</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filterAdvDateFrom">Data de (índice)</label>
+            <input type="date" id="filterAdvDateFrom" placeholder="dd/mm/aaaa">
+          </div>
+          <div class="filter-group">
+            <label for="filterAdvDateTo">Data até (índice)</label>
+            <input type="date" id="filterAdvDateTo" placeholder="dd/mm/aaaa">
+          </div>
+        </div>
+        <div class="advanced-filters-actions">
+          <button type="button" id="btnApplyFilters" class="btn-apply-filters">Aplicar filtros</button>
+        </div>
+      </div>
+      <div id="searchResultsCount" class="search-results-count" aria-live="polite"></div>
+      <div id="searchExportWrap" class="search-export-wrap" style="display:none; margin-top:10px;">
+        <button type="button" id="btnExportSearchResults" class="load-more-btn" title="Descarregar resultados da busca em CSV">Exportar resultados (CSV)</button>
+      </div>
+      <div id="searchResults"></div>
+    </div>
+
+    <div class="card" id="stats-card">
+      <h2><span class="card-icon icon-stats" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Estatísticas</h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-icon-wrap blue"><svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+          <div class="value">{{ total_files }}</div>
+          <div class="label">documentos</div>
+        </div>
+        <div class="stat">
+          <div class="stat-icon-wrap green"><svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></div>
+          <div class="value">{{ total_pages }}</div>
+          <div class="label">páginas</div>
+        </div>
+        <div class="stat">
+          <div class="stat-icon-wrap purple"><svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/></svg></div>
+          <div class="value">{{ total_words | int | default(0) }}</div>
+          <div class="label">palavras</div>
+        </div>
+        <div class="stat">
+          <div class="stat-icon-wrap orange"><svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+          <div class="value">{{ total_size_mb | default(0) }} MB</div>
+          <div class="label">indexados</div>
+        </div>
+      </div>
+      {% if count_by_type %}
+      <div class="count-by-type">
+        <h3 class="count-by-type-title">Por tipo</h3>
+        {% set max_count = count_by_type.values() | max %}
+        <div class="type-bar-chart">
+          {% for doc_type, count in count_by_type.items() | sort(attribute='1', reverse=True) %}
+          <div class="type-bar-row" data-doc-type="{{ doc_type }}">
+            <span class="type-bar-label" title="{{ doc_type }}">{{ doc_type }}</span>
+            <div class="type-bar-track"><div class="type-bar-fill" style="width:{{ (count / max_count * 100) | int }}%"></div></div>
+            <span class="type-bar-count">{{ count }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if count_by_language %}
+      <div class="count-by-type">
+        <h3 class="count-by-type-title">Por idioma</h3>
+        {% set max_lang = count_by_language.values() | max %}
+        <div class="type-bar-chart">
+          {% for lang, count in count_by_language.items() | sort(attribute='1', reverse=True) %}
+          <div class="type-bar-row" data-lang="{{ lang }}">
+            <span class="type-bar-label" title="{{ lang }}">{{ lang }}</span>
+            <div class="type-bar-track"><div class="type-bar-fill" style="width:{{ (count / max_lang * 100) | int }}%; background: linear-gradient(90deg, #34c759 0%, #28a745 100%);"></div></div>
+            <span class="type-bar-count">{{ count }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if count_by_year and years_sorted %}
+      <div class="count-by-type">
+        <h3 class="count-by-type-title">Por período</h3>
+        {% set max_year = count_by_year.values() | max %}
+        <div class="type-bar-chart">
+          {% for year in years_sorted %}
+          <div class="type-bar-row" data-year="{{ year }}">
+            <span class="type-bar-label" title="{{ year }}">{{ year }}</span>
+            <div class="type-bar-track"><div class="type-bar-fill" style="width:{{ (count_by_year[year] / max_year * 100) | int }}%; background: linear-gradient(90deg, #ff9500 0%, #ff6b00 100%);"></div></div>
+            <span class="type-bar-count">{{ count_by_year[year] }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      <div class="stats-extra">
+        {% if total_files and total_files > 0 %}
+        <p class="stat-extra-line"><span class="stat-extra-label">Documento médio:</span> <strong>{{ avg_pages_per_doc | default(0) }}</strong> páginas</p>
+        {% endif %}
+        {% if docs_large_count and docs_large_count > 0 %}
+        <p class="stat-extra-line"><span class="stat-extra-label">Documentos com mais de {{ docs_large_threshold | default(50) }} páginas:</span> <strong>{{ docs_large_count }}</strong></p>
+        {% endif %}
+        {% if duplicate_groups_count and duplicate_groups_count > 0 %}
+        <p class="stat-extra-line"><span class="stat-extra-label">Duplicatas:</span> <strong>{{ duplicate_groups_count }}</strong> grupo(s), {{ duplicate_files_count }} arquivo(s)</p>
+        {% endif %}
+        {% if total_locations and total_locations > 0 %}
+        <p class="stat-extra-line"><span class="stat-extra-label">Locais referenciados:</span> <strong>{{ total_locations }}</strong> <a href="#locations-card">ver mapa</a></p>
+        {% endif %}
+        {% if docs_classified_by_ia and docs_classified_by_ia > 0 %}
+        <p class="stat-extra-line"><span class="stat-extra-label">Documentos classificados por IA:</span> <strong>{{ docs_classified_by_ia }}</strong></p>
+        {% endif %}
+        {% if total_pages and total_pages > 0 %}
+        <p class="stat-extra-line"><span class="stat-extra-label">Páginas com OCR:</span> <strong>{{ total_pages_with_ocr | default(0) }}</strong> ({{ ocr_percentage_total | default(0) }}% do total)</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card wordcloud-card" id="wordcloud-card">
+      <h2><span class="card-icon icon-cloud" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg></span> Nuvem de palavras</h2>
+      {% if wordcloud_ai_enriched %}
+      <span class="wordcloud-badge-ia" title="Termos sugeridos por IA (Ollama)">Enriquecido com IA</span>
+      {% endif %}
+      <p class="search-hint">Palavras mais frequentes nos seus documentos. Clique em uma palavra para buscar; use as abas para filtrar por tipo.</p>
+      {% if doc_types and (wordcloud_b64 or wordcloud_by_type or wordcloud_words) %}
+      <div class="wordcloud-tabs" id="wordcloudTabs">
+        <button type="button" class="wordcloud-tab active" data-type="">Geral</button>
+        {% for t in doc_types %}
+        <button type="button" class="wordcloud-tab" data-type="{{ t }}">{{ t }}</button>
+        {% endfor %}
+      </div>
+      <p class="search-hint" style="margin-bottom:4px">Clique em uma palavra na nuvem (aba Geral) ou na lista abaixo para buscar.</p>
+      <p class="search-hint" style="margin-bottom:8px;font-size:0.8rem;color:var(--text-secondary)">Tamanho = frequência (quanto maior, mais citado).</p>
+      <div class="wordcloud-controls" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <label for="wordcloudTopN" style="font-size:0.875rem;font-weight:500;color:var(--text-secondary)">Top</label>
+        <select id="wordcloudTopN" aria-label="Número de palavras na nuvem">
+          <option value="50">50</option>
+          <option value="80" selected>80</option>
+          <option value="120">120</option>
+        </select>
+        <span style="font-size:0.875rem;color:var(--text-secondary)">palavras</span>
+      </div>
+      <div class="wordcloud-wrap" id="wordcloudWrap">
+        {% if wordcloud_words %}
+        <canvas id="wordcloudCanvas" width="800" height="400" title="Clique em uma palavra para buscar"></canvas>
+        {% elif wordcloud_b64 %}
+        <img id="wordcloudImg" src="data:image/png;base64,{{ wordcloud_b64 }}" alt="Nuvem de palavras" title="Clique nas palavras na lista abaixo para buscar">
+        {% else %}
+        <p class="empty" style="padding:24px 16px"><svg class="empty-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>Pouco texto nesta seleção para gerar a nuvem.<br>Use a aba <strong>Geral</strong> ou adicione mais documentos.</p>
+        {% endif %}
+      </div>
+      {% if top_words %}
+      <h3 class="count-by-type-title">Top palavras — clique para buscar</h3>
+      <div class="top-words-list" id="topWordsList">
+        {% for w in top_words[:30] %}
+        <span data-word="{{ w.word }}" data-count="{{ w.count }}" title="Buscar «{{ w.word }}» — {{ w.count }} ocorrências"><b>{{ w.word }}</b> ({{ w.count }})</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if bigrams %}
+      <h3 class="count-by-type-title">Bigramas</h3>
+      <div class="bigrams-list">
+        {% for b in bigrams[:20] %}
+        <span>{{ b.phrase }} ({{ b.count }})</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if highlight_snippets %}
+      <h3 class="count-by-type-title">Termos em destaque</h3>
+      <div class="highlight-snippets-list">
+        {% for item in highlight_snippets %}
+        <div class="highlight-snippet-item">
+          <strong>{{ item.word }}</strong>
+          <p class="highlight-snippet-text">{{ item.snippet }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="empty"><svg class="empty-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg><p>Nenhuma nuvem de palavras ainda.</p><p class="empty-next">Adicione PDFs com <code>pdfsearchable add</code> na pasta do projeto e execute <code>pdfsearchable serve</code> para gerar o report.</p></div>
+      {% endif %}
+    </div>
+
+    <div class="card" id="locations-card">
+      <h2><span class="card-icon icon-map" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg></span> Referências a locais</h2>
+      <p class="search-hint">Cidades, estados, regiões e países citados nos documentos. Clique em um item da lista para centralizar no mapa.</p>
+      {% if location_refs %}
+      <p class="search-hint" style="margin-bottom:10px;font-weight:600;color:var(--text)">Filtro: use o menu abaixo para restringir por tipo. Passe o rato sobre um item da lista para destacá-lo no mapa.</p>
+      <ul class="location-refs-list" id="locationRefsList" role="list" aria-label="Lista de locais citados nos documentos" title="Clique para centralizar no mapa; passe o rato para destacar">
+        {% for loc in location_refs %}
+        <li role="listitem" tabindex="0" data-name="{{ loc.name }}" data-kind="{{ loc.kind }}" data-doc-count="{{ loc.doc_count }}" data-lat="{{ loc.lat if loc.lat is not none else '' }}" data-lon="{{ loc.lon if loc.lon is not none else '' }}" data-file-ids="{{ (loc.get('file_ids') or []) | join(',') }}">
+          <span>
+            <span class="location-name">{{ loc.name }}</span>
+            <span class="location-kind">{{ loc.kind }}</span>
+          </span>
+          <span class="location-count">{{ loc.doc_count }} arquivo(s) citaram</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% set locs_with_coords = location_refs | selectattr('lat') | selectattr('lon') | list %}
+      {% if locs_with_coords %}
+      <div class="map-controls" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <label for="locationKindFilter" style="font-size:0.875rem;font-weight:500;color:var(--text-secondary)">Filtrar:</label>
+        <select id="locationKindFilter" aria-label="Filtrar locais por tipo">
+          <option value="">Todos</option>
+          <option value="cidade">Cidades</option>
+          <option value="estado">Estados</option>
+          <option value="país">Países</option>
+          <option value="região">Regiões</option>
+          <option value="CEP">CEP</option>
+          <option value="IP">IP</option>
+        </select>
+        <button type="button" id="mapFitBoundsBtn" class="load-more-btn" style="padding:8px 16px">Ajustar vista</button>
+      </div>
+      <p class="search-hint" style="margin-top:0">Mapa interativo: arraste para mover, use o zoom (+/−) e clique nos marcadores. Passe o rato na lista para destacar no mapa.</p>
+      <div id="locationsMap"></div>
+      {% endif %}
+      {% else %}
+      <div class="empty"><svg class="empty-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg><p>Nenhuma referência a cidade, estado ou país detectada.</p><p class="empty-next">Adicione mais PDFs com <code>pdfsearchable add</code> ou use IA (Ollama) para enriquecer os documentos.</p></div>
+      {% endif %}
+    </div>
+
+    {% if recent_activity %}
+    {% set _action_labels = {
+      'index_done': 'Indexação concluída',
+      'index_file': 'Arquivo indexado',
+      'index_updated_path': 'Caminho actualizado',
+      'index_skip': 'Arquivo ignorado (sem alterações)',
+      'index_skipped_unchanged': 'Sem alterações — ignorado',
+      'index_start': 'Indexação iniciada',
+      'index_error': 'Erro na indexação',
+      'cli_add': 'Adição de documentos',
+      'cli_remove': 'Documento removido',
+      'cli_search': 'Pesquisa realizada',
+      'cli_report': 'Report gerado',
+      'cli_index_fts': 'Índice FTS atualizado',
+      'fts_index_all': 'Índice FTS reconstruído'
+    } %}
+    <div class="card" id="activity-card">
+      <h2><span class="card-icon icon-clock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Atividade recente</h2>
+      <ul class="activity-list">
+        {% for e in recent_activity %}
+        <li class="activity-item">
+          {% if e.action == 'index_done' or e.action == 'index_updated_path' or e.action == 'index_file' %}<svg class="activity-icon success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          {% elif e.action == 'index_error' %}<svg class="activity-icon error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          {% elif e.action == 'index_start' or e.action == 'index_skipped_unchanged' or e.action == 'index_skip' %}<svg class="activity-icon info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          {% else %}<svg class="activity-icon warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          {% endif %}
+          <div>
+            <span class="activity-action">{{ _action_labels.get(e.action, e.action) }}</span>
+            <div class="activity-details">{{ e.get('timestamp', '')[:19] }}{% if e.get('details') %} — {{ e.details.get('path') or e.details.get('name') or e.details.get('file_id') or e.details.get('error') or '' }}{% endif %}</div>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if duplicate_groups %}
+    <div class="card" id="duplicates-card">
+      <h2><span class="card-icon icon-dups" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span> Duplicatas</h2>
+      <p class="search-hint">Arquivos com o mesmo conteúdo (hash idêntico), em caminhos diferentes.</p>
+      <ul class="activity-list">
+        {% for group in duplicate_groups %}
+        <li class="activity-item dup-group">
+          <svg class="activity-icon info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <div>
+            <span class="activity-action">Hash {{ (group[0].get('content_hash') or '?')[:12] }}…</span>
+            <div class="activity-details">
+              {% for f in group %}
+              <div>{{ f.get('name', '?') }} — {{ f.get('original_path', '?') }}</div>
+              {% endfor %}
+            </div>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="card" id="documents-card">
+      <h2><span class="card-icon icon-docs" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Documentos</h2>
+      <p class="search-hint">Clique no nome do documento para abrir a visualização (PDF, metadados e hash). Para remover do índice, use o botão «Copiar comando para remover».</p>
+      <div class="filter-bar">
+        <label for="filterSort">Ordenar por:</label>
+        <select id="filterSort" aria-label="Ordenar lista de documentos">
+          <option value="date-desc">Data (mais recente)</option>
+          <option value="date-asc">Data (mais antigo)</option>
+          <option value="name-asc">Nome (A–Z)</option>
+          <option value="name-desc">Nome (Z–A)</option>
+          <option value="type-asc">Tipo (A–Z)</option>
+          <option value="type-desc">Tipo (Z–A)</option>
+          <option value="size-desc">Tamanho (maior)</option>
+          <option value="size-asc">Tamanho (menor)</option>
+        </select>
+        <label for="filterType">Tipo:</label>
+        <select id="filterType">
+          <option value="">Todos</option>
+          {% for t in doc_types %}
+          <option value="{{ t }}">{{ t }}</option>
+          {% endfor %}
+        </select>
+        <label for="filterLang">Idioma:</label>
+        <select id="filterLang">
+          <option value="">Todos</option>
+          <option value="pt-BR">PT-BR</option>
+          <option value="en">EN</option>
+          <option value="es">ES</option>
+          <option value="unknown">Outro/desconhecido</option>
+        </select>
+        <label for="filterFav" style="margin-left:auto;display:inline-flex;align-items:center;gap:4px">
+          <input type="checkbox" id="filterFav"> Somente favoritos
+        </label>
+      </div>
+      <ul class="file-list" id="fileList">
+        {% for f in files %}
+        <li class="file-item" data-doc-type="{{ f.doc_type }}" data-language="{{ f.get('language') or 'unknown' }}" data-num-pages="{{ f.get('num_pages') or 0 }}" data-indexed-at="{{ (f.get('indexed_at') or '')[:10] }}" data-updated-at="{{ (f.get('updated_at') or f.get('indexed_at') or '')[:10] }}" data-name="{{ (f.name or '') | lower }}" data-file-size="{{ f.get('file_size') or 0 }}" data-parties="{{ (f.get('parties') or []) | join('|') }}" data-id="{{ f.id }}">
+          <div class="file-info">
+            <a href="{{ document_view_url }}?id={{ f.id }}" class="name link-doc" title="Abrir documento">{{ f.name }}</a>
+            <span class="doc-type" {% if f.get('classification_source') in ('openai', 'ollama') %}title="Classificado por IA (OpenAI ou Ollama)"{% elif f.get('classification_confidence') is not none %}title="Confiança da classificação: {{ (f.get('classification_confidence') * 100) | int }}%"{% endif %}>{{ f.doc_type }}{% if f.get('classification_source') in ('openai', 'ollama') %} <em>(IA)</em>{% elif f.get('classification_confidence') is not none %} <small style="opacity:.8">({{ (f.get('classification_confidence') * 100) | int }}%)</small>{% endif %}</span>
+            {% if f.get('language') %}<span class="lang-badge">{{ f.language }}</span>{% endif %}
+            <div class="meta">
+              {{ f.num_pages }} página(s) · {{ f.word_count }} palavras
+              {% set pages_ocr = (f.get('pages') or []) | selectattr('has_ocr') | list %}
+              {% if f.get('ocr_percentage') is not none %}<span> · {{ f.ocr_percentage }}% texto OCR</span>
+              {% elif pages_ocr | length %}<span> · {{ pages_ocr | length }} com OCR</span>{% endif %}
+            </div>
+            {% if f.get('summary') %}
+            <p class="file-summary">{{ f.summary[:200] }}{% if f.summary | length > 200 %}…{% endif %}</p>
+            {% endif %}
+            {% if f.get('tags') %}
+            <div class="file-tags">
+              {% for tag in f.tags[:8] %}<span class="tag-pill" data-tag="{{ tag }}">{{ tag }}</span>{% endfor %}
+            </div>
+            {% endif %}
+            {% if f.get('indexed_at') or f.get('updated_at') %}
+            <div class="file-meta">
+              {% if f.get('indexed_at') %}<span title="Adicionado em">Adicionado em {{ f.indexed_at[:10] }}</span>{% endif %}
+              {% if f.get('updated_at') %}<span title="Última atualização">Atualizado em {{ f.updated_at[:10] }}</span>{% endif %}
+            </div>
+            {% endif %}
+            {% if f.get('metadata') and (f.metadata.get('title') or f.metadata.get('author') or f.metadata.get('creation_date') or f.metadata.get('producer') or f.metadata.get('creator') or f.metadata.get('keywords')) %}
+            <div class="file-meta">
+              {% if f.metadata.get('title') %}<span title="Título">{{ f.metadata.title }}</span>{% endif %}
+              {% if f.metadata.get('author') %}<span title="Autor">{{ f.metadata.author }}</span>{% endif %}
+              {% if f.metadata.get('creation_date') %}<span title="Criação">{{ f.metadata.creation_date }}</span>{% endif %}
+              {% if f.metadata.get('mod_date') %}<span title="Modificação">{{ f.metadata.mod_date }}</span>{% endif %}
+              {% if f.metadata.get('producer') %}<span title="Producer">{{ f.metadata.producer }}</span>{% endif %}
+              {% if f.metadata.get('creator') %}<span title="Creator">{{ f.metadata.creator }}</span>{% endif %}
+              {% if f.metadata.get('keywords') %}<span title="Keywords">{{ f.metadata.keywords }}</span>{% endif %}
+            </div>
+            {% endif %}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <button type="button" class="fav-toggle" title="Marcar como favorito" aria-label="Marcar como favorito" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+            <button type="button" class="remove-cmd" data-cmd="pdfsearchable remove {{ f.id }}" title="Clique para copiar o comando">Copiar comando para remover</button>
+          </div>
+        </li>
+        {% else %}
+        <li class="empty"><svg class="empty-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><p>Nenhum documento ainda.</p><p class="empty-next">Adicione PDFs com <code>pdfsearchable add arquivo.pdf</code> ou <code>pdfsearchable add pasta/</code> na pasta do projeto e execute <code>pdfsearchable serve</code>.</p></li>
+        {% endfor %}
+      </ul>
+      {% if files_rest and files_rest | length > 0 %}
+      <p class="load-more-wrap" style="margin-top:12px;text-align:center">
+        <button type="button" id="btnLoadMore" class="load-more-btn">Carregar mais ({{ files_rest | length }} restantes)</button>
+      </p>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if timeline_entries and timeline_entries | length > 0 %}
+  <div class="section container" id="section-timeline">
+    <div class="section-header">
+      <h2 class="section-title">Linha do tempo</h2>
+      <span class="section-badge">{{ timeline_entries | length }} ano(s)</span>
+    </div>
+    <div class="timeline">
+      {% for entry in timeline_entries %}
+      <div class="timeline-year">
+        <div class="timeline-year-label">{{ entry.year }}</div>
+        <div class="timeline-docs">
+          {% for doc in entry.docs[:12] %}
+          <a href="{{ document_view_url }}?id={{ doc.id }}" class="timeline-doc-pill" title="{{ doc.name }}">
+            <span class="timeline-doc-type">{{ doc.doc_type }}</span>
+            <span class="timeline-doc-name">{{ doc.name | truncate(40, true, '…') }}</span>
+          </a>
+          {% endfor %}
+          {% if entry.docs | length > 12 %}
+          <span class="timeline-more">+{{ entry.docs | length - 12 }} mais</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if quality_data and (quality_data.no_text | length > 0 or quality_data.low_ocr | length > 0) %}
+  <div class="section container" id="section-quality">
+    <div class="section-header">
+      <h2 class="section-title">Qualidade</h2>
+      {% if quality_issues_count > 0 %}
+      <span class="section-badge section-badge-warn">{{ quality_issues_count }} problema(s)</span>
+      {% else %}
+      <span class="section-badge section-badge-ok">OK</span>
+      {% endif %}
+    </div>
+    <div class="quality-grid">
+      {% if quality_data.no_text | length > 0 %}
+      <div class="quality-card quality-card-warn">
+        <div class="quality-card-header">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <strong>Sem texto extraído ({{ quality_data.no_text | length }})</strong>
+        </div>
+        <ul class="quality-list">
+          {% for item in quality_data.no_text[:8] %}
+          <li><a href="{{ document_view_url }}?id={{ item.id }}" class="quality-link">{{ item.name | truncate(50, true, '…') }}</a></li>
+          {% endfor %}
+          {% if quality_data.no_text | length > 8 %}<li class="quality-more">…e mais {{ quality_data.no_text | length - 8 }}</li>{% endif %}
+        </ul>
+        <p class="quality-hint">Tente re-indexar com OCR: <code>pdfsearchable add --reprocess</code></p>
+      </div>
+      {% endif %}
+      {% if quality_data.low_ocr | length > 0 %}
+      <div class="quality-card quality-card-info">
+        <div class="quality-card-header">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <strong>OCR com baixa confiança ({{ quality_data.low_ocr | length }})</strong>
+        </div>
+        <ul class="quality-list">
+          {% for item in quality_data.low_ocr[:8] %}
+          <li>
+            <a href="{{ document_view_url }}?id={{ item.id }}" class="quality-link">{{ item.name | truncate(44, true, '…') }}</a>
+            <span class="quality-conf">{{ item.confidence }}%</span>
+          </li>
+          {% endfor %}
+          {% if quality_data.low_ocr | length > 8 %}<li class="quality-more">…e mais {{ quality_data.low_ocr | length - 8 }}</li>{% endif %}
+        </ul>
+        <p class="quality-hint">Documentos escaneados com qualidade reduzida. Considere digitalizar novamente.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <footer class="footer container">
+    <p><span>Gerado em {{ report_generated_at }}</span><span>·</span><span>Índice v{{ index_version }}</span><span>·</span><span>pdfsearchable {{ app_version | default('0.2.0') }}</span></p>
+    <p class="footer-shortcuts" aria-hidden="true"><kbd>Ctrl</kbd>+<kbd>K</kbd> pesquisar · <kbd>Esc</kbd> limpar</p>
+  </footer>
+
+  <link rel="stylesheet" href="assets/MarkerCluster.css" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css'">
+  <link rel="stylesheet" href="assets/MarkerCluster.Default.css" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css'">
+  <script src="assets/leaflet.js" onerror="(function(s){s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';document.head.appendChild(s);})(document.createElement('script'))"></script>
+  <script src="assets/leaflet.markercluster.js" onerror="(function(s){s.src='https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';document.head.appendChild(s);})(document.createElement('script'))"></script>
+  <script src="assets/wordcloud2.min.js" onerror="(function(s){s.src='https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.0.2/wordcloud2.min.js';document.head.appendChild(s);})(document.createElement('script'))"></script>
+  <script>
+    const searchData = {{ search_data | tojson }};
+    const wordcloudByType = {{ wordcloud_by_type | default({}) | tojson }};
+    const generalWordcloudB64 = {{ (wordcloud_b64 or '') | tojson }};
+    const wordcloudWordsFull = {{ wordcloud_words | default([]) | tojson }};
+    var wordcloudWords = wordcloudWordsFull.slice(0, 80);
+    const locationRefs = {{ location_refs | default([]) | tojson }};
+    const searchSynonyms = {{ search_synonyms | default({}) | tojson }};
+    const filesRest = {{ files_rest | default([]) | tojson }};
+    const documentViewUrl = {{ document_view_url | tojson }};
+    const listPageSize = {{ list_page_size | default(30) }};
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    const searchHistoryEl = document.getElementById('searchHistory');
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlQ = urlParams.get('q') || '';
+    const urlFileId = urlParams.get('file_id') || '';
+    if (urlQ && searchInput) searchInput.value = urlQ;
+    var searchFileFilterBanner = document.getElementById('searchFileFilterBanner');
+    if (urlFileId && searchData && searchData.length) {
+      var fileForFilter = searchData.find(function(f) { return f.id === urlFileId; });
+      if (fileForFilter && searchFileFilterBanner) {
+        var nameEl = document.getElementById('searchFileFilterName');
+        if (nameEl) nameEl.textContent = fileForFilter.name || urlFileId;
+        searchFileFilterBanner.hidden = false;
+      }
+    }
+
+    (function themeAndNav() {
+      const themeToggle = document.getElementById('themeToggle');
+      const stored = localStorage.getItem('pdfsearchable-theme');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initial = stored || (prefersDark ? 'dark' : 'light');
+      if (initial === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      if (themeToggle) {
+        var themeLabel = themeToggle.querySelector('.theme-toggle-label');
+        function updateThemeLabel() {
+          var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+          themeToggle.setAttribute('aria-label', isDark ? 'Usar tema claro' : 'Usar tema escuro');
+          if (themeLabel) themeLabel.textContent = isDark ? 'Claro' : 'Escuro';
+        }
+        updateThemeLabel();
+        themeToggle.addEventListener('click', function() {
+          var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+          document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+          localStorage.setItem('pdfsearchable-theme', isDark ? 'light' : 'dark');
+          updateThemeLabel();
+        });
+      }
+      document.querySelectorAll('.nav-anchors a[href^="#"]').forEach(function(a) {
+        a.addEventListener('click', function(e) {
+          const id = a.getAttribute('href').slice(1);
+          const el = id && document.getElementById(id);
+          if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        });
+      });
+      (function navActiveOnScroll() {
+        var sectionIds = [];
+        document.querySelectorAll('.nav-anchors a[href^="#"]').forEach(function(a) {
+          var id = a.getAttribute('href').slice(1);
+          if (id && document.getElementById(id)) sectionIds.push({ id: id, link: a });
+        });
+        if (!sectionIds.length || !window.IntersectionObserver) return;
+        var observer = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            var id = entry.target.id;
+            var link = sectionIds.find(function(s) { return s.id === id; });
+            if (link) link.link.classList.toggle('active', entry.isIntersecting);
+          });
+        }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+        sectionIds.forEach(function(s) { observer.observe(document.getElementById(s.id)); });
+      })();
+    })();
+
+    const escapeHtml = (s) => {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    };
+
+    const accentMap = { 'á':'a','à':'a','ã':'a','â':'a','ä':'a','é':'e','è':'e','ê':'e','ë':'e','í':'i','ì':'i','î':'i','ï':'i','ó':'o','ò':'o','õ':'o','ô':'o','ö':'o','ú':'u','ù':'u','û':'u','ü':'u','ç':'c','ñ':'n' };
+    const normalizeAccents = (s) => {
+      if (!s) return '';
+      return (s.toLowerCase()).replace(/[\u0300-\u036f]/g, '').replace(/[^\u0000-\u007f]/g, c => accentMap[c] || c.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+    };
+
+    const highlight = (text, term) => {
+      if (!term || !text) return escapeHtml(text || '');
+      const re = new RegExp('(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+      return escapeHtml(text).replace(re, '<span class="match">$1</span>');
+    };
+
+    function getAdvancedFilterState() {
+      const docType = (document.getElementById('filterAdvType') && document.getElementById('filterAdvType').value) || '';
+      const person = (document.getElementById('filterAdvPerson') && document.getElementById('filterAdvPerson').value) || '';
+      const pageRange = (document.getElementById('filterAdvPages') && document.getElementById('filterAdvPages').value) || '';
+      const dateFrom = (document.getElementById('filterAdvDateFrom') && document.getElementById('filterAdvDateFrom').value) || '';
+      const dateTo = (document.getElementById('filterAdvDateTo') && document.getElementById('filterAdvDateTo').value) || '';
+      return { docType, person, pageRange, dateFrom, dateTo };
+    }
+
+    function fileMatchesAdvancedFilters(file, state) {
+      if (!state) state = getAdvancedFilterState();
+      if (state.docType && (file.doc_type || 'documento') !== state.docType) return false;
+      if (state.person) {
+        const parties = file.parties || [];
+        if (!parties.some(function(p) { return p && p.indexOf(state.person) !== -1; })) return false;
+      }
+      const np = file.num_pages || 0;
+      if (state.pageRange === '1-5' && (np < 1 || np > 5)) return false;
+      if (state.pageRange === '6-20' && (np < 6 || np > 20)) return false;
+      if (state.pageRange === '21-50' && (np < 21 || np > 50)) return false;
+      if (state.pageRange === '51+' && np < 51) return false;
+      const idxDate = (file.indexed_at || '').substring(0, 10);
+      if (state.dateFrom && idxDate < state.dateFrom) return false;
+      if (state.dateTo && idxDate > state.dateTo) return false;
+      return true;
+    }
+
+    function applyAdvancedFiltersToDocumentList() {
+      const state = getAdvancedFilterState();
+      const typeVal = filterType ? filterType.value : '';
+      const langVal = filterLang ? filterLang.value : '';
+      const list = document.querySelectorAll('.file-item[data-doc-type]');
+      list.forEach(function(el) {
+        const docType = el.getAttribute('data-doc-type') || '';
+        const lang = el.getAttribute('data-language') || 'unknown';
+        const numPages = parseInt(el.getAttribute('data-num-pages') || '0', 10);
+        const indexedAt = (el.getAttribute('data-indexed-at') || '').substring(0, 10);
+        const partiesStr = el.getAttribute('data-parties') || '';
+        const parties = partiesStr ? partiesStr.split('|') : [];
+        const okType = !typeVal || docType === typeVal;
+        const okLang = !langVal || lang === langVal;
+        const file = { doc_type: docType, num_pages: numPages, indexed_at: indexedAt, parties: parties };
+        const okAdv = fileMatchesAdvancedFilters(file, state);
+        el.style.display = (okType && okLang && okAdv) ? '' : 'none';
+      });
+    }
+
+    function updateUrlState() {
+      try {
+        var u = new URL(window.location.href);
+        var qVal = (searchInput && searchInput.value || '').trim();
+        if (qVal) u.searchParams.set('q', qVal); else u.searchParams.delete('q');
+        if (filterType && filterType.value) u.searchParams.set('type', filterType.value); else u.searchParams.delete('type');
+        if (filterLang && filterLang.value) u.searchParams.set('lang', filterLang.value); else u.searchParams.delete('lang');
+        window.history.replaceState({}, '', u.toString());
+      } catch (e) {}
+    }
+
+    function readSearchHistory() {
+      if (!window.localStorage) return [];
+      try {
+        var raw = localStorage.getItem('pdfsearchable-search-history') || '[]';
+        var arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    function writeSearchHistory(history) {
+      if (!window.localStorage) return;
+      try {
+        localStorage.setItem('pdfsearchable-search-history', JSON.stringify(history.slice(0, 10)));
+      } catch (e) {}
+    }
+    function addToSearchHistory(term) {
+      var t = (term || '').trim();
+      if (!t) return;
+      var hist = readSearchHistory();
+      hist = hist.filter(function(x) { return x !== t; });
+      hist.unshift(t);
+      writeSearchHistory(hist);
+    }
+    function renderSearchHistory() {
+      if (!searchHistoryEl) return;
+      var hist = readSearchHistory();
+      if (!hist.length) {
+        searchHistoryEl.hidden = true;
+        searchHistoryEl.innerHTML = '';
+        return;
+      }
+      searchHistoryEl.hidden = false;
+      searchHistoryEl.innerHTML = hist.map(function(t) {
+        return '<button type="button" class="history-chip">' + escapeHtml(t) + '</button>';
+      }).join(' ');
+    }
+
+    function expandWithSynonyms(term, useSynonyms) {
+      const t = (term || '').trim().toLowerCase();
+      if (!t) return [];
+      const out = [t];
+      if (useSynonyms && searchSynonyms && searchSynonyms[t]) {
+        const val = searchSynonyms[t];
+        const parts = (typeof val === 'string' ? val.split(',') : (Array.isArray(val) ? val : [val])).map(function(s) { return (s && s.trim && s.trim()) ? s.trim().toLowerCase() : ''; }).filter(Boolean);
+        parts.forEach(function(p) { if (p && out.indexOf(p) === -1) out.push(p); });
+      }
+      return out.filter(Boolean);
+    }
+    function parseQuery(q, useSynonyms) {
+      const orParts = q.split(/\s+OR\s+/i).map(function(s) { return s.trim(); }).filter(Boolean);
+      return orParts.map(function(part) {
+        const andTerms = part.split(/\s+AND\s+/i).map(function(s) { return s.trim(); }).filter(Boolean);
+        return andTerms.map(function(seg) {
+          const nearMatch = seg.match(/^(.+?)\s+NEAR\s+(\d*)\s*(.+)$/i);
+          if (nearMatch) {
+            const n = parseInt(nearMatch[2], 10) || 5;
+            return { type: 'near', term1: nearMatch[1].trim(), term2: nearMatch[3].trim(), N: n };
+          }
+          return { type: 'term', terms: expandWithSynonyms(seg, useSynonyms) };
+        });
+      });
+    }
+    function textMatchesParsedQuery(text, normText, parsed, ignoreAccents) {
+      function findPos(needle, inNorm) {
+        const base = inNorm ? normText : text.toLowerCase();
+        const hay = inNorm ? needle : needle.toLowerCase();
+        let idx = base.indexOf(hay);
+        if (idx === -1 && /^[\d.,\s]+$/.test(needle)) {
+          const noSp = (s) => (s || '').replace(/\s+/g, '');
+          const baseNoSp = noSp(base);
+          const hayNoSp = noSp(hay);
+          const idxNoSp = baseNoSp.indexOf(hayNoSp);
+          if (idxNoSp >= 0) {
+            var count = 0;
+            for (var i = 0; i < base.length; i++) {
+              if (count === idxNoSp) { idx = i; break; }
+              if (!/\s/.test(base[i])) count++;
+            }
+            if (idx === -1 && count === idxNoSp) idx = base.length;
+          }
+        }
+        return idx;
+      }
+      function termMatches(alt) {
+        const n = ignoreAccents ? normalizeAccents(alt) : alt.toLowerCase();
+        const idx = findPos(n, true);
+        if (idx === -1) return -1;
+        if (!ignoreAccents) return text.toLowerCase().indexOf(alt.toLowerCase());
+        let pos = 0;
+        for (let i = 0; i < text.length; i++) {
+          const add = normalizeAccents(text[i]);
+          if (pos === idx) return i;
+          pos += add.length;
+        }
+        return 0;
+      }
+      function wordsNear(term1Alts, term2Alts, N) {
+        const words = text.split(/\s+/);
+        const normWords = normText ? normText.split(/\s+/) : words.map(function(w) { return w.toLowerCase(); });
+        for (let i = 0; i < words.length; i++) {
+          const w = normWords[i] || '';
+          for (let a = 0; a < term1Alts.length; a++) {
+            const t1 = ignoreAccents ? normalizeAccents(term1Alts[a]) : term1Alts[a].toLowerCase();
+            if (w.indexOf(t1) !== -1 || t1.indexOf(w) !== -1) {
+              for (let j = Math.max(0, i - N); j <= Math.min(words.length - 1, i + N); j++) {
+                const w2 = normWords[j] || '';
+                for (let b = 0; b < term2Alts.length; b++) {
+                  const t2 = ignoreAccents ? normalizeAccents(term2Alts[b]) : term2Alts[b].toLowerCase();
+                  if (w2.indexOf(t2) !== -1 || t2.indexOf(w2) !== -1) return true;
+                }
+              }
+            }
+          }
+        }
+        return false;
+      }
+      for (let o = 0; o < parsed.length; o++) {
+        const andGroup = parsed[o];
+        let andOk = true;
+        for (let a = 0; a < andGroup.length; a++) {
+          const cond = andGroup[a];
+          if (cond.type === 'term') {
+            const found = cond.terms.some(function(alt) { return termMatches(alt) >= 0; });
+            if (!found) { andOk = false; break; }
+          } else         if (cond.type === 'near') {
+            const useSyn = document.getElementById('searchUseSynonyms') && document.getElementById('searchUseSynonyms').checked;
+            const t1 = expandWithSynonyms(cond.term1, useSyn);
+            const t2 = expandWithSynonyms(cond.term2, useSyn);
+            if (!wordsNear(t1, t2, cond.N)) { andOk = false; break; }
+          }
+        }
+        if (andOk) return true;
+      }
+      return false;
+    }
+    function findFirstMatchPosition(text, normText, parsed, ignoreAccents) {
+      function idxInNorm(needle) {
+        let idx = normText.indexOf(needle);
+        if (idx >= 0) return idx;
+        if (!/^[\d.,\s]+$/.test(needle)) return -1;
+        const noSp = (s) => (s || '').replace(/\s+/g, '');
+        const idxNoSp = noSp(normText).indexOf(noSp(needle));
+        if (idxNoSp < 0) return -1;
+        var count = 0;
+        for (var k = 0; k < normText.length; k++) {
+          if (count === idxNoSp) return k;
+          if (!/\s/.test(normText[k])) count++;
+        }
+        return count === idxNoSp ? normText.length : -1;
+      }
+      for (let o = 0; o < parsed.length; o++) {
+        for (let a = 0; a < parsed[o].length; a++) {
+          const cond = parsed[o][a];
+          if (cond.type !== 'term') continue;
+          for (let i = 0; i < cond.terms.length; i++) {
+            const alt = cond.terms[i];
+            const n = ignoreAccents ? normalizeAccents(alt) : alt.toLowerCase();
+            const idx = idxInNorm(n);
+            if (idx >= 0) {
+              let startOrig = 0;
+              if (ignoreAccents) {
+                let pos = 0;
+                for (let j = 0; j < text.length; j++) {
+                  if (pos === idx) { startOrig = j; break; }
+                  pos += normalizeAccents(text[j]).length;
+                }
+              } else {
+                startOrig = text.toLowerCase().indexOf(alt.toLowerCase());
+                if (startOrig < 0 && /^[\d.,\s]+$/.test(alt)) {
+                  const noSp = (s) => (s || '').replace(/\s+/g, '');
+                  const idxNoSp = noSp(text.toLowerCase()).indexOf(noSp(alt.toLowerCase()));
+                  if (idxNoSp >= 0) {
+                    var count = 0;
+                    for (var k = 0; k < text.length; k++) {
+                      if (count === idxNoSp) { startOrig = k; break; }
+                      if (!/\s/.test(text[k])) count++;
+                    }
+                  }
+                }
+              }
+              const matchWord = (text.slice(startOrig).match(/^\S+/) || [''])[0];
+              return { start: startOrig, end: startOrig + (matchWord.length || alt.length), matchStr: matchWord || alt };
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    const runSearch = () => {
+      const q = (searchInput.value || '').trim();
+      const countEl = document.getElementById('searchResultsCount');
+      if (countEl) countEl.textContent = '';
+      if (!q) {
+        searchResults.innerHTML = '';
+        var exportWrap = document.getElementById('searchExportWrap');
+        if (exportWrap) exportWrap.style.display = 'none';
+        window.lastSearchResults = null;
+        window.lastSearchQuery = '';
+        updateUrlState();
+        return;
+      }
+      const ignoreAccents = document.getElementById('searchIgnoreAccents') && document.getElementById('searchIgnoreAccents').checked;
+      const useSynonyms = document.getElementById('searchUseSynonyms') && document.getElementById('searchUseSynonyms').checked;
+      const filterState = getAdvancedFilterState();
+      const parsed = parseQuery(q, useSynonyms);
+      if (countEl) countEl.textContent = 'Buscando…';
+      searchResults.innerHTML = '<div class="skeleton-hit" aria-busy="true"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></div><div class="skeleton-hit" aria-busy="true"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></div><div class="skeleton-hit" aria-busy="true"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></div>';
+      setTimeout(function() {
+        const results = [];
+        for (const file of searchData) {
+          if (urlFileId && file.id !== urlFileId) continue;
+          if (!fileMatchesAdvancedFilters(file, filterState)) continue;
+          const pages = file.pages || [{ n: 1, text: file.text || '' }];
+          for (const p of pages) {
+            const text = p.text || '';
+            const normText = ignoreAccents ? normalizeAccents(text) : text.toLowerCase();
+            if (!textMatchesParsedQuery(text, normText, parsed, ignoreAccents)) continue;
+            const pos = findFirstMatchPosition(text, normText, parsed, ignoreAccents);
+            const startOrig = pos ? pos.start : 0;
+            const endOrig = pos ? pos.end : startOrig + 20;
+            const matchStr = pos ? pos.matchStr : q;
+            const snippetStart = Math.max(0, startOrig - 60);
+            const snippetEnd = Math.min(text.length, endOrig + 60);
+            let snippet = text.slice(snippetStart, snippetEnd);
+            if (snippetStart > 0) snippet = '…' + snippet;
+            if (snippetEnd < text.length) snippet = snippet + '…';
+            results.push({ id: file.id, name: file.name, snippet, page: p.n, matchStr: matchStr });
+          }
+        }
+        if (results.length === 0) {
+          if (countEl) countEl.textContent = '0 resultado(s) para «' + escapeHtml(q) + '».';
+          searchResults.innerHTML = '<div class="search-empty"><svg class="search-empty-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>Nenhum resultado para «' + escapeHtml(q) + '».</p><p class="hint">Tente outros termos ou ajuste os filtros.</p></div>';
+          var exportWrap = document.getElementById('searchExportWrap');
+          if (exportWrap) exportWrap.style.display = 'none';
+          window.lastSearchResults = null;
+          window.lastSearchQuery = '';
+          if (urlQ && searchResults) searchResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          updateUrlState();
+          return;
+        }
+        window.lastSearchResults = results;
+        window.lastSearchQuery = q;
+        var exportWrap = document.getElementById('searchExportWrap');
+        if (exportWrap) exportWrap.style.display = 'block';
+        if (countEl) countEl.textContent = results.length + ' resultado(s) para «' + escapeHtml(q) + '».';
+        searchResults.innerHTML = results.map(r =>
+          '<div class="hit fade-in" data-file-id="' + encodeURIComponent(r.id || '') + '" data-page="' + r.page + '" data-term="' + escapeHtml(r.matchStr || q) + '">' +
+          '<span class="file-name">' + escapeHtml(r.name) + '</span><span class="page-num">página ' + r.page + '</span>' +
+          '<div class="snippet">' + highlight(r.snippet, r.matchStr || q) + '</div>' +
+          '</div>'
+        ).join('');
+        if (urlQ && searchResults) searchResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        addToSearchHistory(q);
+        updateUrlState();
+      }, 0);
+    };
+
+    document.getElementById('btnAdvancedFilters').addEventListener('click', function() {
+      const panel = document.getElementById('advancedFiltersPanel');
+      const open = !panel.hidden;
+      panel.hidden = open;
+      this.setAttribute('aria-expanded', open ? 'false' : 'true');
+    });
+    document.getElementById('btnApplyFilters').addEventListener('click', function() {
+      applyAdvancedFiltersToDocumentList();
+      if ((searchInput.value || '').trim()) runSearch();
+    });
+
+    document.getElementById('btnExportSearchResults') && document.getElementById('btnExportSearchResults').addEventListener('click', function() {
+      var results = window.lastSearchResults;
+      var q = window.lastSearchQuery || '';
+      if (!results || results.length === 0) return;
+      var BOM = '\uFEFF';
+      var header = 'Documento;Página;Trecho';
+      var rows = results.map(function(r) {
+        var snippet = (r.snippet || '').replace(/"/g, '""').replace(/\r?\n/g, ' ');
+        return '"' + (r.name || '').replace(/"/g, '""') + '";' + (r.page || '') + ';"' + snippet + '"';
+      });
+      var csv = BOM + header + '\n' + rows.join('\n');
+      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'busca-' + (q.replace(/[^\w\s-]/g, '').slice(0, 30) || 'resultados') + '.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    searchInput.addEventListener('input', runSearch);
+    searchInput.addEventListener('keyup', runSearch);
+    if (searchInput && searchHistoryEl) {
+      searchInput.addEventListener('focus', function() {
+        renderSearchHistory();
+      });
+      document.addEventListener('click', function(e) {
+        if (!searchHistoryEl.contains(e.target) && e.target !== searchInput) {
+          searchHistoryEl.hidden = true;
+        }
+      });
+      searchHistoryEl.addEventListener('click', function(e) {
+        var chip = e.target && e.target.closest && e.target.closest('.history-chip');
+        if (!chip || !searchInput) return;
+        var term = chip.textContent || '';
+        searchInput.value = term;
+        runSearch();
+        var searchCard = document.getElementById('search-card');
+        if (searchCard) searchCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+    if (urlQ) {
+      runSearch();
+      var searchCard = document.getElementById('search-card');
+      if (searchCard) setTimeout(function() { searchCard.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 120);
+    }
+    document.getElementById('topWordsList') && document.getElementById('topWordsList').addEventListener('click', function(e) {
+      var wordEl = e.target && e.target.closest && e.target.closest('span[data-word]');
+      if (wordEl && searchInput) { searchInput.value = wordEl.getAttribute('data-word'); runSearch(); }
+    });
+    document.querySelectorAll('.search-try-link').forEach(function(a) {
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        var term = (this.getAttribute('data-term') || '').trim();
+        if (searchInput && term) { searchInput.value = term; runSearch(); }
+        var searchCard = document.getElementById('search-card');
+        if (searchCard) searchCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    // Clique num resultado da busca abre a visualização do documento em nova aba
+    if (searchResults) {
+      searchResults.addEventListener('click', function(e) {
+        var hit = e.target && e.target.closest && e.target.closest('.hit');
+        if (!hit || !documentViewUrl) return;
+        var id = hit.getAttribute('data-file-id') || '';
+        if (!id) return;
+        var page = hit.getAttribute('data-page') || '';
+        var term = hit.getAttribute('data-term') || '';
+        var url = documentViewUrl + '?id=' + id;
+        if (page) url += '&page=' + encodeURIComponent(page);
+        if (term) url += '&q=' + encodeURIComponent(term);
+        window.open(url, '_blank', 'noopener');
+      });
+    }
+
+    var loadMoreOffset = 0;
+    document.getElementById('btnLoadMore') && document.getElementById('btnLoadMore').addEventListener('click', function() {
+      var list = document.querySelector('.file-list');
+      if (!list || !filesRest || !filesRest.length) return;
+      var chunk = filesRest.slice(loadMoreOffset, loadMoreOffset + listPageSize);
+      loadMoreOffset += chunk.length;
+      chunk.forEach(function(f) {
+        var partiesStr = (f.parties || []).join('|');
+        var li = document.createElement('li');
+        li.className = 'file-item';
+        li.setAttribute('data-doc-type', f.doc_type || 'documento');
+        li.setAttribute('data-language', f.language || 'unknown');
+        li.setAttribute('data-num-pages', String(f.num_pages || 0));
+        li.setAttribute('data-indexed-at', (f.indexed_at || '').substring(0, 10));
+        li.setAttribute('data-updated-at', (f.updated_at || f.indexed_at || '').substring(0, 10));
+        li.setAttribute('data-name', (f.name || '').toLowerCase());
+        li.setAttribute('data-file-size', String(f.file_size || 0));
+        li.setAttribute('data-parties', partiesStr);
+        li.setAttribute('data-id', f.id || '');
+        var iaTag = (f.classification_source === 'openai' || f.classification_source === 'ollama') ? ' <em>(IA)</em>' : '';
+        li.innerHTML = '<div class="file-info"><a href="' + documentViewUrl + '?id=' + encodeURIComponent(f.id) + '" class="name link-doc" title="Abrir documento">' + escapeHtml(f.name || '') + '</a><span class="doc-type">' + escapeHtml(f.doc_type || 'documento') + iaTag + '</span>' + (f.language ? '<span class="lang-badge">' + escapeHtml(f.language) + '</span>' : '') + '<div class="meta">' + (f.num_pages || 0) + ' página(s) · ' + (f.word_count || 0) + ' palavras</div></div><div style="display:flex;align-items:center;gap:8px;margin-top:8px"><button type="button" class="fav-toggle" title="Marcar como favorito" aria-label="Marcar como favorito">☆</button><button type="button" class="remove-cmd" data-cmd="pdfsearchable remove ' + escapeHtml(f.id) + '" title="Clique para copiar o comando">Copiar comando para remover</button></div>';
+        list.appendChild(li);
+      });
+      var btn = document.getElementById('btnLoadMore');
+      var wrap = btn && btn.closest('.load-more-wrap');
+      var remaining = filesRest.length - loadMoreOffset;
+      if (remaining <= 0 && wrap) wrap.style.display = 'none';
+      else if (btn) btn.textContent = 'Carregar mais (' + remaining + ' restantes)';
+      applyAdvancedFiltersToDocumentList();
+    });
+
+    var favFilter = document.getElementById('filterFav');
+    function readFavorites() {
+      if (!window.localStorage) return [];
+      try {
+        var raw = localStorage.getItem('pdfsearchable-favorites') || '[]';
+        var arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    function writeFavorites(favs) {
+      if (!window.localStorage) return;
+      try {
+        localStorage.setItem('pdfsearchable-favorites', JSON.stringify(favs));
+      } catch (e) {}
+    }
+    function toggleFavoriteForId(id) {
+      var favs = readFavorites();
+      var idx = favs.indexOf(id);
+      if (idx >= 0) favs.splice(idx, 1);
+      else favs.unshift(id);
+      writeFavorites(favs);
+      applyFilters();
+      return favs.indexOf(id) >= 0;
+    }
+    function applyFavoritesToList() {
+      var favs = readFavorites();
+      var list = document.querySelectorAll('.file-item[data-id]');
+      list.forEach(function(li) {
+        var id = li.getAttribute('data-id') || '';
+        var isFav = favs.indexOf(id) >= 0;
+        li.setAttribute('data-fav', isFav ? '1' : '0');
+        var btn = li.querySelector('.fav-toggle');
+        if (btn) {
+          btn.innerHTML = isFav
+            ? '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
+            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+          btn.classList.toggle('is-fav', isFav);
+          btn.setAttribute('aria-pressed', isFav ? 'true' : 'false');
+          btn.title = isFav ? 'Remover dos favoritos' : 'Marcar como favorito';
+        }
+      });
+    }
+
+    document.querySelector('.file-list') && document.querySelector('.file-list').closest('.card') && document.querySelector('.file-list').closest('.card').addEventListener('click', function(e) {
+      var btn = e.target && e.target.closest && e.target.closest('.remove-cmd');
+      if (btn) {
+        var cmd = btn.getAttribute('data-cmd');
+        var labelRestore = 'Copiar comando para remover';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(cmd).then(function() {
+            btn.textContent = 'Copiado!';
+            btn.classList.add('copied');
+            setTimeout(function() { btn.textContent = labelRestore; btn.classList.remove('copied'); }, 2200);
+          });
+        } else {
+          prompt('Copie o comando:', cmd);
+        }
+        return;
+      }
+      var favBtn = e.target && e.target.closest && e.target.closest('.fav-toggle');
+      if (favBtn) {
+        var li = favBtn.closest('.file-item');
+        if (li) {
+          var id = li.getAttribute('data-id') || '';
+          if (id) {
+            toggleFavoriteForId(id);
+            applyFavoritesToList();
+          }
+        }
+        return;
+      }
+      // Clique em tag no item de documento dispara busca por essa tag
+      var tagEl = e.target && e.target.closest && e.target.closest('.tag-pill[data-tag]');
+      if (tagEl && searchInput) {
+        var tag = tagEl.getAttribute('data-tag') || '';
+        if (tag) {
+          searchInput.value = tag;
+          runSearch();
+          var searchCard = document.getElementById('search-card');
+          if (searchCard) searchCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    });
+
+    const filterType = document.getElementById('filterType');
+    if (filterType) {
+      filterType.addEventListener('change', applyFilters);
+    }
+    const filterLang = document.getElementById('filterLang');
+    if (filterLang) {
+      filterLang.addEventListener('change', applyFilters);
+    }
+    if (favFilter) {
+      favFilter.addEventListener('change', applyFilters);
+    }
+    function applyFilters() {
+      applyAdvancedFiltersToDocumentList();
+      applyFavoritesToList();
+      if (favFilter && favFilter.checked) {
+        document.querySelectorAll('.file-item[data-id]').forEach(function(li) {
+          if (li.getAttribute('data-fav') !== '1') {
+            li.style.display = 'none';
+          }
+        });
+      }
+    }
+
+    (function initStatsInteractions() {
+      const statsCard = document.getElementById('stats-card');
+      if (!statsCard) return;
+      const docsCard = document.getElementById('documents-card');
+      function scrollToDocuments() {
+        if (docsCard) docsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      // Clique em "Por tipo" aplica filtro de tipo
+      statsCard.querySelectorAll('tr[data-doc-type]').forEach(function(row) {
+        row.style.cursor = 'pointer';
+        row.title = 'Filtrar documentos por tipo';
+        row.addEventListener('click', function() {
+          const t = row.getAttribute('data-doc-type') || '';
+          if (filterType) {
+            filterType.value = t;
+            filterType.dispatchEvent(new Event('change'));
+          }
+          scrollToDocuments();
+        });
+      });
+      // Clique em "Por idioma" aplica filtro de idioma
+      statsCard.querySelectorAll('tr[data-lang]').forEach(function(row) {
+        row.style.cursor = 'pointer';
+        row.title = 'Filtrar documentos por idioma';
+        row.addEventListener('click', function() {
+          const lang = row.getAttribute('data-lang') || '';
+          if (filterLang) {
+            filterLang.value = lang === '—' ? '' : lang;
+            filterLang.dispatchEvent(new Event('change'));
+          }
+          scrollToDocuments();
+        });
+      });
+      // Clique em "Por período" aplica filtro de data (ano)
+      statsCard.querySelectorAll('tr[data-year]').forEach(function(row) {
+        row.style.cursor = 'pointer';
+        row.title = 'Filtrar documentos por ano de indexação';
+        row.addEventListener('click', function() {
+          const year = row.getAttribute('data-year') || '';
+          const fromEl = document.getElementById('filterAdvDateFrom');
+          const toEl = document.getElementById('filterAdvDateTo');
+          if (year && fromEl && toEl) {
+            fromEl.value = year + '-01-01';
+            toEl.value = year + '-12-31';
+          }
+          applyAdvancedFiltersToDocumentList();
+          if ((searchInput.value || '').trim()) runSearch();
+          scrollToDocuments();
+        });
+      });
+    })();
+
+    // Inicializar favoritos na carga
+    applyFavoritesToList();
+
+    function sortDocumentList() {
+      const list = document.getElementById('fileList');
+      const sel = document.getElementById('filterSort');
+      if (!list || !sel) return;
+      const value = sel.value;
+      const items = Array.from(list.querySelectorAll('.file-item[data-name]'));
+      const cmp = function(a, b) {
+        if (value === 'date-desc') return (b.getAttribute('data-updated-at') || b.getAttribute('data-indexed-at') || '').localeCompare(a.getAttribute('data-updated-at') || a.getAttribute('data-indexed-at') || '');
+        if (value === 'date-asc') return (a.getAttribute('data-updated-at') || a.getAttribute('data-indexed-at') || '').localeCompare(b.getAttribute('data-updated-at') || b.getAttribute('data-indexed-at') || '');
+        if (value === 'name-asc') return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || '', 'pt');
+        if (value === 'name-desc') return (b.getAttribute('data-name') || '').localeCompare(a.getAttribute('data-name') || '', 'pt');
+        if (value === 'type-asc') return (a.getAttribute('data-doc-type') || '').localeCompare(b.getAttribute('data-doc-type') || '', 'pt');
+        if (value === 'type-desc') return (b.getAttribute('data-doc-type') || '').localeCompare(a.getAttribute('data-doc-type') || '', 'pt');
+        const sizeA = parseInt(a.getAttribute('data-file-size') || '0', 10);
+        const sizeB = parseInt(b.getAttribute('data-file-size') || '0', 10);
+        if (value === 'size-desc') return sizeB - sizeA;
+        if (value === 'size-asc') return sizeA - sizeB;
+        return 0;
+      };
+      items.sort(cmp);
+      items.forEach(function(el) { list.appendChild(el); });
+    }
+    const filterSort = document.getElementById('filterSort');
+    if (filterSort) filterSort.addEventListener('change', sortDocumentList);
+
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        if (searchInput) { searchInput.focus(); searchInput.select(); }
+      }
+      if (e.key === 'Escape' && document.activeElement === searchInput) {
+        searchInput.value = '';
+        searchInput.blur();
+        if (typeof runSearch === 'function') runSearch();
+      }
+    });
+
+    const tabs = document.getElementById('wordcloudTabs');
+    const wrap = document.getElementById('wordcloudWrap');
+    var wordcloudColors = ['#007AFF', '#5856d6', '#af52de', '#ff2d55', '#ff9f0a', '#ffcc00', '#34c759', '#30b0c7', '#5e5ce6', '#bf5af2'];
+    function getWordcloudTopN() {
+      var sel = document.getElementById('wordcloudTopN');
+      return sel ? Math.max(10, parseInt(sel.value, 10) || 80) : 80;
+    }
+    function drawWordcloud(canvasEl) {
+      var n = getWordcloudTopN();
+      var list = (wordcloudWordsFull || []).slice(0, n);
+      if (!canvasEl || !list.length) return false;
+      if (typeof WordCloud === 'undefined') return false;
+      try {
+        WordCloud(canvasEl, {
+          list: list,
+          gridSize: 10,
+          weightFactor: 4.2,
+          minSize: 10,
+          maxSize: 72,
+          fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+          color: function() { return wordcloudColors[Math.floor(Math.random() * wordcloudColors.length)]; },
+          backgroundColor: 'transparent',
+          click: function(item) {
+            if (searchInput) { searchInput.value = item[0]; runSearch(); }
+            var topList = document.getElementById('topWordsList');
+            if (topList) {
+              topList.querySelectorAll('span').forEach(function(s) { s.classList.remove('wordcloud-list-highlight'); });
+              var word = (item[0] || '').toString();
+              var span = null;
+              topList.querySelectorAll('span[data-word]').forEach(function(s) { if (s.getAttribute('data-word') === word) span = s; });
+              if (span) {
+                span.classList.add('wordcloud-list-highlight');
+                span.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                setTimeout(function() { span.classList.remove('wordcloud-list-highlight'); }, 2500);
+              }
+            }
+          }
+        });
+        return true;
+      } catch (e) { console.warn('WordCloud:', e); return false; }
+    }
+    function ensureWordcloudDrawn() {
+      var list = (wordcloudWordsFull || []).slice(0, getWordcloudTopN());
+      if (!wrap || !list.length) return;
+      var canvasEl = document.getElementById('wordcloudCanvas');
+      if (!canvasEl) return;
+      if (typeof WordCloud !== 'undefined') {
+        if (drawWordcloud(canvasEl)) return;
+      }
+      if (generalWordcloudB64 && generalWordcloudB64.length > 50) {
+        wrap.innerHTML = '<img id="wordcloudImg" src="data:image/png;base64,' + generalWordcloudB64 + '" alt="Nuvem de palavras"><p class="search-hint" style="margin-top:8px">Clique nas palavras na lista «Top palavras» abaixo para buscar.</p>';
+      }
+    }
+    function scheduleWordcloud() {
+      if (!tabs || !wrap) return;
+      var canvasEl = wrap.querySelector('#wordcloudCanvas');
+      var list = (wordcloudWordsFull || []).slice(0, getWordcloudTopN());
+      if (!canvasEl || !list.length) return;
+      var drawn = false;
+      function tryDraw() {
+        var el = document.getElementById('wordcloudCanvas');
+        if (!el || drawn) return;
+        if (typeof WordCloud === 'undefined') {
+          setTimeout(tryDraw, 200);
+          return;
+        }
+        requestAnimationFrame(function() {
+          if (drawn) return;
+          if (drawWordcloud(el)) { drawn = true; return; }
+          if (generalWordcloudB64 && generalWordcloudB64.length > 50) {
+            wrap.innerHTML = '<img id="wordcloudImg" src="data:image/png;base64,' + generalWordcloudB64 + '" alt="Nuvem de palavras"><p class="search-hint" style="margin-top:8px">Clique na lista «Top palavras» para buscar.</p>';
+            drawn = true;
+          }
+        });
+      }
+      function runAfterLoad() {
+        setTimeout(function() {
+          tryDraw();
+          if (!drawn) setTimeout(tryDraw, 350);
+        }, 50);
+      }
+      if (document.readyState === 'complete') {
+        runAfterLoad();
+      } else {
+        window.addEventListener('load', runAfterLoad);
+      }
+    }
+    var wordcloudTopNEl = document.getElementById('wordcloudTopN');
+    if (wordcloudTopNEl) {
+      wordcloudTopNEl.addEventListener('change', function() {
+        var canvasEl = document.getElementById('wordcloudCanvas');
+        if (canvasEl && wordcloudWordsFull && wordcloudWordsFull.length) {
+          drawWordcloud(canvasEl);
+        }
+      });
+    }
+    if (tabs && wrap) {
+      if (wrap.querySelector('#wordcloudCanvas') && wordcloudWordsFull && wordcloudWordsFull.length) {
+        scheduleWordcloud();
+      }
+      tabs.querySelectorAll('.wordcloud-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.querySelectorAll('.wordcloud-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          const type = tab.getAttribute('data-type');
+          const b64 = type ? (wordcloudByType[type] || null) : (generalWordcloudB64 || null);
+          wrap.innerHTML = '<div class="wordcloud-skeleton" aria-busy="true"><div class="skeleton" style="width:100%;height:360px;border-radius:16px;"></div></div>';
+          setTimeout(function() {
+            if (type && b64) {
+              wrap.innerHTML = '<img id="wordcloudImg" src="data:image/png;base64,' + b64 + '" alt="Nuvem de palavras">';
+            } else if (!type && generalWordcloudB64 && generalWordcloudB64.length > 50) {
+              wrap.innerHTML = '<img id="wordcloudImg" src="data:image/png;base64,' + generalWordcloudB64 + '" alt="Nuvem de palavras">';
+            } else if (!type && wordcloudWordsFull && wordcloudWordsFull.length) {
+              wrap.innerHTML = '<canvas id="wordcloudCanvas" width="800" height="400" title="Clique em uma palavra para buscar"></canvas>';
+              if (!drawWordcloud(document.getElementById('wordcloudCanvas')) && generalWordcloudB64 && generalWordcloudB64.length > 50) {
+                wrap.innerHTML = '<img id="wordcloudImg" src="data:image/png;base64,' + generalWordcloudB64 + '" alt="Nuvem de palavras">';
+              }
+            } else if (b64) {
+              wrap.innerHTML = '<img id="wordcloudImg" src="data:image/png;base64,' + b64 + '" alt="Nuvem de palavras">';
+            } else {
+              wrap.innerHTML = '<p class="empty">Pouco texto nesta seleção para gerar a nuvem. Use a aba Geral ou adicione mais documentos.</p>';
+            }
+          }, 0);
+        });
+      });
+    }
+
+    (function initMap() {
+      const mapEl = document.getElementById('locationsMap');
+      if (!mapEl || !locationRefs || locationRefs.length === 0 || typeof L === 'undefined') return;
+      const withCoords = locationRefs.filter(l => l.lat != null && l.lon != null);
+      if (withCoords.length === 0) return;
+
+      var groupByName = {};
+      withCoords.forEach(function(loc) {
+        var key = (loc.name || '').trim().toLowerCase();
+        if (!groupByName[key]) {
+          groupByName[key] = { name: loc.name || '', kind: [], doc_count: 0, file_ids: [], lat: loc.lat, lon: loc.lon };
+        }
+        var g = groupByName[key];
+        if (g.kind.indexOf(loc.kind) === -1) g.kind.push(loc.kind);
+        g.doc_count += loc.doc_count || 0;
+        (loc.file_ids || []).forEach(function(id) { if (g.file_ids.indexOf(id) === -1) g.file_ids.push(id); });
+      });
+      var grouped = Object.values(groupByName);
+
+      var reportBase = window.location.pathname ? window.location.pathname.replace(/[^/]*$/, '') : '';
+      if (!reportBase.endsWith('/')) reportBase += '/';
+      var reportUrl = reportBase + 'report.html';
+
+      function docNames(fileIds) {
+        if (!searchData || !fileIds || !fileIds.length) return [];
+        return fileIds.slice(0, 8).map(function(id) {
+          var f = searchData.find(function(x) { return x.id === id; });
+          return f ? (f.name || id) : id;
+        });
+      }
+
+      function buildPopupContent(g) {
+        var kinds = (g.kind && g.kind.length) ? g.kind.join(' · ') : '';
+        var names = docNames(g.file_ids);
+        var searchLink = reportUrl + '?q=' + encodeURIComponent(g.name);
+        var html = '<div class="location-popup"><strong>' + escapeHtml(g.name) + '</strong>';
+        if (kinds) html += '<br><span style="color:var(--text-secondary);font-size:0.8rem">' + escapeHtml(kinds) + '</span>';
+        html += '<br><span style="color:var(--accent);font-weight:600">' + g.doc_count + ' arquivo(s) citaram</span>';
+        if (names.length) {
+          html += '<ul style="margin:8px 0 0 0;padding-left:16px;font-size:0.8rem;color:var(--text-secondary)">';
+          names.forEach(function(n) { html += '<li>' + escapeHtml(n) + '</li>'; });
+          if (g.file_ids.length > names.length) html += '<li>e mais ' + (g.file_ids.length - names.length) + '</li>';
+          html += '</ul>';
+        }
+        html += '<a href="' + escapeHtml(searchLink) + '" style="display:inline-block;margin-top:8px;font-size:0.85rem;font-weight:600;color:var(--accent)">Pesquisar «' + escapeHtml(g.name) + '»</a></div>';
+        return html;
+      }
+
+      var map = L.map('locationsMap').setView([-14, -52], 4);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+
+      var useCluster = typeof L.markerClusterGroup === 'function' && grouped.length > 15;
+      var clusterGroup = useCluster ? L.markerClusterGroup({ maxClusterRadius: 40 }) : null;
+      var markersData = [];
+
+      grouped.forEach(function(g) {
+        var m = L.marker([g.lat, g.lon]).bindPopup(buildPopupContent(g));
+        var kinds = g.kind && g.kind.length ? g.kind : ['local'];
+        m._locationKinds = kinds;
+        m._locationKey = (g.name || '').trim().toLowerCase();
+        if (clusterGroup) clusterGroup.addLayer(m); else m.addTo(map);
+        markersData.push({ lat: g.lat, lon: g.lon, kinds: kinds, key: m._locationKey, marker: m });
+      });
+      if (clusterGroup) map.addLayer(clusterGroup);
+
+      var bounds = L.latLngBounds(markersData.map(function(x) { return [x.lat, x.lon]; }));
+      if (grouped.length === 1) {
+        map.setView([grouped[0].lat, grouped[0].lon], 10);
+      } else {
+        map.fitBounds(bounds, { padding: [24, 24], maxZoom: 12 });
+      }
+
+      document.getElementById('mapFitBoundsBtn') && document.getElementById('mapFitBoundsBtn').addEventListener('click', function() {
+        if (grouped.length === 1) map.setView([grouped[0].lat, grouped[0].lon], 10);
+        else map.fitBounds(bounds, { padding: [24, 24], maxZoom: 12 });
+      });
+
+      var kindFilter = document.getElementById('locationKindFilter');
+      if (kindFilter) {
+        kindFilter.addEventListener('change', function() {
+          var val = (this.value || '').toLowerCase();
+          markersData.forEach(function(x) {
+            var show = !val || (x.kinds && x.kinds.indexOf(val) !== -1);
+            if (clusterGroup) {
+              if (show) clusterGroup.addLayer(x.marker); else clusterGroup.removeLayer(x.marker);
+            } else {
+              if (show) x.marker.addTo(map); else map.removeLayer(x.marker);
+            }
+          });
+        });
+      }
+
+      var listEl = document.getElementById('locationRefsList');
+      if (listEl) {
+        listEl.querySelectorAll('li[data-lat][data-lon]').forEach(function(li) {
+          var lat = parseFloat(li.getAttribute('data-lat'));
+          var lon = parseFloat(li.getAttribute('data-lon'));
+          if (isNaN(lat) || isNaN(lon)) return;
+          var kind = (li.getAttribute('data-kind') || '').toLowerCase();
+          var m = markersData.find(function(x) { return x.lat === lat && x.lon === lon && (!kind || (x.kinds && x.kinds.indexOf(kind) !== -1)); });
+          if (!m) m = markersData.find(function(x) { return x.lat === lat && x.lon === lon; });
+          if (!m) return;
+          function focusLocation() {
+            li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            map.panTo([lat, lon], { animate: true, duration: 0.25 });
+            map.setZoom(Math.max(map.getZoom(), 6));
+            m.marker.openPopup();
+          }
+          li.addEventListener('click', focusLocation);
+          li.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); focusLocation(); } });
+          li.addEventListener('mouseenter', function() {
+            li.classList.add('location-list-highlight');
+            map.panTo([lat, lon], { animate: true, duration: 0.25 });
+            m.marker.openPopup();
+          });
+          li.addEventListener('mouseleave', function() { li.classList.remove('location-list-highlight'); });
+          m.marker.on('popupopen', function() {
+            listEl.querySelectorAll('li').forEach(function(other) {
+              other.classList.remove('location-list-highlight');
+              if (parseFloat(other.getAttribute('data-lat')) === m.lat && parseFloat(other.getAttribute('data-lon')) === m.lon) other.classList.add('location-list-highlight');
+            });
+          });
+          m.marker.on('mouseover', function() {
+            listEl.querySelectorAll('li').forEach(function(other) {
+              if (parseFloat(other.getAttribute('data-lat')) === lat && parseFloat(other.getAttribute('data-lon')) === lon) other.classList.add('location-list-highlight');
+              else other.classList.remove('location-list-highlight');
+            });
+          });
+          m.marker.on('mouseout', function() {
+            listEl.querySelectorAll('li').forEach(function(other) { other.classList.remove('location-list-highlight'); });
+          });
+        });
+      }
+    })();
+
+    // SSE live-update banner
+    (function() {
+      if (!window.EventSource) return;
+      var banner = null;
+      function showBanner() {
+        if (banner) return;
+        banner = document.createElement('div');
+        banner.id = 'sse-update-banner';
+        banner.setAttribute('role', 'status');
+        banner.setAttribute('aria-live', 'polite');
+        banner.style.cssText = [
+          'position:fixed', 'top:20px', 'left:50%', 'transform:translateX(-50%) translateY(-8px)',
+          'z-index:9999', 'background:var(--accent)', 'color:#fff',
+          'padding:12px 20px', 'border-radius:12px',
+          'box-shadow:0 4px 24px rgba(0,0,0,.18)',
+          'display:flex', 'align-items:center', 'gap:12px',
+          'font-size:0.9rem', 'font-weight:500',
+          'transition:transform 0.3s ease, opacity 0.3s ease', 'opacity:0'
+        ].join(';');
+        banner.innerHTML = '<span>Índice actualizado</span>'
+          + '<button onclick="location.reload()" style="background:rgba(255,255,255,.25);border:none;color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;font:inherit;font-weight:600">Recarregar</button>'
+          + '<button onclick="(function(b){b.style.opacity=\'0\';b.style.transform=\'translateX(-50%) translateY(-8px)\';setTimeout(function(){b.remove();},300);})(this.parentNode)" style="background:transparent;border:none;color:rgba(255,255,255,.8);cursor:pointer;font-size:1.2rem;line-height:1;padding:0 4px" aria-label="Fechar">×</button>';
+        document.body.appendChild(banner);
+        requestAnimationFrame(function() {
+          banner.style.opacity = '1';
+          banner.style.transform = 'translateX(-50%) translateY(0)';
+        });
+      }
+      try {
+        var es = new EventSource('/api/events');
+        es.onmessage = function(e) {
+          try {
+            var msg = JSON.parse(e.data);
+            if (msg.event === 'index_changed') showBanner();
+          } catch (_) {}
+        };
+        es.onerror = function() { es.close(); };
+      } catch (_) {}
+    })();
+
+    // Stat card count-up animation
+    (function() {
+      var els = document.querySelectorAll('.stat .value');
+      if (!els.length || !window.IntersectionObserver) return;
+      function animateCount(el) {
+        var raw = el.textContent.trim();
+        var suffix = raw.replace(/[\d\s,\.]+/, '');
+        var num = parseFloat(raw.replace(/[^\d\.]/g, ''));
+        if (isNaN(num) || num === 0) return;
+        var duration = Math.min(900, Math.max(400, num * 0.4));
+        var start = null;
+        var from = 0;
+        var isFloat = raw.indexOf('.') !== -1;
+        function step(ts) {
+          if (!start) start = ts;
+          var progress = Math.min((ts - start) / duration, 1);
+          var ease = 1 - Math.pow(1 - progress, 3);
+          var cur = from + (num - from) * ease;
+          el.textContent = (isFloat ? cur.toFixed(1) : Math.round(cur)) + (suffix ? ' ' + suffix.trim() : '');
+          if (progress < 1) requestAnimationFrame(step);
+          else el.textContent = raw;
+        }
+        requestAnimationFrame(step);
+      }
+      var obs = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) { animateCount(entry.target); obs.unobserve(entry.target); }
+        });
+      }, { threshold: 0.3 });
+      els.forEach(function(el) { obs.observe(el); });
+    })();
+  </script>
+</body>
+</html>

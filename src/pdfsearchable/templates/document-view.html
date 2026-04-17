@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documento — pdfsearchable</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <meta name="description" content="pdfsearchable — visualização de documento indexado">
+  <script>
+    (function(){var s=localStorage.getItem('pdfsearchable-theme');var p=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;if(s==='dark'||(s!=='light'&&p))document.documentElement.setAttribute('data-theme','dark');}())
+  </script>
+  <style>
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --text-sm: 0.875rem;
+      --text-base: 1rem;
+      --text-lg: 1.125rem;
+      --bg: #fbfbfd;
+      --card: #ffffff;
+      --text: #1d1d1f;
+      --text-secondary: #86868b;
+      --accent: #007AFF;
+      --accent-hover: #0051d5;
+      --accent-muted: rgba(0,122,255,.12);
+      --border: rgba(0,0,0,.06);
+      --radius: 12px;
+      --radius-lg: 16px;
+      --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.06);
+      --focus-ring: 0 0 0 3px rgba(0,122,255,.28);
+    }
+    [data-theme="dark"] {
+      --bg: #000000;
+      --card: #1c1c1e;
+      --text: #f5f5f7;
+      --text-secondary: #98989d;
+      --accent: #0a84ff;
+      --accent-hover: #409cff;
+      --accent-muted: rgba(10,132,255,.22);
+      --border: rgba(255,255,255,.08);
+      --shadow: 0 1px 2px rgba(0,0,0,.24), 0 4px 16px rgba(0,0,0,.32);
+      --focus-ring: 0 0 0 3px rgba(10,132,255,.45);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-sans); font-size: var(--text-base); background: var(--bg); color: var(--text); min-height: 100vh; transition: background 0.2s ease, color 0.2s ease; }
+    .top-bar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .breadcrumb { font-size: var(--text-sm); color: var(--text-secondary); font-weight: 500; }
+    .breadcrumb a { color: var(--accent); text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb-sep { margin: 0 6px; color: var(--text-secondary); }
+    .main-layout { display: flex; height: calc(100vh - 54px); overflow: hidden; }
+    .viewer-pane {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: #525659;
+    }
+    [data-theme="dark"] .viewer-pane { background: #1a1a1a; }
+    .viewer-toolbar {
+      background: var(--card);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .viewer-toolbar .page-info, .viewer-toolbar .zoom-info { font-size: var(--text-sm); color: var(--text-secondary); }
+    .viewer-toolbar .zoom-info { margin-left: auto; }
+    .viewer-toolbar a, .viewer-toolbar button {
+      min-height: 40px;
+      padding: 0 16px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+      font-size: var(--text-sm);
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.2s ease, color 0.2s ease;
+    }
+    .viewer-toolbar a:hover, .viewer-toolbar button:hover { border-color: var(--accent); color: var(--accent); }
+    #pdfFrame {
+      flex: 1;
+      width: 100%;
+      border: none;
+      background: #525659;
+    }
+    .sidebar {
+      width: 360px;
+      min-width: 280px;
+      background: var(--card);
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 24px;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .sidebar h2 { font-size: var(--text-lg); font-weight: 700; margin-bottom: 16px; color: var(--text); }
+    .sidebar-section { margin-bottom: 20px; }
+    .sidebar-section h3 { font-size: var(--text-sm); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
+    details.collapsible-meta { margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    details.collapsible-meta summary { padding: 10px 14px; font-size: var(--text-sm); font-weight: 500; color: var(--accent); cursor: pointer; list-style: none; background: var(--bg); }
+    details.collapsible-meta summary::-webkit-details-marker { display: none; }
+    details.collapsible-meta summary::before { content: ''; display: inline-block; width: 0; height: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid currentColor; margin-right: 8px; transition: transform 0.2s ease; vertical-align: middle; }
+    details.collapsible-meta[open] summary::before { transform: rotate(90deg); }
+    details.collapsible-meta .meta-block { padding: 10px 14px; border-top: 1px solid var(--border); }
+    .doc-type { display: inline-block; background: rgba(0,113,227,.12); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: var(--text-sm); margin-bottom: 12px; font-weight: 500; }
+    .meta-row { font-size: var(--text-sm); margin-bottom: 10px; }
+    .summary-text { font-style: italic; color: var(--text-secondary); }
+    .tag-pill { display: inline-block; background: rgba(0,113,227,.12); color: var(--accent); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-right: 6px; margin-bottom: 4px; }
+    .meta-row .label { color: var(--text-secondary); font-weight: 500; }
+    .meta-row .value { font-weight: 500; word-break: break-all; }
+    .hash-box { background: var(--bg); padding: 14px; border-radius: var(--radius); border: 1px solid var(--border); font-family: monospace; font-size: 0.8rem; word-break: break-all; margin: 12px 0; }
+    .back-home { display: inline-flex; align-items: center; gap: 6px; margin-top: 20px; padding: 12px 20px; background: var(--accent); color: #fff; border-radius: var(--radius); text-decoration: none; font-weight: 600; font-size: var(--text-sm); transition: background 0.2s ease; }
+    .back-home:hover { background: var(--accent-hover); }
+    .back-home svg { flex-shrink: 0; }
+    .sidebar-actions { margin-top: 20px; }
+    .link-search-doc { background: rgba(0,113,227,.15); color: var(--accent); }
+    .link-search-doc:hover { background: rgba(0,113,227,.25); color: var(--accent); }
+    .pdf-loading-placeholder {
+      position: absolute;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+    .pdf-loading-placeholder[hidden] { display: none; }
+    .viewer-pane { position: relative; }
+    .pdf-loading-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: doc-spin 0.7s linear infinite;
+    }
+    @keyframes doc-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .pdf-loading-spinner { animation: none; border-top-color: var(--accent); } }
+    .empty-state, .not-found-state {
+      padding: 32px 24px;
+      text-align: center;
+      color: var(--text-secondary);
+      max-width: 360px;
+      margin: 0 auto;
+    }
+    .empty-state p, .not-found-state p { margin-bottom: 16px; font-size: var(--text-base); }
+    .sidebar-toggle {
+      display: none;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font: inherit;
+      font-size: var(--text-sm);
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .theme-btn {
+      min-height: 40px;
+      min-width: 40px;
+      padding: 0 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text-secondary);
+      font: inherit;
+      font-size: var(--text-sm);
+      cursor: pointer;
+      transition: border-color 0.2s ease, color 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .theme-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    .theme-btn .icon-sun, .theme-btn .icon-moon { width: 16px; height: 16px; }
+    .theme-btn .icon-moon { display: none; }
+    [data-theme="dark"] .theme-btn .icon-sun { display: none; }
+    [data-theme="dark"] .theme-btn .icon-moon { display: block; }
+    .sidebar h2 { font-size: var(--text-base); font-weight: 700; margin-bottom: 16px; color: var(--text); word-break: break-word; }
+    .back-link-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: var(--text-sm); font-weight: 500; color: var(--accent);
+      text-decoration: none; padding: 8px 12px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--card);
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .back-link:hover { border-color: var(--accent); background: var(--accent-muted); }
+    .back-link svg { width: 14px; height: 14px; }
+    /* Search-in-doc input inherits dark mode */
+    #searchInDocInput {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    #searchInDocInput:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+    @media (max-width: 768px) {
+      .main-layout { flex-direction: column; height: auto; min-height: 100vh; }
+      .viewer-pane { min-height: 50vh; }
+      .sidebar {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 100%;
+        max-width: 320px;
+        height: 100%;
+        z-index: 100;
+        border-left: 1px solid var(--border);
+        border-top: none;
+        transform: translateX(100%);
+        box-shadow: none;
+      }
+      .sidebar.is-open {
+        transform: translateX(0);
+        box-shadow: -4px 0 24px rgba(0,0,0,.15);
+      }
+      .sidebar-toggle { display: inline-flex; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <nav class="breadcrumb">
+      <a href="{{ report_home_url }}">Home</a>
+      <span class="breadcrumb-sep" id="breadcrumbSep">—</span>
+      <span id="breadcrumbDoc">Documento</span>
+    </nav>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button type="button" class="theme-btn" id="themeToggleDoc" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir ou fechar painel de metadados" aria-expanded="false">Metadados</button>
+    </div>
+  </div>
+    <div class="main-layout">
+    <div class="viewer-pane">
+      <div class="viewer-toolbar">
+        <span class="page-info" id="pageInfo">—</span>
+        <button type="button" id="prevPageBtn">Página anterior</button>
+        <button type="button" id="nextPageBtn">Próxima página</button>
+        <span class="zoom-info" id="zoomInfo">100%</span>
+        <a href="#" id="downloadLink" download>Download PDF</a>
+      </div>
+      <div id="pdfLoadingPlaceholder" class="pdf-loading-placeholder" aria-hidden="true" hidden>
+        <span class="pdf-loading-spinner" aria-hidden="true"></span>
+        <p>Carregando PDF…</p>
+      </div>
+      <iframe id="pdfFrame" title="Visualização do PDF"></iframe>
+    </div>
+    <aside class="sidebar" id="sidebar" aria-label="Metadados do documento">
+      <div id="sidebarContent">
+        <div class="empty-state" id="emptyState">
+          <p>Escolha um documento na lista do report para ver o PDF e os metadados aqui.</p>
+          <a href="{{ report_home_url }}" class="back-home"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg> Voltar ao report</a>
+        </div>
+        <div class="not-found-state" id="notFoundState" hidden>
+          <p>Este documento não está no índice ou foi removido.</p>
+          <a href="{{ report_home_url }}" class="back-home"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg> Voltar ao report</a>
+        </div>
+      </div>
+      <div class="sidebar-actions" id="sidebarActionsDefault">
+        <a href="{{ report_home_url }}" class="back-home"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg> Voltar ao report</a>
+        <a href="#" id="linkSearchThisDoc" class="back-home link-search-doc" style="display:none;margin-top:10px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Pesquisar apenas neste documento
+        </a>
+        <button type="button" id="copyTextBtn" class="back-home" style="display:none;margin-top:10px;background:rgba(0,113,227,.1);color:var(--accent);border:1px solid var(--border);cursor:pointer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copiar texto extraído
+        </button>
+      </div>
+    </aside>
+  </div>
+  <script>
+    // Sync dark/light theme with report.html (localStorage)
+    (function() {
+      var saved = localStorage.getItem('pdfsearchable-theme');
+      var prefersDark = !saved && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'dark' || prefersDark) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+      function updateThemeBtn() {
+        var btn = document.getElementById('themeToggleDoc');
+        if (!btn) return;
+        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        btn.title = isDark ? 'Modo claro' : 'Modo escuro';
+        btn.setAttribute('aria-label', isDark ? 'Usar modo claro' : 'Usar modo escuro');
+      }
+      window.addEventListener('DOMContentLoaded', function() {
+        updateThemeBtn();
+        var btn = document.getElementById('themeToggleDoc');
+        if (btn) {
+          btn.addEventListener('click', function() {
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+              document.documentElement.removeAttribute('data-theme');
+              localStorage.setItem('pdfsearchable-theme', 'light');
+            } else {
+              document.documentElement.setAttribute('data-theme', 'dark');
+              localStorage.setItem('pdfsearchable-theme', 'dark');
+            }
+            updateThemeBtn();
+          });
+        }
+      });
+    })();
+
+    const docsMeta = {{ docs_meta | tojson }};
+    const filesBaseUrl = "{{ files_base_url }}";
+    const reportHomeUrl = "{{ report_home_url }}";
+
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    const initialPage = parseInt(params.get('page') || '1', 10) || 1;
+    const initialSearch = params.get('q') || '';
+
+    const pdfFrame = document.getElementById('pdfFrame');
+    const downloadLink = document.getElementById('downloadLink');
+    const sidebarContent = document.getElementById('sidebarContent');
+    const emptyState = document.getElementById('emptyState');
+    const notFoundState = document.getElementById('notFoundState');
+    const sidebarActionsDefault = document.getElementById('sidebarActionsDefault');
+    const breadcrumbDoc = document.getElementById('breadcrumbDoc');
+    const pdfLoadingPlaceholder = document.getElementById('pdfLoadingPlaceholder');
+    const pageInfoEl = document.getElementById('pageInfo');
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+
+    if (id && docsMeta[id]) {
+      const doc = docsMeta[id];
+      if (emptyState) emptyState.hidden = true;
+      if (notFoundState) notFoundState.hidden = true;
+      if (pdfLoadingPlaceholder) {
+        pdfLoadingPlaceholder.hidden = false;
+        pdfLoadingPlaceholder.setAttribute('aria-hidden', 'false');
+      }
+      var currentPage = initialPage > 0 && initialPage <= (doc.num_pages || 1) ? initialPage : 1;
+      function updatePdfSrc() {
+        var url = filesBaseUrl + '/' + id + '.pdf';
+        var hashParts = [];
+        if (currentPage && currentPage > 0) hashParts.push('page=' + encodeURIComponent(String(currentPage)));
+        if (initialSearch) hashParts.push('search=' + encodeURIComponent(initialSearch));
+        if (hashParts.length) url += '#' + hashParts.join('&');
+        pdfFrame.src = url;
+        if (pageInfoEl) pageInfoEl.textContent = 'Página ' + currentPage + ' de ' + (doc.num_pages || '—');
+      }
+
+      var linkSearch = document.getElementById('linkSearchThisDoc');
+      if (linkSearch) {
+        linkSearch.href = reportHomeUrl + (reportHomeUrl.indexOf('?') >= 0 ? '&' : '?') + 'file_id=' + encodeURIComponent(id);
+        linkSearch.target = '_blank';
+        linkSearch.rel = 'noopener noreferrer';
+        linkSearch.style.display = 'inline-block';
+      }
+      updatePdfSrc();
+      pdfFrame.addEventListener('load', function onLoad() {
+        pdfFrame.removeEventListener('load', onLoad);
+        if (pdfLoadingPlaceholder) {
+          pdfLoadingPlaceholder.hidden = true;
+          pdfLoadingPlaceholder.setAttribute('aria-hidden', 'true');
+        }
+      });
+      downloadLink.href = filesBaseUrl + '/' + id + '.pdf';
+      downloadLink.download = (doc.name || id) + '.pdf';
+      breadcrumbDoc.textContent = doc.name || id;
+
+      let html = '<h2>' + escapeHtml(doc.name || id) + '</h2>';
+      if (doc.doc_type) {
+        html += '<span class="doc-type">' + escapeHtml(doc.doc_type);
+        if (doc.classification_source === 'openai' || doc.classification_source === 'ollama') html += ' <em>(IA)</em>';
+        html += '</span>';
+      }
+      html += '<div class="meta-row"><span class="label">Páginas:</span> <span class="value">' + (doc.num_pages || '—') + '</span></div>';
+      html += '<div class="meta-row"><span class="label">Palavras:</span> <span class="value">' + (doc.word_count ?? '—') + '</span></div>';
+      if (doc.file_size_formatted) html += '<div class="meta-row"><span class="label">Tamanho:</span> <span class="value">' + escapeHtml(doc.file_size_formatted) + '</span></div>';
+      if (doc.ocr_percentage != null) html += '<div class="meta-row"><span class="label">Texto OCR:</span> <span class="value">' + doc.ocr_percentage + '%</span></div>';
+      if (doc.original_path) html += '<div class="meta-row"><span class="label">Caminho original:</span></div><div class="meta-row value" style="font-size:0.8rem;word-break:break-all">' + escapeHtml(doc.original_path) + '</div>';
+      var assunto = doc.subject || (doc.metadata && doc.metadata.subject);
+      if (assunto) html += '<div class="meta-row"><span class="label">Assunto:</span></div><div class="meta-row value summary-text">' + escapeHtml(assunto) + '</div>';
+      if (doc.summary) html += '<div class="meta-row"><span class="label">Resumo:</span></div><div class="meta-row value summary-text">' + escapeHtml(doc.summary) + '</div>';
+      if (doc.tags && doc.tags.length) html += '<div class="meta-row"><span class="label">Tags:</span></div><div class="meta-row value">' + doc.tags.map(function(t){ return '<span class="tag-pill">' + escapeHtml(t) + '</span>'; }).join(' ') + '</div>';
+      function collapsibleBlock(label, items, renderItem, visibleCount) {
+        visibleCount = visibleCount || 5;
+        if (!items || items.length === 0) return '';
+        var out = '<div class="meta-row"><span class="label">' + escapeHtml(label) + ':</span></div>';
+        if (items.length <= visibleCount) {
+          items.forEach(function(it){ out += '<div class="meta-row value">' + renderItem(it) + '</div>'; });
+          return out;
+        }
+        items.slice(0, visibleCount).forEach(function(it){ out += '<div class="meta-row value">' + renderItem(it) + '</div>'; });
+        var rest = items.slice(visibleCount);
+        out += '<details class="collapsible-meta"><summary>Mostrar mais (' + rest.length + ' itens)</summary><div class="meta-block">';
+        rest.forEach(function(it){ out += '<div class="meta-row value">' + renderItem(it) + '</div>'; });
+        out += '</div></details>';
+        return out;
+      }
+      if (doc.monetary_values && doc.monetary_values.length) {
+        html += collapsibleBlock('Valores', doc.monetary_values, function(v){ return escapeHtml(v.currency + ' ' + (v.value_str || '')); }, 5);
+      }
+      if (doc.parties && doc.parties.length) {
+        html += collapsibleBlock('Partes/participantes', doc.parties, function(p){ return escapeHtml(p); }, 5);
+      }
+      if (doc.identified_emails && doc.identified_emails.length) {
+        html += collapsibleBlock('E-mails', doc.identified_emails, function(e){ return '<span style="word-break:break-all">' + escapeHtml(e) + '</span>'; }, 5);
+      }
+      if (doc.identified_cpfs && doc.identified_cpfs.length) {
+        html += collapsibleBlock('CPFs', doc.identified_cpfs, function(c){ return escapeHtml(c); }, 5);
+      }
+      if (doc.identified_cnpjs && doc.identified_cnpjs.length) {
+        html += collapsibleBlock('CNPJs', doc.identified_cnpjs, function(c){ return escapeHtml(c); }, 5);
+      }
+      if (doc.identified_ips && doc.identified_ips.length) {
+        html += collapsibleBlock('IPs', doc.identified_ips, function(ip){ return escapeHtml(ip); }, 5);
+      }
+      if (doc.identified_addresses && doc.identified_addresses.length) {
+        html += collapsibleBlock('Endereços', doc.identified_addresses, function(a){ return escapeHtml(a); }, 5);
+      }
+      if (doc.identified_phones && doc.identified_phones.length) {
+        html += collapsibleBlock('Telefones', doc.identified_phones, function(t){ return escapeHtml(t); }, 5);
+      }
+      if (doc.identified_locations && doc.identified_locations.length) {
+        html += collapsibleBlock('Locais (NER)', doc.identified_locations, function(l){ return escapeHtml(l); }, 5);
+      }
+      if (doc.identified_dates && doc.identified_dates.length) {
+        html += collapsibleBlock('Datas encontradas', doc.identified_dates, function(d){ return '<span style="font-variant-numeric:tabular-nums">' + escapeHtml(d) + '</span>'; }, 10);
+      }
+      if (doc.content_hash) html += '<div class="meta-row"><span class="label">Hash (conteúdo):</span></div><div class="hash-box">' + escapeHtml(doc.content_hash) + '</div>';
+      if (doc.indexed_at) html += '<div class="meta-row"><span class="label">Indexado em:</span> <span class="value">' + escapeHtml(doc.indexed_at.slice(0,10)) + '</span></div>';
+      if (doc.updated_at) html += '<div class="meta-row"><span class="label">Atualizado em:</span> <span class="value">' + escapeHtml(doc.updated_at.slice(0,10)) + '</span></div>';
+      if (doc.language) html += '<div class="meta-row"><span class="label">Idioma:</span> <span class="value">' + escapeHtml(doc.language) + '</span></div>';
+      if (doc.metadata && (doc.metadata.title || doc.metadata.author || doc.metadata.creation_date || doc.metadata.subject || doc.metadata.keywords)) {
+        html += '<div class="meta-row"><span class="label">Metadados PDF:</span></div>';
+        if (doc.metadata.title) html += '<div class="meta-row value">Título: ' + escapeHtml(doc.metadata.title) + '</div>';
+        if (doc.metadata.author) html += '<div class="meta-row value">Autor: ' + escapeHtml(doc.metadata.author) + '</div>';
+        if (doc.metadata.subject && doc.metadata.subject !== assunto) html += '<div class="meta-row value">Assunto (PDF): ' + escapeHtml(doc.metadata.subject) + '</div>';
+        if (doc.metadata.keywords) html += '<div class="meta-row value">Palavras-chave: ' + escapeHtml(doc.metadata.keywords) + '</div>';
+        if (doc.metadata.creation_date) html += '<div class="meta-row value">Criação: ' + escapeHtml(doc.metadata.creation_date) + '</div>';
+        if (doc.metadata.producer) html += '<div class="meta-row value">Producer: ' + escapeHtml(doc.metadata.producer) + '</div>';
+      }
+      html += '<div class="search-in-doc" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">';
+      html += '<span class="label" style="display:block;margin-bottom:8px">Pesquisar neste documento</span>';
+      html += '<form id="searchInDocForm" style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="searchInDocInput" placeholder="Digite o termo…" style="flex:1;min-width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font:inherit">';
+      html += '<button type="submit" style="padding:8px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;font:inherit;cursor:pointer">Pesquisar</button></form>';
+      html += '<p class="meta-row" style="margin-top:6px;font-size:0.8rem;color:var(--text-secondary)">Abre o report noutra aba com o termo e apenas este documento. Você continua aqui na visualização do PDF.</p>';
+      html += '<p class="meta-row" style="margin-top:4px;font-size:0.75rem;color:var(--text-secondary)">Se não aparecerem resultados após indexar/OCR, reinicie o servidor (<code>pdfsearchable serve</code>) para atualizar o report.</p></div>';
+      sidebarContent.innerHTML = '<div id="sidebarDocContent">' + html + '</div>';
+      const form = document.getElementById('searchInDocForm');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          const term = (document.getElementById('searchInDocInput') && document.getElementById('searchInDocInput').value) || '';
+          const sep = reportHomeUrl.indexOf('?') >= 0 ? '&' : '?';
+          const url = reportHomeUrl + sep + 'q=' + encodeURIComponent(term.trim()) + '&file_id=' + encodeURIComponent(id);
+          window.open(url, '_blank', 'noopener,noreferrer');
+        });
+      }
+
+      // Navegação por página (apenas client-side, usando fragmento #page)
+      function goToPage(delta) {
+        var maxPage = doc.num_pages || 1;
+        currentPage = Math.min(maxPage, Math.max(1, currentPage + delta));
+        updatePdfSrc();
+        // Atualiza parâmetro page na URL (sem recarregar)
+        try {
+          var u = new URL(window.location.href);
+          u.searchParams.set('page', String(currentPage));
+          window.history.replaceState({}, '', u.toString());
+        } catch (e) {}
+      }
+      if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', function() { goToPage(-1); });
+      }
+      if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', function() { goToPage(+1); });
+      }
+    } else {
+      pdfFrame.style.display = 'none';
+      if (pdfLoadingPlaceholder) pdfLoadingPlaceholder.hidden = true;
+      if (emptyState) emptyState.hidden = !!id;
+      if (notFoundState) notFoundState.hidden = !id;
+      if (id && !docsMeta[id] && sidebarActionsDefault) sidebarActionsDefault.style.display = 'none';
+    }
+
+    // Copy extracted text button
+    var copyBtn = document.getElementById('copyTextBtn');
+    if (copyBtn && id && docsMeta[id]) {
+      copyBtn.style.display = 'inline-flex';
+      copyBtn.addEventListener('click', function() {
+        var btn = this;
+        btn.textContent = 'Copiando…';
+        fetch('/api/text?id=' + encodeURIComponent(id))
+          .then(function(r) { return r.ok ? r.text() : Promise.reject(r.status); })
+          .then(function(txt) {
+            return navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject('no-clipboard');
+          })
+          .then(function() {
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Copiado!';
+            setTimeout(function() {
+              btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar texto extraído';
+            }, 2000);
+          })
+          .catch(function() {
+            btn.textContent = 'Erro ao copiar';
+            setTimeout(function() { btn.textContent = 'Copiar texto extraído'; }, 2000);
+          });
+      });
+    }
+
+    var sidebarEl = document.getElementById('sidebar');
+    var sidebarToggleBtn = document.getElementById('sidebarToggle');
+    if (sidebarToggleBtn && sidebarEl) {
+      sidebarToggleBtn.addEventListener('click', function() {
+        var isOpen = sidebarEl.classList.toggle('is-open');
+        sidebarToggleBtn.textContent = isOpen ? 'Fechar metadados' : 'Metadados';
+        sidebarToggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+    }
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

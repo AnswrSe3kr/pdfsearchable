@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.tile.openstreetmap.org; connect-src 'self' https://*.tile.openstreetmap.org; base-uri 'self';">
+  <title>Mapa de Locais — pdfsearchable</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺️</text></svg>">
+  <link rel="stylesheet" href="leaflet.css">
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --bg-elevated: #ffffff;
+      --bg-secondary: #f2f2f7;
+      --text-primary: #1d1d1f;
+      --text-secondary: #6e6e73;
+      --text-tertiary: #aeaeb2;
+      --separator: rgba(0,0,0,0.1);
+      --accent: #007AFF;
+      --accent-hover: #0051d5;
+      --accent-muted: rgba(0,122,255,0.1);
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --danger: #ff3b30;
+      --fill-quaternary: rgba(0,0,0,0.04);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      --transition: 0.2s cubic-bezier(0.25,0.46,0.45,0.94);
+      --map-bg: #dde8ee;
+      --sidebar-width: 280px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #000000;
+      --bg-elevated: #1c1c1e;
+      --bg-secondary: #2c2c2e;
+      --text-primary: #f5f5f7;
+      --text-secondary: #98989d;
+      --text-tertiary: #636366;
+      --separator: rgba(255,255,255,0.08);
+      --accent: #0A84FF;
+      --accent-hover: #409cff;
+      --accent-muted: rgba(10,132,255,0.15);
+      --success: #30d158;
+      --danger: #ff453a;
+      --fill-quaternary: rgba(255,255,255,0.05);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.25);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+      --map-bg: #1a2332;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      html:not([data-theme="light"]) {
+        --bg: #000000; --bg-elevated: #1c1c1e; --bg-secondary: #2c2c2e;
+        --text-primary: #f5f5f7; --text-secondary: #98989d; --text-tertiary: #636366;
+        --separator: rgba(255,255,255,0.08); --accent: #0A84FF; --accent-hover: #409cff;
+        --accent-muted: rgba(10,132,255,0.15); --success: #30d158; --danger: #ff453a;
+        --fill-quaternary: rgba(255,255,255,0.05);
+        --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.25);
+        --shadow-md: 0 4px 16px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+        --map-bg: #1a2332;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Toolbar ─────────────────────────────────────────────── */
+    #toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 16px;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--separator);
+      box-shadow: var(--shadow-sm);
+    }
+
+    #toolbar .left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    #toolbar .right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--fill-quaternary);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background var(--transition);
+      white-space: nowrap;
+    }
+    .btn-back:hover { background: var(--accent-muted); }
+
+    .toolbar-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .stats-badge {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--accent-muted);
+      color: var(--accent);
+    }
+
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      background: var(--fill-quaternary);
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background var(--transition);
+      color: var(--text-primary);
+    }
+    .btn-icon:hover { background: var(--separator); }
+
+    /* ── Main layout ─────────────────────────────────────────── */
+    #main {
+      display: flex;
+      height: calc(100vh - 48px);
+      overflow: hidden;
+    }
+
+    /* ── Map ─────────────────────────────────────────────────── */
+    #map-container {
+      flex: 1;
+      position: relative;
+      background: var(--map-bg);
+      overflow: hidden;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: var(--map-bg) !important;
+    }
+
+    .leaflet-container {
+      background: var(--map-bg) !important;
+    }
+
+    #tiles-notice {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      z-index: 500;
+      background: var(--bg-elevated);
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      display: none;
+    }
+
+    /* Loading / empty overlays */
+    #map-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 600;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: var(--map-bg);
+      pointer-events: none;
+    }
+    #map-overlay.hidden { display: none; }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--separator);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .overlay-text {
+      font-size: 14px;
+      color: var(--text-secondary);
+      text-align: center;
+      max-width: 260px;
+    }
+    .overlay-hint {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      text-align: center;
+      max-width: 260px;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-width);
+      flex-shrink: 0;
+      background: var(--bg-elevated);
+      border-left: 1px solid var(--separator);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #sidebar-header {
+      padding: 12px 16px 8px;
+      border-bottom: 1px solid var(--separator);
+      flex-shrink: 0;
+    }
+
+    .sidebar-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 2px;
+    }
+
+    .sidebar-subtitle {
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+
+    #location-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .location-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background var(--transition);
+      user-select: none;
+    }
+    .location-item:hover { background: var(--fill-quaternary); }
+    .location-item.active { background: var(--accent-muted); }
+
+    .location-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--accent);
+    }
+    .location-dot.no-coords { background: var(--text-tertiary); }
+
+    .location-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .location-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .location-meta {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 1px;
+    }
+
+    .doc-count-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 100px;
+      background: var(--accent-muted);
+      color: var(--accent);
+    }
+    .doc-count-badge.no-coords {
+      background: var(--fill-quaternary);
+      color: var(--text-tertiary);
+    }
+
+    .no-coords-icon {
+      font-size: 10px;
+      color: var(--warning);
+    }
+
+    /* Leaflet popup tweaks */
+    .leaflet-popup-content-wrapper {
+      background: var(--bg-elevated) !important;
+      color: var(--text-primary) !important;
+      border-radius: var(--radius-md) !important;
+      box-shadow: var(--shadow-md) !important;
+      border: 1px solid var(--separator) !important;
+    }
+    .leaflet-popup-tip { background: var(--bg-elevated) !important; }
+    .leaflet-popup-content {
+      margin: 12px 14px !important;
+      font-family: var(--font) !important;
+      font-size: 13px !important;
+      line-height: 1.5 !important;
+    }
+    .popup-title {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 4px;
+      color: var(--text-primary);
+    }
+    .popup-count {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    .popup-docs {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .popup-docs li {
+      padding: 2px 0;
+    }
+    .popup-docs a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 12px;
+    }
+    .popup-docs a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <!-- Toolbar -->
+  <div id="toolbar">
+    <div class="left">
+      <a href="app.html" class="btn-back">← Voltar</a>
+      <span class="toolbar-title">🗺️ Mapa de Locais</span>
+    </div>
+    <div class="right">
+      <span class="stats-badge" id="stats-text"></span>
+      <span class="badge" id="geocoded-badge" style="display:none">📍 geocodificado</span>
+      <button class="btn-icon" id="theme-toggle" title="Alternar tema" aria-label="Alternar tema">☀️</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+
+    <!-- Map -->
+    <div id="map-container">
+      <div id="map"></div>
+
+      <!-- Loading / empty overlay -->
+      <div id="map-overlay">
+        <div class="spinner" id="overlay-spinner"></div>
+        <div class="overlay-text" id="overlay-text">A carregar locais…</div>
+        <div class="overlay-hint" id="overlay-hint"></div>
+      </div>
+
+      <div id="tiles-notice">Tiles não disponíveis offline</div>
+    </div>
+
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <div id="sidebar-header">
+        <div class="sidebar-title">Locais</div>
+        <div class="sidebar-subtitle" id="sidebar-subtitle">A carregar…</div>
+      </div>
+      <div id="location-list"></div>
+    </div>
+
+  </div>
+
+  <script src="leaflet.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ── Theme ──────────────────────────────────────────────── */
+    const THEME_KEY = 'pdfsearchable-theme';
+    const html = document.documentElement;
+    const themeBtn = document.getElementById('theme-toggle');
+
+    function getEffectiveTheme() {
+      const stored = localStorage.getItem(THEME_KEY);
+      if (stored) return stored;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function applyTheme(theme) {
+      html.setAttribute('data-theme', theme);
+      themeBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+
+    applyTheme(getEffectiveTheme());
+
+    themeBtn.addEventListener('click', () => {
+      const current = html.getAttribute('data-theme') || 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      localStorage.setItem(THEME_KEY, next);
+      applyTheme(next);
+      updateMapBg();
+    });
+
+    /* ── Map init ───────────────────────────────────────────── */
+    const map = L.map('map', {
+      center: [20, 0],
+      zoom: 2,
+      zoomControl: true,
+      attributionControl: true,
+    });
+
+    // Try OSM tiles — catch failures gracefully
+    let tilesLoaded = false;
+    const tileLayer = L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom: 19,
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+      }
+    );
+
+    tileLayer.on('tileload', () => {
+      if (!tilesLoaded) {
+        tilesLoaded = true;
+        document.getElementById('tiles-notice').style.display = 'none';
+      }
+    });
+
+    tileLayer.on('tileerror', () => {
+      document.getElementById('tiles-notice').style.display = 'block';
+    });
+
+    tileLayer.addTo(map);
+
+    function updateMapBg() {
+      const dark = html.getAttribute('data-theme') === 'dark';
+      document.getElementById('map').style.background = dark ? '#1a2332' : '#dde8ee';
+    }
+    updateMapBg();
+
+    /* ── State ──────────────────────────────────────────────── */
+    const markers = new Map(); // name → L.circleMarker
+    let activeItem = null;
+
+    /* ── Overlay helpers ────────────────────────────────────── */
+    const overlay = document.getElementById('map-overlay');
+    const overlaySpinner = document.getElementById('overlay-spinner');
+    const overlayText = document.getElementById('overlay-text');
+    const overlayHint = document.getElementById('overlay-hint');
+
+    function showLoading(msg) {
+      overlaySpinner.style.display = 'block';
+      overlayText.textContent = msg || 'A carregar…';
+      overlayHint.textContent = '';
+      overlay.classList.remove('hidden');
+    }
+
+    function showEmpty(msg, hint) {
+      overlaySpinner.style.display = 'none';
+      overlayText.textContent = msg || 'Sem dados';
+      overlayHint.textContent = hint || '';
+      overlay.classList.remove('hidden');
+    }
+
+    function hideOverlay() {
+      overlay.classList.add('hidden');
+    }
+
+    /* ── Render sidebar item ────────────────────────────────── */
+    function renderSidebarItem(loc) {
+      const hasCoords = loc.lat != null && loc.lng != null;
+      const item = document.createElement('div');
+      item.className = 'location-item';
+      item.dataset.name = loc.name;
+
+      const dot = document.createElement('div');
+      dot.className = 'location-dot' + (hasCoords ? '' : ' no-coords');
+
+      const info = document.createElement('div');
+      info.className = 'location-info';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'location-name';
+      nameEl.textContent = loc.name;
+      nameEl.title = loc.name;
+
+      const meta = document.createElement('div');
+      meta.className = 'location-meta';
+
+      const countBadge = document.createElement('span');
+      countBadge.className = 'doc-count-badge' + (hasCoords ? '' : ' no-coords');
+      const n = loc.doc_count || (loc.docs ? loc.docs.length : 0);
+      countBadge.textContent = n + (n === 1 ? ' doc' : ' docs');
+
+      meta.appendChild(countBadge);
+
+      if (!hasCoords) {
+        const warn = document.createElement('span');
+        warn.className = 'no-coords-icon';
+        warn.textContent = '⚠️';
+        warn.title = 'Sem coordenadas';
+        meta.appendChild(warn);
+      }
+
+      info.appendChild(nameEl);
+      info.appendChild(meta);
+      item.appendChild(dot);
+      item.appendChild(info);
+
+      item.addEventListener('click', () => {
+        // Deactivate previous
+        if (activeItem) activeItem.classList.remove('active');
+        item.classList.add('active');
+        activeItem = item;
+
+        if (hasCoords) {
+          map.setView([loc.lat, loc.lng], Math.max(map.getZoom(), 5), { animate: true });
+          const marker = markers.get(loc.name);
+          if (marker) {
+            marker.openPopup();
+          }
+        }
+      });
+
+      return item;
+    }
+
+    /* ── Build popup HTML ───────────────────────────────────── */
+    function buildPopup(loc) {
+      const n = loc.doc_count || (loc.docs ? loc.docs.length : 0);
+      const docsHtml = (loc.docs || []).map(d => {
+        const label = d.name || d.id || 'Documento';
+        const href = 'app.html';
+        return `<li><a href="${href}" title="${label}">${label}</a></li>`;
+      }).join('');
+
+      return `
+        <div class="popup-title">${loc.name}</div>
+        <div class="popup-count">${n} ${n === 1 ? 'documento' : 'documentos'}</div>
+        ${docsHtml ? `<ul class="popup-docs">${docsHtml}</ul>` : ''}
+      `;
+    }
+
+    /* ── Load data ──────────────────────────────────────────── */
+    showLoading('A carregar locais…');
+
+    fetch('/api/locations?geocode=1')
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(data => {
+        const locations = data.locations || [];
+        const total = data.total || locations.length;
+
+        // Stats toolbar
+        const docTotal = locations.reduce((s, l) => s + (l.doc_count || (l.docs ? l.docs.length : 0)), 0);
+        document.getElementById('stats-text').textContent =
+          `${locations.length} local${locations.length !== 1 ? 'is' : ''} · ${docTotal} documento${docTotal !== 1 ? 's' : ''}`;
+
+        const geocoded = locations.filter(l => l.lat != null && l.lng != null);
+        if (geocoded.length > 0) {
+          document.getElementById('geocoded-badge').style.display = 'inline-flex';
+        }
+
+        // Sidebar
+        const list = document.getElementById('location-list');
+        const subtitle = document.getElementById('sidebar-subtitle');
+        const noCoords = locations.filter(l => l.lat == null || l.lng == null);
+        subtitle.textContent = `${geocoded.length} geocodificados · ${noCoords.length} sem coords`;
+
+        if (locations.length === 0) {
+          showEmpty(
+            'Nenhum local identificado nos documentos',
+            'Os locais são extraídos automaticamente ao indexar PDFs'
+          );
+          subtitle.textContent = 'Nenhum local encontrado';
+          return;
+        }
+
+        // Sort: geocoded first, then alphabetical
+        const sorted = [...locations].sort((a, b) => {
+          const aHas = a.lat != null && a.lng != null ? 1 : 0;
+          const bHas = b.lat != null && b.lng != null ? 1 : 0;
+          if (aHas !== bHas) return bHas - aHas;
+          return (a.name || '').localeCompare(b.name || '', 'pt');
+        });
+
+        sorted.forEach(loc => {
+          list.appendChild(renderSidebarItem(loc));
+        });
+
+        // Add markers for geocoded locations
+        const bounds = [];
+        geocoded.forEach(loc => {
+          const n = loc.doc_count || (loc.docs ? loc.docs.length : 0);
+          const radius = Math.min(6 + n * 2, 24);
+          const marker = L.circleMarker([loc.lat, loc.lng], {
+            radius,
+            color: '#007AFF',
+            weight: 2,
+            fillColor: '#007AFF',
+            fillOpacity: 0.7,
+          });
+
+          marker.bindPopup(buildPopup(loc), {
+            maxWidth: 240,
+            className: 'map-popup',
+          });
+
+          marker.on('click', () => {
+            // Sync sidebar highlight
+            const items = document.querySelectorAll('.location-item');
+            items.forEach(it => it.classList.remove('active'));
+            const found = [...items].find(it => it.dataset.name === loc.name);
+            if (found) {
+              found.classList.add('active');
+              activeItem = found;
+              found.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+          });
+
+          marker.addTo(map);
+          markers.set(loc.name, marker);
+          bounds.push([loc.lat, loc.lng]);
+        });
+
+        // Fit map to markers
+        if (bounds.length > 0) {
+          try {
+            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 10 });
+          } catch (_) {
+            map.setView(bounds[0], 5);
+          }
+        }
+
+        hideOverlay();
+      })
+      .catch(err => {
+        console.error('Erro ao carregar locais:', err);
+        showEmpty(
+          'Erro ao carregar locais',
+          'Verifique se o servidor está em execução'
+        );
+        document.getElementById('sidebar-subtitle').textContent = 'Erro ao carregar';
+      });
+
+    /* ── Dark mode: update tiles filter ─────────────────────── */
+    // Observe theme changes to invert tile layer for dark mode
+    const observer = new MutationObserver(() => {
+      const dark = html.getAttribute('data-theme') === 'dark';
+      const pane = document.querySelector('.leaflet-tile-pane');
+      if (pane) {
+        pane.style.filter = dark ? 'invert(100%) hue-rotate(180deg)' : '';
+      }
+      updateMapBg();
+    });
+    observer.observe(html, { attributes: true, attributeFilter: ['data-theme'] });
+
+    // Apply immediately
+    (function () {
+      const dark = html.getAttribute('data-theme') === 'dark';
+      setTimeout(() => {
+        const pane = document.querySelector('.leaflet-tile-pane');
+        if (pane) pane.style.filter = dark ? 'invert(100%) hue-rotate(180deg)' : '';
+      }, 200);
+    })();
+
+  })();
+  </script>
+</body>
+</html>

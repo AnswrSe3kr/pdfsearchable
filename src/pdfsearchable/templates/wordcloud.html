@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuvem de Palavras — pdfsearchable</title>
+  <!-- Content Security Policy: apenas recursos locais + inline scripts/styles -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
+  <style>
+    /* ── Tokens de design (Apple HIG, em sincronia com app.html) ── */
+    :root {
+      --bg:           #f5f5f7;
+      --bg-elevated:  #ffffff;
+      --bg-secondary: #f2f2f7;
+      --text-primary:   #1d1d1f;
+      --text-secondary: #6e6e73;
+      --text-tertiary:  #aeaeb2;
+      --separator:    rgba(0,0,0,0.1);
+      --accent:       #007AFF;
+      --font: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      --radius-md:  12px;
+      --shadow-sm:  0 1px 2px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+    }
+    [data-theme="dark"] {
+      --bg:           #000000;
+      --bg-elevated:  #1c1c1e;
+      --bg-secondary: #2c2c2e;
+      --text-primary:   #f5f5f7;
+      --text-secondary: #98989d;
+      --separator:    rgba(255,255,255,0.08);
+      --accent:       #0A84FF;
+    }
+
+    /* ── Reset e base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: var(--font);
+      overflow: hidden;
+    }
+
+    /* ── Toolbar 48px sticky com blur ── */
+    #toolbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      background: rgba(245,245,247,0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--separator);
+      z-index: 100;
+    }
+    [data-theme="dark"] #toolbar {
+      background: rgba(0,0,0,0.88);
+    }
+
+    /* Grupos de controlos dentro da toolbar */
+    .tb-left   { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .tb-center { display: flex; align-items: center; gap: 12px; flex: 1; justify-content: center; }
+    .tb-right  { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+    /* Botão Voltar */
+    #btn-back {
+      display: inline-flex; align-items: center; gap: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+    #btn-back:hover { background: rgba(0,122,255,0.1); }
+
+    #toolbar-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    /* Dropdown tipo */
+    #sel-type {
+      font-family: var(--font);
+      font-size: 13px;
+      color: var(--text-primary);
+      background: var(--bg-secondary);
+      border: 1px solid var(--separator);
+      border-radius: 8px;
+      padding: 4px 8px;
+      cursor: pointer;
+      outline: none;
+      max-width: 180px;
+    }
+
+    /* Slider limite de palavras */
+    .slider-wrap {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .slider-label { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+    #sld-limit {
+      -webkit-appearance: none;
+      width: 110px; height: 4px;
+      background: var(--bg-secondary);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    #sld-limit::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Toggle tema */
+    #btn-theme {
+      background: none; border: none; cursor: pointer;
+      font-size: 16px; padding: 4px; border-radius: 8px;
+      transition: background 0.15s;
+    }
+    #btn-theme:hover { background: var(--separator); }
+
+    /* Botão Regenerar */
+    #btn-regen {
+      background: none; border: 1px solid var(--separator);
+      color: var(--text-secondary);
+      font-size: 12px; font-family: var(--font);
+      padding: 4px 10px; border-radius: 8px;
+      cursor: pointer; transition: background 0.15s;
+    }
+    #btn-regen:hover { background: var(--bg-secondary); }
+
+    /* Contador de palavras */
+    #word-count {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      white-space: nowrap;
+    }
+
+    /* ── Canvas principal ── */
+    #wc {
+      display: block;
+      position: fixed;
+      top: 48px; left: 0;
+      width: 100vw;
+      height: calc(100vh - 48px);
+    }
+
+    /* ── Loading spinner ── */
+    #loading {
+      position: fixed;
+      top: 48px; left: 0; right: 0; bottom: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px;
+      background: var(--bg);
+      z-index: 50;
+      pointer-events: none;
+    }
+    #loading.hidden { display: none; }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--separator);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 13px; color: var(--text-secondary); }
+
+    /* ── Tooltip flutuante ── */
+    #tooltip {
+      position: fixed;
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-md);
+      padding: 6px 10px;
+      font-size: 13px;
+      box-shadow: var(--shadow-sm);
+      pointer-events: none;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 200;
+    }
+    #tooltip.visible { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Toolbar ── -->
+  <div id="toolbar">
+    <div class="tb-left">
+      <a id="btn-back" href="app.html">← Voltar</a>
+      <span id="toolbar-title">Nuvem de Palavras</span>
+    </div>
+
+    <div class="tb-center">
+      <!-- Dropdown: tipo de documento (carregado dinamicamente) -->
+      <select id="sel-type" title="Tipo de documento">
+        <option value="">Todos</option>
+      </select>
+
+      <!-- Slider: quantidade de palavras -->
+      <div class="slider-wrap">
+        <span class="slider-label">Palavras:</span>
+        <input id="sld-limit" type="range" min="50" max="500" step="10" value="200">
+        <span id="sld-val" class="slider-label">200</span>
+      </div>
+
+      <!-- Botão de regenerar layout -->
+      <button id="btn-regen" title="Novo layout">⟳ Regenerar</button>
+    </div>
+
+    <div class="tb-right">
+      <span id="word-count"></span>
+      <button id="btn-theme" title="Alternar tema">🌙</button>
+    </div>
+  </div>
+
+  <!-- ── Canvas da nuvem ── -->
+  <canvas id="wc"></canvas>
+
+  <!-- ── Spinner de carregamento ── -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <span class="loading-text">A carregar nuvem de palavras…</span>
+  </div>
+
+  <!-- ── Tooltip ao passar o rato ── -->
+  <div id="tooltip"></div>
+
+  <script>
+    /* ─────────────────────────────────────────────────────────────────────────
+     * wordcloud.html — Nuvem de palavras Canvas 2D puro
+     * Sem dependências externas. Algoritmo de placement por espiral arquimediana
+     * com bitmask 2D para detecção de colisões.
+     * ───────────────────────────────────────────────────────────────────────── */
+
+    // ── Paleta Apple-like (8 cores) ──
+    const PALETTE = [
+      '#007AFF', '#34c759', '#ff9f0a', '#ff3b30',
+      '#af52de', '#5ac8fa', '#ff6b6b', '#30b0c7'
+    ];
+
+    // ── Estado global ──
+    let wordsData  = [];   // [{text, weight}]
+    let spiralSeed = 0;    // offset de fase para regenerar
+    let resizeTimer = null;
+
+    // ── Elementos DOM ──
+    const canvas     = document.getElementById('wc');
+    const ctx        = canvas.getContext('2d');
+    const loading    = document.getElementById('loading');
+    const tooltip    = document.getElementById('tooltip');
+    const selType    = document.getElementById('sel-type');
+    const sldLimit   = document.getElementById('sld-limit');
+    const sldVal     = document.getElementById('sld-val');
+    const btnRegen   = document.getElementById('btn-regen');
+    const btnTheme   = document.getElementById('btn-theme');
+    const wordCount  = document.getElementById('word-count');
+
+    // ── Tema ──────────────────────────────────────────────────────────────────
+    function applyTheme(dark) {
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : '');
+      btnTheme.textContent = dark ? '☀️' : '🌙';
+      localStorage.setItem('pdfsearchable-theme', dark ? 'dark' : 'light');
+    }
+
+    // Sincronizar com app.html via localStorage
+    const savedTheme = localStorage.getItem('pdfsearchable-theme');
+    applyTheme(savedTheme === 'dark');
+
+    btnTheme.addEventListener('click', () => {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      applyTheme(!isDark);
+      // Re-renderizar com novas cores de fundo
+      renderCloud();
+    });
+
+    // ── Slider ────────────────────────────────────────────────────────────────
+    sldLimit.addEventListener('input', () => {
+      sldVal.textContent = sldLimit.value;
+    });
+    sldLimit.addEventListener('change', () => fetchAndRender());
+
+    // ── Dropdown tipo ─────────────────────────────────────────────────────────
+    selType.addEventListener('change', () => fetchAndRender());
+
+    // ── Botão Regenerar ───────────────────────────────────────────────────────
+    btnRegen.addEventListener('click', () => {
+      spiralSeed = Math.random() * Math.PI * 2;  // fase aleatória nova
+      renderCloud();
+    });
+
+    // ── Resize com debounce ───────────────────────────────────────────────────
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => renderCloud(), 300);
+    });
+
+    // ── Carregar opções do dropdown dinamicamente ─────────────────────────────
+    async function loadDocumentTypes() {
+      try {
+        const resp = await fetch('/api/index');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        // data.files é array de objectos com campo "subject" ou "type"
+        const types = new Set();
+        (data.files || []).forEach(f => {
+          if (f.subject) types.add(f.subject);
+          if (f.type)    types.add(f.type);
+        });
+        types.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t;
+          opt.textContent = t;
+          selType.appendChild(opt);
+        });
+      } catch (_) {
+        // Falha silenciosa; "Todos" continua disponível
+      }
+    }
+
+    // ── Fetch principal ───────────────────────────────────────────────────────
+    async function fetchAndRender() {
+      loading.classList.remove('hidden');
+      try {
+        const type  = selType.value;
+        const limit = parseInt(sldLimit.value, 10);
+        const qs    = type ? `?type=${encodeURIComponent(type)}&limit=${limit}`
+                           : `?limit=${limit}`;
+        const resp  = await fetch(`/api/wordcloud${qs}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const json  = await resp.json();
+        wordsData   = (json.words || []).slice(0, limit);
+        wordCount.textContent = `${json.total_words ?? wordsData.length} palavras`;
+        spiralSeed = 0;
+        renderCloud();
+      } catch (err) {
+        console.error('Erro ao carregar nuvem:', err);
+        loading.classList.add('hidden');
+      }
+    }
+
+    // ── Renderização da nuvem ─────────────────────────────────────────────────
+    function renderCloud() {
+      // Ajustar canvas ao viewport
+      const W = window.innerWidth;
+      const H = window.innerHeight - 48;
+      canvas.width  = W;
+      canvas.height = H;
+
+      // Limpar fundo com cor do tema
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = isDark ? '#000000' : '#f5f5f7';
+      ctx.fillRect(0, 0, W, H);
+
+      if (!wordsData.length) {
+        loading.classList.add('hidden');
+        return;
+      }
+
+      // ── Calcular tamanhos de fonte (escala logarítmica) ──
+      const minSize   = 12;
+      const maxSize   = 72;
+      const maxWeight = wordsData[0]?.weight ?? 1;
+
+      const sized = wordsData.map((w, i) => {
+        const size = minSize +
+          (maxSize - minSize) * Math.log(w.weight + 1) / Math.log(maxWeight + 1);
+        // Cor por hash do texto (determinístico)
+        const colorIdx = Math.abs(hashStr(w.text)) % PALETTE.length;
+        return { ...w, size: Math.round(size), color: PALETTE[colorIdx], rank: i };
+      });
+
+      // ── Bitmask 2D (granularidade 2px) ──
+      const stride = Math.ceil(W / 2);
+      const rows   = Math.ceil(H / 2);
+      const mask   = new Uint8Array(stride * rows);
+
+      // Verificar se rect colide com bitmask
+      function collides(rx, ry, rw, rh) {
+        const x0 = Math.max(0, Math.floor(rx / 2));
+        const y0 = Math.max(0, Math.floor(ry / 2));
+        const x1 = Math.min(stride - 1, Math.ceil((rx + rw) / 2));
+        const y1 = Math.min(rows   - 1, Math.ceil((ry + rh) / 2));
+        for (let y = y0; y <= y1; y++) {
+          for (let x = x0; x <= x1; x++) {
+            if (mask[y * stride + x]) return true;
+          }
+        }
+        return false;
+      }
+
+      // Marcar rect ocupado na bitmask
+      function markMask(rx, ry, rw, rh) {
+        const x0 = Math.max(0, Math.floor(rx / 2));
+        const y0 = Math.max(0, Math.floor(ry / 2));
+        const x1 = Math.min(stride - 1, Math.ceil((rx + rw) / 2));
+        const y1 = Math.min(rows   - 1, Math.ceil((ry + rh) / 2));
+        for (let y = y0; y <= y1; y++) {
+          for (let x = x0; x <= x1; x++) {
+            mask[y * stride + x] = 1;
+          }
+        }
+      }
+
+      // ── Placement por espiral arquimediana ──
+      const cx = W / 2;
+      const cy = H / 2;
+      const placed = [];  // [{text, x, y, size, color, w, h}]
+
+      for (const word of sized) {
+        ctx.font = `${word.size}px ${getComputedStyle(document.documentElement)
+          .getPropertyValue('--font').trim() || 'sans-serif'}`;
+        const metrics = ctx.measureText(word.text);
+        const tw = metrics.width + 4;
+        const th = word.size * 1.2;  // altura aprox.
+
+        let t   = spiralSeed;
+        let found = false;
+
+        // Espiral arquimediana: r = t * 1.5, passo t += 0.05
+        while (t < spiralSeed + Math.PI * 200) {
+          const r  = (t - spiralSeed) * 1.5;
+          const px = cx + r * Math.cos(t) - tw / 2;
+          const py = cy + r * Math.sin(t) - th / 2;
+
+          // Verificar limites do canvas
+          if (px >= 0 && py >= 0 && px + tw <= W && py + th <= H) {
+            if (!collides(px, py, tw, th)) {
+              markMask(px, py, tw, th);
+              placed.push({ ...word, x: px, y: py, w: tw, h: th });
+              found = true;
+              break;
+            }
+          }
+          t += 0.05;
+        }
+
+        // Se não coube, ignorar palavra (canvas demasiado pequeno para todas)
+        if (!found) {
+          console.debug(`Sem espaço para "${word.text}"`);
+        }
+      }
+
+      // ── Desenhar palavras com fade-in por rank ──
+      placed.forEach((w, idx) => {
+        const delay = idx * 18;  // ms
+        setTimeout(() => {
+          ctx.save();
+          ctx.font       = `${w.size}px ${getComputedStyle(document.documentElement)
+            .getPropertyValue('--font').trim() || 'sans-serif'}`;
+          ctx.fillStyle  = w.color;
+          ctx.globalAlpha = 0;
+          ctx.fillText(w.text, w.x + 2, w.y + w.size);
+
+          // Animar fade-in
+          animateFadeIn(ctx, w, 0, 1, 200);
+        }, delay);
+      });
+
+      loading.classList.add('hidden');
+
+      // Salvar placed para detecção de hover/clique
+      canvas._placed = placed;
+    }
+
+    // ── Fade-in por frames ────────────────────────────────────────────────────
+    function animateFadeIn(ctx, w, from, to, duration) {
+      const start = performance.now();
+      function frame(now) {
+        const t = Math.min((now - start) / duration, 1);
+        const alpha = from + (to - from) * t;
+        // Re-desenhar apenas esta palavra (não limpar canvas — sobreposição intencional)
+        ctx.save();
+        ctx.font        = `${w.size}px ${getComputedStyle(document.documentElement)
+          .getPropertyValue('--font').trim() || 'sans-serif'}`;
+        ctx.fillStyle   = w.color;
+        ctx.globalAlpha = alpha;
+        ctx.fillText(w.text, w.x + 2, w.y + w.size);
+        ctx.restore();
+        if (t < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    // ── Hash simples para string → inteiro ───────────────────────────────────
+    function hashStr(s) {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) {
+        h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+      }
+      return h;
+    }
+
+    // ── Tooltip e clique no canvas ─────────────────────────────────────────────
+    canvas.addEventListener('mousemove', (e) => {
+      const placed = canvas._placed;
+      if (!placed) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      // Verificar se o cursor está dentro de alguma palavra
+      const hit = placed.find(w =>
+        mx >= w.x && mx <= w.x + w.w &&
+        my >= w.y && my <= w.y + w.h
+      );
+
+      if (hit) {
+        tooltip.textContent = `${hit.text}  ×${hit.weight}`;
+        tooltip.classList.add('visible');
+        tooltip.style.left = `${e.clientX + 14}px`;
+        tooltip.style.top  = `${e.clientY - 8}px`;
+        canvas.style.cursor = 'pointer';
+      } else {
+        tooltip.classList.remove('visible');
+        canvas.style.cursor = 'default';
+      }
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      tooltip.classList.remove('visible');
+    });
+
+    // Clicar numa palavra → pesquisar em app.html
+    canvas.addEventListener('click', (e) => {
+      const placed = canvas._placed;
+      if (!placed) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      const hit = placed.find(w =>
+        mx >= w.x && mx <= w.x + w.w &&
+        my >= w.y && my <= w.y + w.h
+      );
+
+      if (hit) {
+        // Passar a pesquisa via localStorage para app.html
+        localStorage.setItem('pdfs-search-init', hit.text);
+        window.location.href = 'app.html';
+      }
+    });
+
+    // ── Arranque ──────────────────────────────────────────────────────────────
+    loadDocumentTypes();
+    fetchAndRender();
+  </script>
+</body>
+</html>

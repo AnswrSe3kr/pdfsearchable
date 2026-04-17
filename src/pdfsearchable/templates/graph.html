@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grafo de Conhecimento — pdfsearchable</title>
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self';">
+  <style>
+    /* ── Tokens de design (Apple HIG, em sincronia com wordcloud.html) ── */
+    :root {
+      --bg:             #f5f5f7;
+      --bg-elevated:    #ffffff;
+      --bg-secondary:   #f2f2f7;
+      --text-primary:   #1d1d1f;
+      --text-secondary: #6e6e73;
+      --text-tertiary:  #aeaeb2;
+      --separator:      rgba(0,0,0,0.1);
+      --accent:         #007AFF;
+      --accent-hover:   #0051d5;
+      --accent-muted:   rgba(0,122,255,0.1);
+      --shadow-sm:      0 1px 2px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+      --shadow-md:      0 4px 16px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
+      --radius-sm:      8px;
+      --radius-md:      12px;
+      --radius-lg:      16px;
+      --font:           -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      --transition:     0.2s cubic-bezier(0.25,0.46,0.45,0.94);
+    }
+    [data-theme="dark"] {
+      --bg:             #000000;
+      --bg-elevated:    #1c1c1e;
+      --bg-secondary:   #2c2c2e;
+      --text-primary:   #f5f5f7;
+      --text-secondary: #98989d;
+      --text-tertiary:  #636366;
+      --separator:      rgba(255,255,255,0.08);
+      --accent:         #0A84FF;
+      --fill-quaternary: rgba(255,255,255,0.05);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: var(--font);
+      overflow: hidden;
+    }
+
+    /* ── Toolbar ── */
+    #toolbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px;
+      background: rgba(245,245,247,0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--separator);
+      z-index: 100;
+    }
+    [data-theme="dark"] #toolbar {
+      background: rgba(0,0,0,0.88);
+    }
+    .tb-left   { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .tb-center { display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; }
+    .tb-right  { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+    #btn-back {
+      display: inline-flex; align-items: center; gap: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 14px; font-weight: 500;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      transition: background var(--transition);
+    }
+    #btn-back:hover { background: var(--accent-muted); }
+
+    #toolbar-title {
+      font-size: 14px; font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    #graph-stats {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      white-space: nowrap;
+      padding-left: 4px;
+    }
+
+    /* Filter pills */
+    .filter-pills {
+      display: flex; align-items: center; gap: 6px;
+      flex-wrap: nowrap; overflow: hidden;
+    }
+    .filter-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 12px; font-weight: 500;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      transition: all var(--transition);
+      white-space: nowrap;
+      user-select: none;
+    }
+    .filter-pill input[type="checkbox"] { display: none; }
+    .filter-pill .pill-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .filter-pill.active {
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+      border-color: var(--separator);
+      box-shadow: var(--shadow-sm);
+    }
+    .filter-pill:hover { opacity: 0.8; }
+
+    #btn-theme {
+      background: none; border: none; cursor: pointer;
+      font-size: 16px; padding: 4px; border-radius: var(--radius-sm);
+      transition: background var(--transition);
+      flex-shrink: 0;
+    }
+    #btn-theme:hover { background: var(--separator); }
+
+    /* ── Canvas ── */
+    #graph-canvas {
+      display: block;
+      position: fixed;
+      top: 48px; left: 0;
+      width: 100vw;
+      height: calc(100vh - 48px);
+      cursor: default;
+    }
+
+    /* ── Loading ── */
+    #loading {
+      position: fixed;
+      top: 48px; left: 0; right: 0; bottom: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px;
+      background: var(--bg);
+      z-index: 50;
+    }
+    #loading.hidden { display: none; }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--separator);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 13px; color: var(--text-secondary); }
+
+    /* ── Empty state ── */
+    #empty-state {
+      position: fixed;
+      top: 48px; left: 0; right: 0; bottom: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px;
+      background: var(--bg);
+      z-index: 40;
+    }
+    #empty-state.visible { display: flex; }
+    .empty-icon { font-size: 48px; opacity: 0.3; }
+    .empty-title {
+      font-size: 17px; font-weight: 600;
+      color: var(--text-primary);
+    }
+    .empty-sub {
+      font-size: 14px;
+      color: var(--text-secondary);
+      text-align: center;
+      max-width: 320px;
+      line-height: 1.5;
+    }
+
+    /* ── Tooltip ── */
+    #tooltip {
+      position: fixed;
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-md);
+      padding: 8px 12px;
+      font-size: 13px;
+      box-shadow: var(--shadow-md);
+      pointer-events: none;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.12s;
+      z-index: 200;
+    }
+    #tooltip.visible { opacity: 1; }
+    .tooltip-label { font-weight: 600; margin-bottom: 2px; }
+    .tooltip-meta { font-size: 11px; color: var(--text-secondary); }
+
+    /* ── Info panel ── */
+    #info-panel {
+      position: fixed;
+      top: 56px; right: -260px;
+      width: 240px;
+      bottom: 8px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      z-index: 90;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: right var(--transition);
+      overflow: hidden;
+    }
+    #info-panel.open { right: 8px; }
+
+    .panel-header {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 8px;
+    }
+    .panel-node-label {
+      font-size: 15px; font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.3;
+      word-break: break-word;
+    }
+    #btn-panel-close {
+      background: var(--bg-secondary);
+      border: none; cursor: pointer;
+      width: 22px; height: 22px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: var(--text-secondary);
+      flex-shrink: 0;
+      transition: background var(--transition);
+    }
+    #btn-panel-close:hover { background: var(--separator); }
+
+    .panel-type-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: #fff;
+    }
+
+    .panel-section-title {
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+    }
+    .panel-doc-list {
+      display: flex; flex-direction: column; gap: 6px;
+      overflow-y: auto; flex: 1;
+    }
+    .panel-doc-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: background var(--transition);
+      text-decoration: none;
+    }
+    .panel-doc-item:hover { background: var(--separator); }
+    .panel-doc-icon { font-size: 16px; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Toolbar ── -->
+  <div id="toolbar">
+    <div class="tb-left">
+      <a id="btn-back" href="app.html">← Voltar</a>
+      <span id="toolbar-title">Grafo de Conhecimento</span>
+      <span id="graph-stats"></span>
+    </div>
+
+    <div class="tb-center">
+      <div class="filter-pills" id="filter-pills">
+        <!-- pills generated by JS -->
+      </div>
+    </div>
+
+    <div class="tb-right">
+      <button id="btn-theme" title="Alternar tema">🌙</button>
+    </div>
+  </div>
+
+  <!-- ── Canvas ── -->
+  <canvas id="graph-canvas"></canvas>
+
+  <!-- ── Loading ── -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <span class="loading-text">A carregar grafo…</span>
+  </div>
+
+  <!-- ── Empty state ── -->
+  <div id="empty-state">
+    <div class="empty-icon">🕸️</div>
+    <div class="empty-title">Nenhuma entidade extraída</div>
+    <div class="empty-sub">Adicione documentos com entidades identificadas (pessoas, organizações, locais).</div>
+  </div>
+
+  <!-- ── Tooltip ── -->
+  <div id="tooltip">
+    <div class="tooltip-label" id="tt-label"></div>
+    <div class="tooltip-meta" id="tt-meta"></div>
+  </div>
+
+  <!-- ── Info panel ── -->
+  <div id="info-panel">
+    <div class="panel-header">
+      <div class="panel-node-label" id="panel-label"></div>
+      <button id="btn-panel-close" title="Fechar">×</button>
+    </div>
+    <span class="panel-type-badge" id="panel-badge"></span>
+    <div class="panel-section-title">Documentos</div>
+    <div class="panel-doc-list" id="panel-doc-list"></div>
+  </div>
+
+  <script>
+    /* ─────────────────────────────────────────────────────────────────────────
+     * graph.html — Grafo de conhecimento Canvas 2D, force-directed simulation
+     * Sem dependências externas.
+     * ───────────────────────────────────────────────────────────────────────── */
+
+    // ── Cores por tipo ──
+    const NODE_COLORS = {
+      document: '#007AFF',
+      person:   '#34c759',
+      org:      '#ff9f0a',
+      location: '#5856d6',
+      date:     '#ff2d55',
+      monetary: '#64d2ff',
+    };
+    const NODE_COLORS_DARK = {
+      document: '#0A84FF',
+      person:   '#30d158',
+      org:      '#ffa020',
+      location: '#7d7aff',
+      date:     '#ff375f',
+      monetary: '#70d7ff',
+    };
+    const TYPE_LABELS = {
+      document: 'Documento',
+      person:   'Pessoa',
+      org:      'Organização',
+      location: 'Local',
+      date:     'Data',
+      monetary: 'Valor',
+    };
+    const TYPE_ICONS = {
+      document: '📄', person: '👤', org: '🏢',
+      location: '📍', date: '📅', monetary: '💰',
+    };
+
+    // ── DOM ──
+    const canvas      = document.getElementById('graph-canvas');
+    const ctx         = canvas.getContext('2d');
+    const loadingEl   = document.getElementById('loading');
+    const emptyEl     = document.getElementById('empty-state');
+    const tooltip     = document.getElementById('tooltip');
+    const ttLabel     = document.getElementById('tt-label');
+    const ttMeta      = document.getElementById('tt-meta');
+    const infoPanel   = document.getElementById('info-panel');
+    const panelLabel  = document.getElementById('panel-label');
+    const panelBadge  = document.getElementById('panel-badge');
+    const panelDocs   = document.getElementById('panel-doc-list');
+    const btnClose    = document.getElementById('btn-panel-close');
+    const btnTheme    = document.getElementById('btn-theme');
+    const statsEl     = document.getElementById('graph-stats');
+    const pillsEl     = document.getElementById('filter-pills');
+
+    // ── State ──
+    let nodes        = [];   // {id, label, type, doc_ids, color, radius, x, y, vx, vy}
+    let edges        = [];   // {source, target, weight, doc_ids}
+    let docIndex     = {};   // doc_id → label (from document nodes)
+    let activeFilters = new Set(['document','person','org','location','date','monetary']);
+    let transform    = { x: 0, y: 0, scale: 1 };
+    let simRunning   = false;
+    let rafId        = null;
+    let lastFrameTime = 0;
+
+    // Interaction state
+    let dragNode     = null;
+    let dragOffset   = { x: 0, y: 0 };
+    let isPanning    = false;
+    let panStart     = { x: 0, y: 0 };
+    let hoveredNode  = null;
+    let selectedNode = null;
+
+    // ── Theme ──
+    function isDarkMode() {
+      return document.documentElement.getAttribute('data-theme') === 'dark';
+    }
+    function applyTheme(dark) {
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : '');
+      btnTheme.textContent = dark ? '☀️' : '🌙';
+      localStorage.setItem('pdfsearchable-theme', dark ? 'dark' : 'light');
+      if (nodes.length) redrawFrame();
+    }
+    const savedTheme = localStorage.getItem('pdfsearchable-theme');
+    applyTheme(savedTheme === 'dark');
+    btnTheme.addEventListener('click', () => applyTheme(!isDarkMode()));
+
+    // ── Filter pills ──
+    function buildPills() {
+      pillsEl.innerHTML = '';
+      const types = Object.keys(NODE_COLORS);
+      types.forEach(type => {
+        const pill = document.createElement('label');
+        pill.className = 'filter-pill' + (activeFilters.has(type) ? ' active' : '');
+        pill.title = TYPE_LABELS[type] || type;
+
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = activeFilters.has(type);
+        chk.addEventListener('change', () => {
+          if (chk.checked) activeFilters.add(type);
+          else activeFilters.delete(type);
+          pill.classList.toggle('active', chk.checked);
+          if (nodes.length) redrawFrame();
+        });
+
+        const dot = document.createElement('span');
+        dot.className = 'pill-dot';
+        dot.style.background = NODE_COLORS[type];
+
+        const lbl = document.createElement('span');
+        lbl.textContent = TYPE_LABELS[type] || type;
+
+        pill.appendChild(chk);
+        pill.appendChild(dot);
+        pill.appendChild(lbl);
+        pillsEl.appendChild(pill);
+      });
+    }
+    buildPills();
+
+    // ── Close panel ──
+    btnClose.addEventListener('click', () => {
+      infoPanel.classList.remove('open');
+      selectedNode = null;
+      redrawFrame();
+    });
+
+    // ── Fetch graph data ──
+    async function fetchGraph() {
+      loadingEl.classList.remove('hidden');
+      emptyEl.classList.remove('visible');
+      try {
+        const resp = await fetch('/api/graph');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+
+        if (!data.nodes || data.nodes.length === 0) {
+          loadingEl.classList.add('hidden');
+          emptyEl.classList.add('visible');
+          return;
+        }
+
+        initGraph(data.nodes, data.edges || []);
+      } catch (err) {
+        console.error('Erro ao carregar grafo:', err);
+        loadingEl.classList.add('hidden');
+        emptyEl.classList.add('visible');
+      }
+    }
+
+    // ── Init graph ──
+    function initGraph(rawNodes, rawEdges) {
+      const W = canvas.width;
+      const H = canvas.height;
+      const cx = W / 2;
+      const cy = H / 2;
+      const count = rawNodes.length;
+
+      // Position nodes in a circle initially
+      nodes = rawNodes.map((n, i) => {
+        const angle = (2 * Math.PI * i) / count;
+        const r = Math.min(W, H) * 0.3;
+        return {
+          ...n,
+          x: cx + r * Math.cos(angle),
+          y: cy + r * Math.sin(angle),
+          vx: 0,
+          vy: 0,
+        };
+      });
+
+      // Build doc index for panel
+      docIndex = {};
+      nodes.forEach(n => {
+        if (n.type === 'document') docIndex[n.id] = n.label;
+      });
+
+      // Map edges source/target string ids to node references
+      const nodeMap = {};
+      nodes.forEach(n => { nodeMap[n.id] = n; });
+      edges = rawEdges
+        .map(e => ({ ...e, src: nodeMap[e.source], tgt: nodeMap[e.target] }))
+        .filter(e => e.src && e.tgt);
+
+      statsEl.textContent = `${nodes.length} nós · ${edges.length} ligações`;
+
+      // Run simulation synchronously for 200 ticks
+      for (let i = 0; i < 200; i++) simulateTick(1.0);
+
+      loadingEl.classList.add('hidden');
+      startRaf();
+    }
+
+    // ── Force simulation ──
+    function simulateTick(dampingFactor) {
+      const W = canvas.width;
+      const H = canvas.height;
+      const cx = W / 2;
+      const cy = H / 2;
+
+      const REPULSION  = 5000;
+      const SPRING_LEN = 80;
+      const SPRING_K   = 0.05;
+      const CENTER_K   = 0.002;
+      const DAMPING    = 0.85 * dampingFactor + (1 - dampingFactor);
+
+      // Reset forces
+      nodes.forEach(n => { n.fx = 0; n.fy = 0; });
+
+      // Repulsion (all pairs)
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          let dx = a.x - b.x;
+          let dy = a.y - b.y;
+          let dist2 = dx * dx + dy * dy;
+          if (dist2 < 1) dist2 = 1;
+          const dist = Math.sqrt(dist2);
+          const force = REPULSION / dist2;
+          const fx = (dx / dist) * force;
+          const fy = (dy / dist) * force;
+          a.fx += fx; a.fy += fy;
+          b.fx -= fx; b.fy -= fy;
+        }
+      }
+
+      // Spring attraction on edges
+      edges.forEach(e => {
+        const a = e.src, b = e.tgt;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const stretch = dist - SPRING_LEN;
+        const force = SPRING_K * stretch;
+        const fx = (dx / dist) * force;
+        const fy = (dy / dist) * force;
+        a.fx += fx; a.fy += fy;
+        b.fx -= fx; b.fy -= fy;
+      });
+
+      // Centering force
+      nodes.forEach(n => {
+        n.fx += (cx - n.x) * CENTER_K;
+        n.fy += (cy - n.y) * CENTER_K;
+      });
+
+      // Integrate velocities
+      nodes.forEach(n => {
+        if (n === dragNode) return;
+        n.vx = (n.vx + n.fx) * DAMPING;
+        n.vy = (n.vy + n.fy) * DAMPING;
+        n.x += n.vx;
+        n.y += n.vy;
+        // Boundary softclamp
+        const margin = 30;
+        if (n.x < margin)       { n.x = margin;       n.vx *= -0.3; }
+        if (n.x > W - margin)   { n.x = W - margin;   n.vx *= -0.3; }
+        if (n.y < margin)       { n.y = margin;       n.vy *= -0.3; }
+        if (n.y > H - margin)   { n.y = H - margin;   n.vy *= -0.3; }
+      });
+    }
+
+    // ── requestAnimationFrame loop (30 fps target) ──
+    function startRaf() {
+      if (rafId) cancelAnimationFrame(rafId);
+      simRunning = true;
+      function loop(ts) {
+        if (!simRunning) return;
+        // throttle to ~30fps
+        if (ts - lastFrameTime >= 33) {
+          lastFrameTime = ts;
+          simulateTick(0.85);
+          redrawFrame();
+        }
+        rafId = requestAnimationFrame(loop);
+      }
+      rafId = requestAnimationFrame(loop);
+    }
+
+    // ── Canvas resize ──
+    function resizeCanvas() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight - 48;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      if (nodes.length) redrawFrame();
+    });
+
+    // ── Drawing ──
+    function nodeColor(n) {
+      const palette = isDarkMode() ? NODE_COLORS_DARK : NODE_COLORS;
+      return palette[n.type] || '#888';
+    }
+
+    function visibleNodes() {
+      return nodes.filter(n => activeFilters.has(n.type));
+    }
+
+    function redrawFrame() {
+      const W = canvas.width;
+      const H = canvas.height;
+      const dark = isDarkMode();
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = dark ? '#000000' : '#f5f5f7';
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.save();
+      ctx.translate(transform.x, transform.y);
+      ctx.scale(transform.scale, transform.scale);
+
+      const visible = new Set(visibleNodes().map(n => n.id));
+
+      // Draw edges
+      edges.forEach(e => {
+        if (!visible.has(e.src.id) || !visible.has(e.tgt.id)) return;
+        const w = Math.min(1 + (e.weight || 1) * 0.5, 4);
+        ctx.beginPath();
+        ctx.moveTo(e.src.x, e.src.y);
+        ctx.lineTo(e.tgt.x, e.tgt.y);
+        ctx.strokeStyle = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
+        ctx.lineWidth = w;
+        ctx.stroke();
+      });
+
+      // Draw nodes
+      visibleNodes().forEach(n => {
+        const r  = (n.radius || 6) * 1.5;
+        const col = nodeColor(n);
+        const isHovered  = hoveredNode  === n;
+        const isSelected = selectedNode === n;
+
+        // Glow / selection ring
+        if (isSelected || isHovered) {
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, r + 5, 0, Math.PI * 2);
+          ctx.fillStyle = col + '33';
+          ctx.fill();
+        }
+
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+
+        // Stroke
+        ctx.strokeStyle = dark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Label inside node (only if radius large enough)
+        const fontSize = Math.max(8, Math.min(11, r * 0.75));
+        ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+
+        const maxChars = Math.floor(r * 1.6 / (fontSize * 0.55));
+        let lbl = n.label || '';
+        if (lbl.length > maxChars) lbl = lbl.slice(0, Math.max(1, maxChars - 1)) + '…';
+
+        ctx.fillText(lbl, n.x, n.y);
+      });
+
+      ctx.restore();
+    }
+
+    // ── Screen ↔ World coordinate conversion ──
+    function screenToWorld(sx, sy) {
+      return {
+        x: (sx - transform.x) / transform.scale,
+        y: (sy - transform.y) / transform.scale,
+      };
+    }
+
+    function hitTestNode(sx, sy) {
+      const w = screenToWorld(sx, sy);
+      const vis = visibleNodes();
+      // Iterate in reverse so topmost (last drawn) gets priority
+      for (let i = vis.length - 1; i >= 0; i--) {
+        const n = vis[i];
+        const r = (n.radius || 6) * 1.5 + 4; // slightly larger hit area
+        const dx = w.x - n.x, dy = w.y - n.y;
+        if (dx * dx + dy * dy <= r * r) return n;
+      }
+      return null;
+    }
+
+    // ── Tooltip ──
+    function showTooltip(node, ex, ey) {
+      ttLabel.textContent = node.label;
+      ttMeta.textContent  = `${TYPE_LABELS[node.type] || node.type}  ·  ${(node.doc_ids || []).length} doc(s)`;
+      tooltip.classList.add('visible');
+      const tx = Math.min(ex + 14, window.innerWidth  - tooltip.offsetWidth  - 8);
+      const ty = Math.min(ey - 8,  window.innerHeight - tooltip.offsetHeight - 8);
+      tooltip.style.left = `${tx}px`;
+      tooltip.style.top  = `${ty}px`;
+    }
+    function hideTooltip() { tooltip.classList.remove('visible'); }
+
+    // ── Info panel ──
+    function openPanel(node) {
+      selectedNode = node;
+      panelLabel.textContent = node.label;
+
+      const badge = panelBadge;
+      badge.textContent = TYPE_LABELS[node.type] || node.type;
+      badge.style.background = nodeColor(node);
+
+      panelDocs.innerHTML = '';
+      const docIds = node.doc_ids || [];
+      if (docIds.length === 0) {
+        const em = document.createElement('div');
+        em.style.fontSize = '12px';
+        em.style.color = 'var(--text-tertiary)';
+        em.textContent = 'Nenhum documento associado.';
+        panelDocs.appendChild(em);
+      } else {
+        docIds.forEach(did => {
+          // Try to resolve label from document nodes
+          const docNode = nodes.find(n => n.type === 'document' && n.doc_ids && n.doc_ids.includes(did));
+          const name = docNode ? docNode.label : did;
+          const item = document.createElement('div');
+          item.className = 'panel-doc-item';
+
+          const icon = document.createElement('span');
+          icon.className = 'panel-doc-icon';
+          icon.textContent = '📄';
+
+          const lbl = document.createElement('span');
+          lbl.textContent = name;
+          lbl.style.fontSize = '13px';
+          lbl.style.overflow = 'hidden';
+          lbl.style.textOverflow = 'ellipsis';
+          lbl.style.whiteSpace = 'nowrap';
+
+          item.appendChild(icon);
+          item.appendChild(lbl);
+          item.title = name;
+
+          if (node.type === 'document') {
+            item.addEventListener('click', () => {
+              localStorage.setItem('pdfs-search-init', node.label);
+              window.location.href = 'app.html';
+            });
+            item.style.cursor = 'pointer';
+          } else if (docNode) {
+            item.addEventListener('click', () => {
+              localStorage.setItem('pdfs-search-init', docNode.label);
+              window.location.href = 'app.html';
+            });
+            item.style.cursor = 'pointer';
+          }
+
+          panelDocs.appendChild(item);
+        });
+      }
+
+      infoPanel.classList.add('open');
+      redrawFrame();
+    }
+
+    // ── Mouse events ──
+    canvas.addEventListener('mousedown', e => {
+      const hit = hitTestNode(e.clientX, e.clientY - 48);
+      if (hit) {
+        dragNode   = hit;
+        const w    = screenToWorld(e.clientX, e.clientY - 48);
+        dragOffset = { x: w.x - hit.x, y: w.y - hit.y };
+        canvas.style.cursor = 'grabbing';
+      } else {
+        isPanning = true;
+        panStart  = { x: e.clientX - transform.x, y: e.clientY - transform.y };
+        canvas.style.cursor = 'grab';
+      }
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      const cy = e.clientY - 48;
+      if (dragNode) {
+        const w  = screenToWorld(e.clientX, cy);
+        dragNode.x = w.x - dragOffset.x;
+        dragNode.y = w.y - dragOffset.y;
+        dragNode.vx = 0;
+        dragNode.vy = 0;
+        hideTooltip();
+        return;
+      }
+      if (isPanning) {
+        transform.x = e.clientX - panStart.x;
+        transform.y = e.clientY - panStart.y;
+        hideTooltip();
+        redrawFrame();
+        return;
+      }
+
+      const hit = hitTestNode(e.clientX, cy);
+      if (hit !== hoveredNode) {
+        hoveredNode = hit;
+        redrawFrame();
+      }
+      if (hit) {
+        canvas.style.cursor = 'pointer';
+        showTooltip(hit, e.clientX, e.clientY);
+      } else {
+        canvas.style.cursor = 'default';
+        hideTooltip();
+      }
+    });
+
+    canvas.addEventListener('mouseup', e => {
+      if (dragNode) {
+        // Brief re-simulation after drag
+        for (let i = 0; i < 10; i++) simulateTick(0.85);
+        dragNode = null;
+        canvas.style.cursor = 'default';
+      }
+      isPanning = false;
+      canvas.style.cursor = 'default';
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      dragNode = null;
+      isPanning = false;
+      hoveredNode = null;
+      hideTooltip();
+    });
+
+    canvas.addEventListener('click', e => {
+      if (isPanning) return;
+      const hit = hitTestNode(e.clientX, e.clientY - 48);
+      if (hit) {
+        if (hit.type === 'document') {
+          // Direct nav for document nodes
+          localStorage.setItem('pdfs-search-init', hit.label);
+          openPanel(hit);
+        } else {
+          openPanel(hit);
+        }
+      } else {
+        infoPanel.classList.remove('open');
+        selectedNode = null;
+        redrawFrame();
+      }
+    });
+
+    // ── Wheel zoom ──
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      const delta  = e.deltaY < 0 ? 1.1 : 0.91;
+      const newScale = Math.min(3, Math.max(0.3, transform.scale * delta));
+
+      // Zoom toward cursor
+      const mx = e.clientX;
+      const my = e.clientY - 48;
+      transform.x = mx - (mx - transform.x) * (newScale / transform.scale);
+      transform.y = my - (my - transform.y) * (newScale / transform.scale);
+      transform.scale = newScale;
+
+      redrawFrame();
+    }, { passive: false });
+
+    // ── Touch support (pan + pinch) ──
+    let lastTouchDist = 0;
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        const hit = hitTestNode(t.clientX, t.clientY - 48);
+        if (hit) {
+          dragNode = hit;
+          const w = screenToWorld(t.clientX, t.clientY - 48);
+          dragOffset = { x: w.x - hit.x, y: w.y - hit.y };
+        } else {
+          isPanning = true;
+          panStart  = { x: t.clientX - transform.x, y: t.clientY - transform.y };
+        }
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastTouchDist = Math.sqrt(dx * dx + dy * dy);
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        const cy2 = t.clientY - 48;
+        if (dragNode) {
+          const w = screenToWorld(t.clientX, cy2);
+          dragNode.x = w.x - dragOffset.x;
+          dragNode.y = w.y - dragOffset.y;
+          dragNode.vx = 0; dragNode.vy = 0;
+        } else if (isPanning) {
+          transform.x = t.clientX - panStart.x;
+          transform.y = t.clientY - panStart.y;
+          redrawFrame();
+        }
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (lastTouchDist > 0) {
+          const delta = dist / lastTouchDist;
+          const newScale = Math.min(3, Math.max(0.3, transform.scale * delta));
+          const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+          const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - 48;
+          transform.x = mx - (mx - transform.x) * (newScale / transform.scale);
+          transform.y = my - (my - transform.y) * (newScale / transform.scale);
+          transform.scale = newScale;
+          redrawFrame();
+        }
+        lastTouchDist = dist;
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', e => {
+      dragNode = null;
+      isPanning = false;
+      lastTouchDist = 0;
+    });
+
+    // ── Boot ──
+    fetchGraph();
+  </script>
+</body>
+</html>

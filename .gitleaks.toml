@@ -1,0 +1,35 @@
+# Gitleaks configuration — secrets detection
+title = "pdfsearchable gitleaks config"
+
+[extend]
+# Use the default gitleaks ruleset as base
+useDefault = true
+
+[[rules]]
+id = "pdfsearchable-auth-token"
+description = "pdfsearchable auth token hardcoded"
+regex = '''PDFSEARCHABLE_AUTH_TOKEN\s*=\s*["']?([a-zA-Z0-9_\-]{16,})["']?'''
+tags = ["secret", "pdfsearchable"]
+
+[[rules]]
+id = "ollama-api-key"
+description = "Possible Ollama / OpenAI API key"
+regex = '''(?i)(ollama|openai)[_-]?(api[_-]?key|token|secret)\s*=\s*["']?([a-zA-Z0-9_\-]{20,})["']?'''
+tags = ["secret", "api-key"]
+
+[allowlist]
+description = "Allowed patterns (tests, docs, examples)"
+paths = [
+    "tests/",
+    "docs/",
+    ".github/",
+    "SECURITY.md",
+    "README.md",
+]
+regexes = [
+    "your-secret-token",       # placeholder in docs
+    "s3cr3t-t0k3n-abc123",    # test fixture
+    "LEAKED_TOKEN_XYZ",        # security test
+    "senha_secreta_123",       # security test
+    "supersecret",             # security test
+]

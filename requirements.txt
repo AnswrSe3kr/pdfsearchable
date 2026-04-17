@@ -1,0 +1,23 @@
+# pdfsearchable 0.2.0 — dependências principais
+# Instalação: pip install -r requirements.txt  ou  pip install -e .
+# OCR (Tesseract), TrOCR (manuscrito) e suporte a modelos locais estão incluídos.
+
+click>=8.1
+pymupdf>=1.24
+rich>=13.7
+wordcloud>=1.9
+jinja2>=3.1.2
+pytesseract>=0.3.10
+Pillow>=10.0
+transformers>=4.45
+torch>=2.2
+numpy>=1.26
+
+# Ollama: necessário em runtime para IA local (classificação, resumo, RAG, correção OCR).
+# Não é pacote pip — instale e execute o servidor: ollama serve && ollama pull llama3.2
+# Use PDFSEARCHABLE_AI=ollama.
+
+# --- Opcionais ---
+# [ai] — OpenAI: pip install -e ".[ai]"  (openai>=1.55)
+# [tables-ocr] — img2table para tabelas em scans: pip install -e ".[tables-ocr]"
+# [dev] — Testes e lint: pip install -e ".[dev]"

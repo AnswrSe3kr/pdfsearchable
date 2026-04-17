@@ -1,0 +1,191 @@
+# CI/CD Pipeline — DevSecOps
+# Lint → Security Scan → Test (unit/integration/system) → Performance → Coverage
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # ──────────────────────────────────────────────
+  # 1. LINT & FORMAT
+  # ──────────────────────────────────────────────
+  lint:
+    name: Lint & format check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install ruff
+      - name: ruff check
+        run: ruff check src/
+      - name: ruff format check
+        run: ruff format --check src/
+
+  # ──────────────────────────────────────────────
+  # 2. SECURITY — SAST + SCA + Secrets
+  # ──────────────────────────────────────────────
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history for secrets scan
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install security tools
+        run: pip install bandit[toml] pip-audit
+
+      - name: SAST — bandit
+        run: |
+          bandit -r src/ -c pyproject.toml \
+            --format json -o bandit-report.json || true
+          bandit -r src/ -c pyproject.toml --format text
+        continue-on-error: false
+
+      - name: SCA — pip-audit (dependency vulnerabilities)
+        run: |
+          pip install -e ".[dev]"
+          pip-audit --desc on --format json -o pip-audit-report.json || true
+          pip-audit --desc on
+        continue-on-error: true   # warn, don't block on transitive vulns
+
+      - name: Secrets scan — gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            pip-audit-report.json
+
+  # ──────────────────────────────────────────────
+  # 3. TESTS (unit + integration + system + regression + security)
+  # ──────────────────────────────────────────────
+  test:
+    name: Tests — Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install system dependencies (Tesseract)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-por
+
+      - name: Install package + dev extras
+        run: pip install -e ".[dev]" pytest-cov
+
+      - name: Unit tests (white-box)
+        run: |
+          pytest tests/unit/ \
+            -q --tb=short -m "unit or white_box" \
+            --cov=pdfsearchable --cov-report=xml:coverage-unit.xml \
+            --cov-fail-under=30
+
+      - name: Integration tests (grey-box)
+        run: |
+          pytest tests/integration/ \
+            -q --tb=short -m "integration or gray_box" \
+            --cov=pdfsearchable --cov-report=xml:coverage-int.xml \
+            --cov-append
+
+      - name: System / E2E tests (black-box)
+        run: |
+          pytest tests/system/ \
+            -q --tb=short \
+            --cov=pdfsearchable --cov-report=xml:coverage-system.xml \
+            --cov-append
+
+      - name: Regression tests
+        run: |
+          pytest tests/regression/ \
+            -q --tb=short -m regression \
+            --cov=pdfsearchable --cov-report=xml:coverage-regression.xml \
+            --cov-append
+
+      - name: Security tests
+        run: |
+          pytest tests/security/ \
+            -q --tb=short -m security \
+            --cov=pdfsearchable --cov-report=xml:coverage-security.xml \
+            --cov-append
+
+      - name: Acceptance tests / UAT
+        run: |
+          pytest tests/acceptance/ \
+            -q --tb=short -m acceptance \
+            --cov=pdfsearchable --cov-report=xml:coverage-uat.xml \
+            --cov-report=term-missing \
+            --cov-append
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v4
+        with:
+          files: >-
+            coverage-unit.xml,
+            coverage-int.xml,
+            coverage-system.xml,
+            coverage-regression.xml,
+            coverage-security.xml,
+            coverage-uat.xml
+          slug: ${{ github.repository }}
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ──────────────────────────────────────────────
+  # 4. PERFORMANCE (não bloqueia merge)
+  # ──────────────────────────────────────────────
+  performance:
+    name: Performance benchmarks
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'  # só em push, não em PR
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y tesseract-ocr tesseract-ocr-por
+          pip install -e ".[dev]"
+
+      - name: Performance tests
+        run: |
+          pytest tests/performance/ \
+            -q --tb=short -m performance \
+            -v
+        continue-on-error: true  # falhas de perf são alertas, não bloqueadores

@@ -1,0 +1,3141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; base-uri 'self';">
+  <title>pdfsearchable</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <style>
+    /* ── Design Tokens (Apple HIG) ───────────────────────────────── */
+    :root {
+      --bg: #f5f5f7;
+      --bg-elevated: #ffffff;
+      --bg-secondary: #f2f2f7;
+      --text-primary: #1d1d1f;
+      --text-secondary: #6e6e73;
+      --text-tertiary: #aeaeb2;
+      --separator: rgba(0,0,0,0.1);
+      --accent: #007AFF;
+      --accent-hover: #0051d5;
+      --accent-muted: rgba(0,122,255,0.1);
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --danger: #ff3b30;
+      --fill-quaternary: rgba(0,0,0,0.04);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+      --sidebar-width: 240px;
+      --detail-width: 360px;
+      --transition: 0.2s cubic-bezier(0.25,0.46,0.45,0.94);
+    }
+    /* ── Dark Mode ───────────────────────────────────────────────── */
+    [data-theme="dark"] {
+      --bg: #000000;
+      --bg-elevated: #1c1c1e;
+      --bg-secondary: #2c2c2e;
+      --text-primary: #f5f5f7;
+      --text-secondary: #98989d;
+      --text-tertiary: #636366;
+      --separator: rgba(255,255,255,0.08);
+      --accent: #0A84FF;
+      --accent-hover: #409cff;
+      --accent-muted: rgba(10,132,255,0.15);
+      --success: #30d158;
+      --warning: #ff9f0a;
+      --danger: #ff453a;
+      --fill-quaternary: rgba(255,255,255,0.05);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.25);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+    }
+    /* ── System Dark Mode fallback ───────────────────────────────── */
+    @media (prefers-color-scheme: dark) {
+      html:not([data-theme="light"]) {
+        --bg: #000000;
+        --bg-elevated: #1c1c1e;
+        --bg-secondary: #2c2c2e;
+        --text-primary: #f5f5f7;
+        --text-secondary: #98989d;
+        --text-tertiary: #636366;
+        --separator: rgba(255,255,255,0.08);
+        --accent: #0A84FF;
+        --accent-hover: #409cff;
+        --accent-muted: rgba(10,132,255,0.15);
+        --success: #30d158;
+        --warning: #ff9f0a;
+        --danger: #ff453a;
+        --fill-quaternary: rgba(255,255,255,0.05);
+        --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.25);
+        --shadow-md: 0 4px 16px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+      }
+    }
+    /* ── Reset ───────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; }
+    body {
+      font-family: var(--font);
+      font-size: 13px;
+      line-height: 1.47;
+      background: var(--bg);
+      color: var(--text-primary);
+      height: 100%;
+      overflow: hidden;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    button { cursor: pointer; font-family: inherit; border: none; background: none; }
+    input, textarea, select {
+      font-family: inherit;
+      font-size: inherit;
+      color: var(--text-primary);
+      background: var(--bg-secondary);
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-sm);
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-muted);
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--text-tertiary); border-radius: 3px; opacity: 0.5; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+    /* ── App Shell: 3-column ─────────────────────────────────────── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    #main-layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Toolbar (48px frosted glass) ────────────────────────────── */
+    #toolbar {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      position: sticky;
+      top: 0;
+      z-index: 300;
+      background: rgba(245,245,247,0.72);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--separator);
+      flex-shrink: 0;
+    }
+    [data-theme="dark"] #toolbar {
+      background: rgba(28,28,30,0.72);
+    }
+    @media (prefers-color-scheme: dark) {
+      html:not([data-theme="light"]) #toolbar { background: rgba(28,28,30,0.72); }
+    }
+    .toolbar-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .logo-icon {
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, #007AFF 0%, #5856d6 100%);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+    .toolbar-center {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      max-width: 340px;
+      margin: 0 auto;
+    }
+    #toolbar-search {
+      width: 100%;
+      max-width: 300px;
+      padding: 6px 12px 6px 32px;
+      border-radius: 20px;
+      background: var(--fill-quaternary);
+      border: 1px solid var(--separator);
+      font-size: 13px;
+      position: relative;
+    }
+    .toolbar-search-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 300px;
+    }
+    .toolbar-search-wrap::before {
+      content: '🔍';
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 12px;
+      pointer-events: none;
+    }
+    .toolbar-right {
+      display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    }
+    .stat-chip {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: var(--fill-quaternary);
+      border: 1px solid var(--separator);
+      border-radius: 20px;
+      padding: 3px 9px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .health-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+      transition: background var(--transition);
+    }
+    .health-dot.bad { background: var(--danger); }
+    .icon-btn {
+      width: 30px; height: 30px;
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      color: var(--text-secondary);
+      transition: background var(--transition), color var(--transition);
+    }
+    .icon-btn:hover {
+      background: var(--fill-quaternary);
+      color: var(--text-primary);
+    }
+    .toolbar-link {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--accent);
+      padding: 3px 8px;
+      border-radius: 6px;
+      transition: background var(--transition);
+    }
+    .toolbar-link:hover { background: var(--accent-muted); text-decoration: none; }
+
+    /* ── Error Banner ────────────────────────────────────────────── */
+    #error-banner {
+      display: none;
+      background: var(--danger);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 16px;
+      text-align: center;
+    }
+    #error-banner.visible { display: block; }
+
+    /* ── Left Sidebar (240px) ────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-width);
+      min-width: var(--sidebar-width);
+      background: var(--bg-elevated);
+      border-right: 1px solid var(--separator);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 16px;
+    }
+    .sidebar-section { margin-top: 20px; }
+    .sidebar-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      padding: 0 14px 6px;
+    }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      margin: 1px 6px;
+      cursor: pointer;
+      transition: background var(--transition);
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+    .sidebar-item:hover { background: var(--fill-quaternary); }
+    .sidebar-item.active {
+      background: var(--accent-muted);
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .sidebar-item-emoji { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+    .sidebar-item-label { flex: 1; }
+    .sidebar-badge {
+      font-size: 11px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      background: var(--fill-quaternary);
+      color: var(--text-secondary);
+      border-radius: 10px;
+      padding: 1px 7px;
+      min-width: 22px;
+      text-align: center;
+    }
+    .sidebar-item.active .sidebar-badge {
+      background: var(--accent-muted);
+      color: var(--accent);
+    }
+    .sidebar-link {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      margin: 1px 6px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      transition: background var(--transition), color var(--transition);
+    }
+    .sidebar-link:hover { background: var(--fill-quaternary); color: var(--text-primary); text-decoration: none; }
+    .sidebar-bottom {
+      margin-top: auto;
+      padding: 16px 14px 0;
+    }
+    .version-chip {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      background: var(--fill-quaternary);
+      border-radius: 10px;
+      padding: 2px 8px;
+      display: inline-block;
+    }
+
+    /* ── Center Content Panel ────────────────────────────────────── */
+    #content {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    /* Sticky search bar below toolbar */
+    #content-search-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(245,245,247,0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--separator);
+      padding: 8px 16px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    [data-theme="dark"] #content-search-bar {
+      background: rgba(0,0,0,0.85);
+    }
+    @media (prefers-color-scheme: dark) {
+      html:not([data-theme="light"]) #content-search-bar { background: rgba(0,0,0,0.85); }
+    }
+    .search-wrap {
+      flex: 1;
+      position: relative;
+    }
+    .search-wrap::before {
+      content: '🔍';
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 11px;
+      pointer-events: none;
+    }
+    #search-input {
+      width: 100%;
+      padding: 7px 32px 7px 30px;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+    #search-clear {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--text-tertiary);
+      color: var(--bg-elevated);
+      font-size: 10px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    #search-clear.visible { display: flex; }
+    #sort-select {
+      padding: 7px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--separator);
+    }
+    .view-toggle {
+      display: flex;
+      gap: 2px;
+      background: var(--fill-quaternary);
+      border-radius: var(--radius-sm);
+      padding: 2px;
+    }
+    .view-btn {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-secondary);
+      transition: background var(--transition), color var(--transition);
+    }
+    .view-btn.active { background: var(--bg-elevated); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+
+    /* ── Stats Strip ─────────────────────────────────────────────── */
+    #stats-strip {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      padding: 12px 16px 8px;
+      min-width: 0;
+    }
+    @media (max-width: 1100px) {
+      #stats-strip { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 600px) {
+      #stats-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat-card {
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--separator);
+      position: relative;
+    }
+    .stat-card.warn { border-color: #f59e0b; }
+    .stat-card.bad { border-color: #dc2626; }
+    .stat-card-num {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-primary);
+    }
+    .stat-card-sub {
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-top: 1px;
+      opacity: 0.8;
+    }
+    .stat-card-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* ── Dashboard panels ────────────────────────────────────────── */
+    #dashboard-extra { padding: 0 16px 12px; display: grid; gap: 10px; }
+    @media (min-width: 900px) {
+      #dashboard-extra { grid-template-columns: 1fr 1fr; }
+    }
+    .panel {
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--separator);
+    }
+    .panel-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      margin: 0 0 8px;
+      font-weight: 600;
+    }
+    .panel-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3px 0;
+      font-size: 12px;
+      border-bottom: 1px dashed var(--separator);
+    }
+    .panel-row:last-child { border-bottom: none; }
+    .panel-row .lbl { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px; }
+    .panel-row .val { font-variant-numeric: tabular-nums; color: var(--text-primary); font-weight: 600; flex-shrink: 0; }
+    .alert-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 4px 6px; font-size: 11px; border-radius: 4px;
+      background: rgba(245,158,11,0.08); margin-bottom: 3px;
+      cursor: pointer;
+    }
+    .alert-row:hover { background: rgba(245,158,11,0.16); }
+    .alert-row.bad { background: rgba(220,38,38,0.08); }
+    .alert-row.bad:hover { background: rgba(220,38,38,0.16); }
+    .alert-empty { font-size: 11px; color: var(--text-secondary); font-style: italic; padding: 6px 0; }
+    .bar-chart { display: flex; flex-direction: column; gap: 4px; }
+    .bar-row { display: grid; grid-template-columns: 110px 1fr auto; gap: 6px; align-items: center; font-size: 11px; }
+    .bar-row .bar-lbl { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-row .bar-val { font-variant-numeric: tabular-nums; color: var(--text-primary); font-weight: 600; }
+    .bar-row .bar-fill-wrap { background: var(--separator); border-radius: 3px; height: 6px; overflow: hidden; }
+    .bar-row .bar-fill { background: var(--accent, #4f46e5); height: 100%; border-radius: 3px; transition: width 0.3s; }
+    .sparkline { width: 100%; height: 36px; display: block; }
+    .sparkline path { fill: none; stroke: var(--accent, #4f46e5); stroke-width: 1.5; }
+    .sparkline .fill { fill: rgba(79,70,229,0.12); stroke: none; }
+
+    /* ── Document List ───────────────────────────────────────────── */
+    #doc-list-wrap { padding: 8px 16px 16px; flex: 1; }
+    #doc-list.grid-view {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 10px;
+    }
+    #doc-list.list-view {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .doc-card {
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--separator);
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+      padding: 12px 14px;
+      user-select: none;
+      position: relative;
+    }
+    .doc-card:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+    .doc-card.selected {
+      border-color: var(--accent);
+      border-left: 3px solid var(--accent);
+    }
+    .doc-card-header { display: flex; gap: 8px; align-items: flex-start; }
+    .doc-emoji { font-size: 22px; line-height: 1; flex-shrink: 0; margin-top: 1px; }
+    .doc-card-body { flex: 1; min-width: 0; }
+    .doc-name {
+      font-weight: 600;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-primary);
+    }
+    .doc-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 5px;
+      align-items: center;
+    }
+    .doc-meta-item {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    .doc-meta-sep { color: var(--text-tertiary); font-size: 10px; }
+    .badge {
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: var(--fill-quaternary);
+      color: var(--text-secondary);
+      border: 1px solid var(--separator);
+      white-space: nowrap;
+    }
+    .badge-accent { background: var(--accent-muted); color: var(--accent); border-color: transparent; }
+    .badge-success { background: rgba(52,199,89,0.1); color: var(--success); border-color: transparent; }
+    .tag-pill {
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: var(--accent-muted);
+      color: var(--accent);
+    }
+    /* list view card adjustments */
+    #doc-list.list-view .doc-card { padding: 9px 14px; }
+    #doc-list.list-view .doc-card-header { align-items: center; }
+    #doc-list.list-view .doc-emoji { font-size: 16px; }
+
+    /* ── Skeleton Loading ────────────────────────────────────────── */
+    .skeleton {
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--separator);
+      padding: 14px;
+      overflow: hidden;
+      position: relative;
+    }
+    .skeleton::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, var(--fill-quaternary) 50%, transparent 100%);
+      animation: shimmer 1.4s infinite;
+    }
+    .skeleton-line {
+      height: 12px;
+      border-radius: 6px;
+      background: var(--fill-quaternary);
+      margin-bottom: 8px;
+    }
+    .skeleton-line:last-child { margin-bottom: 0; width: 60%; }
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    /* ── Empty State ─────────────────────────────────────────────── */
+    #empty-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 32px;
+      flex: 1;
+    }
+    #empty-state.visible { display: flex; }
+    .empty-icon {
+      width: 80px; height: 80px;
+      background: linear-gradient(135deg, var(--accent-muted), rgba(88,86,214,0.1));
+      border-radius: 24px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+      margin-bottom: 20px;
+    }
+    .empty-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+    .empty-sub {
+      font-size: 13px;
+      color: var(--text-secondary);
+      max-width: 280px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .empty-code {
+      background: var(--bg-secondary);
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      color: var(--accent);
+    }
+
+    /* ── Detail Panel (360px, slides in) ────────────────────────── */
+    #detail {
+      width: var(--detail-width);
+      min-width: var(--detail-width);
+      background: var(--bg-elevated);
+      border-left: 1px solid var(--separator);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: translateX(100%);
+      transition: transform var(--transition);
+      /* When closed: hide from layout too */
+      margin-right: calc(-1 * var(--detail-width));
+      transition: transform var(--transition), margin-right var(--transition);
+    }
+    #detail.open {
+      transform: translateX(0);
+      margin-right: 0;
+    }
+    .detail-header {
+      padding: 12px 14px 0;
+      border-bottom: 1px solid var(--separator);
+      flex-shrink: 0;
+    }
+    .detail-header-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding-bottom: 10px;
+    }
+    .detail-title {
+      flex: 1;
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .detail-close {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--fill-quaternary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+      transition: background var(--transition);
+    }
+    .detail-close:hover { background: var(--bg-secondary); color: var(--text-primary); }
+
+    /* Tabs */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      padding: 0 4px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 8px 4px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-bottom: 2px solid transparent;
+      text-align: center;
+      transition: color var(--transition), border-color var(--transition);
+    }
+    .tab-btn:hover { color: var(--text-primary); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-panel { display: none; flex: 1; overflow-y: auto; padding: 14px; }
+    .tab-panel.active { display: block; }
+
+    /* Metadata tab */
+    .meta-summary {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      background: var(--fill-quaternary);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      margin-bottom: 14px;
+    }
+    .meta-field { margin-bottom: 12px; }
+    .meta-field-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      margin-bottom: 4px;
+    }
+    .meta-field-row { display: flex; gap: 6px; align-items: center; }
+    .meta-field-row input, .meta-field-row select {
+      flex: 1;
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+    }
+    .save-btn {
+      width: 28px; height: 28px;
+      border-radius: var(--radius-sm);
+      background: var(--accent-muted);
+      color: var(--accent);
+      font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background var(--transition);
+    }
+    .save-btn:hover { background: var(--accent); color: #fff; }
+    .tags-input-wrap { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .tag-remove {
+      font-size: 9px;
+      margin-left: 2px;
+      color: inherit;
+      opacity: 0.7;
+    }
+    .tags-text-input {
+      border: none;
+      background: transparent;
+      min-width: 80px;
+      flex: 1;
+      padding: 2px 4px;
+      font-size: 12px;
+    }
+    .tags-text-input:focus { box-shadow: none; border: none; }
+    .tags-container {
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+      min-height: 34px;
+      background: var(--bg-secondary);
+      cursor: text;
+      flex: 1;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+      margin-bottom: 12px;
+    }
+    .meta-grid-item {
+      background: var(--fill-quaternary);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+    }
+    .meta-grid-key {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      margin-bottom: 2px;
+    }
+    .meta-grid-val {
+      font-size: 12px;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-primary);
+    }
+    .collapsible-section { margin-top: 10px; }
+    .collapsible-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 6px 0;
+      border-top: 1px solid var(--separator);
+      user-select: none;
+    }
+    .collapsible-header:hover { color: var(--text-primary); }
+    .collapsible-arrow { font-size: 9px; transition: transform var(--transition); }
+    .collapsible-body { padding: 6px 0; font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+    .collapsible-body.hidden { display: none; }
+    .collapsible-header.open .collapsible-arrow { transform: rotate(90deg); }
+    /* Editable entity lists (phones, emails, CPFs) */
+    .entity-edit-list { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; min-height: 4px; }
+    .entity-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500;
+      background: var(--fill-quaternary); color: var(--text-primary);
+      border: 1px solid var(--separator);
+    }
+    .entity-pill-remove {
+      font-size: 10px; opacity: 0.55; cursor: pointer;
+      background: none; border: none; padding: 0 0 0 2px; line-height: 1;
+      color: inherit;
+    }
+    .entity-pill-remove:hover { opacity: 1; color: var(--danger, #ff3b30); }
+    .entity-add-row { display: flex; gap: 6px; margin-top: 2px; }
+    .entity-add-input {
+      flex: 1; font-size: 12px; min-width: 0;
+      border: 1px solid var(--separator); border-radius: var(--radius-sm);
+      padding: 4px 8px; background: var(--bg-secondary); color: var(--text-primary);
+    }
+    .entity-add-input:focus { outline: none; border-color: var(--accent); }
+    .entity-add-input.invalid { border-color: var(--danger, #ff3b30); }
+    .entity-add-btn {
+      font-size: 11px; padding: 4px 10px; white-space: nowrap;
+      border: 1px solid var(--separator); border-radius: var(--radius-sm);
+      background: var(--fill-secondary); color: var(--text-primary); cursor: pointer;
+    }
+    .entity-add-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .forensics-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 500;
+      margin-top: 8px;
+    }
+    .forensics-badge.risk-low { background: rgba(52,199,89,0.1); color: var(--success); }
+    .forensics-badge.risk-med { background: rgba(255,159,10,0.1); color: var(--warning); }
+    .forensics-badge.risk-high { background: rgba(255,59,48,0.1); color: var(--danger); }
+
+    /* Highlight pills for detected entities */
+    .highlight-strip { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .hl-pill {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 7px; border-radius: 10px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    .hl-pill-cpf      { background: rgba(88,86,214,0.12); color: #5856d6; }
+    .hl-pill-cnpj     { background: rgba(0,122,255,0.12); color: #007aff; }
+    .hl-pill-email    { background: rgba(52,199,89,0.12); color: #34c759; }
+    .hl-pill-ip       { background: rgba(255,159,10,0.12); color: #ff9f0a; }
+    .hl-pill-sig      { background: rgba(175,82,222,0.12); color: #af52de; }
+    .hl-pill-conf     { background: rgba(255,59,48,0.12); color: #ff3b30; }
+    .hl-pill-meta     { background: rgba(90,200,250,0.12); color: #5ac8fa; }
+    .hl-pill-conf.public { background: rgba(52,199,89,0.12); color: #34c759; }
+    .hl-pill-url      { background: rgba(0,122,255,0.12); color: #007aff; }
+    .hl-pill-domain   { background: rgba(48,176,199,0.12); color: #30b0c7; }
+    .hl-pill-phone    { background: rgba(88,86,214,0.12); color: #5856d6; }
+    .hl-pill-cep      { background: rgba(162,132,94,0.12); color: #a2845e; }
+    .hl-pill-proc     { background: rgba(255,69,58,0.12); color: #ff453a; }
+    .hl-pill-placa    { background: rgba(99,99,102,0.12); color: #636366; }
+    .hl-pill-rg       { background: rgba(175,82,222,0.12); color: #af52de; }
+    .hl-pill-proto    { background: rgba(0,122,255,0.12); color: #007aff; }
+    .hl-pill-hash     { background: rgba(99,99,102,0.12); color: #636366; }
+    .hl-pill-coord    { background: rgba(52,199,89,0.12); color: #34c759; }
+    .hl-pill-ts       { background: rgba(255,159,10,0.12); color: #ff9f0a; }
+    .hl-pill-lei      { background: rgba(255,69,58,0.12); color: #ff453a; }
+    .hl-pill-money    { background: rgba(52,199,89,0.12); color: #34c759; }
+    .hl-pill-date     { background: rgba(255,159,10,0.12); color: #ff9f0a; }
+    .hl-pill-ocr      { background: rgba(255,59,48,0.12); color: #ff3b30; }
+    @media (prefers-color-scheme: dark) {
+      .hl-pill-cpf,.hl-pill-phone,.hl-pill-rg { background: rgba(88,86,214,0.2); }
+      .hl-pill-cnpj,.hl-pill-url,.hl-pill-proto { background: rgba(0,122,255,0.2); }
+      .hl-pill-email,.hl-pill-coord,.hl-pill-money { background: rgba(52,199,89,0.2); }
+      .hl-pill-ip,.hl-pill-ts,.hl-pill-date { background: rgba(255,159,10,0.2); }
+      .hl-pill-sig      { background: rgba(175,82,222,0.2); }
+      .hl-pill-conf,.hl-pill-proc,.hl-pill-lei,.hl-pill-ocr { background: rgba(255,59,48,0.2); }
+      .hl-pill-meta,.hl-pill-domain { background: rgba(90,200,250,0.2); }
+      .hl-pill-conf.public { background: rgba(52,199,89,0.2); }
+      .hl-pill-cep      { background: rgba(162,132,94,0.2); }
+      .hl-pill-placa,.hl-pill-hash { background: rgba(99,99,102,0.2); }
+    }
+    .entity-list { font-size: 12px; color: var(--text-secondary); line-height: 1.7; word-break: break-all; }
+    .entity-item { padding: 2px 0; border-bottom: 1px solid var(--separator-light, rgba(128,128,128,0.1)); }
+    .entity-item:last-child { border-bottom: none; }
+
+    /* Annotations tab */
+    .annotation-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .annotation-item {
+      background: var(--fill-quaternary);
+      border-radius: var(--radius-sm);
+      padding: 9px 10px;
+      border-left: 3px solid var(--accent);
+    }
+    .annotation-item-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .annotation-page-badge { font-size: 10px; color: var(--text-secondary); }
+    .annotation-text { font-size: 12px; color: var(--text-primary); line-height: 1.5; }
+    .annotation-note { font-size: 11px; color: var(--text-secondary); margin-top: 3px; font-style: italic; }
+    .new-annot-form {
+      background: var(--fill-quaternary);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      border: 1px solid var(--separator);
+    }
+    .new-annot-form h4 { font-size: 12px; font-weight: 600; margin-bottom: 10px; }
+    .form-row { margin-bottom: 8px; }
+    .form-row label { font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 3px; }
+    .form-row input, .form-row textarea, .form-row select {
+      width: 100%;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    .form-row textarea { resize: vertical; min-height: 60px; }
+    .color-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .color-chip {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color var(--transition), transform var(--transition);
+    }
+    .color-chip.selected { border-color: var(--text-primary); transform: scale(1.15); }
+    .btn-primary {
+      width: 100%;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      text-align: center;
+      transition: background var(--transition), opacity var(--transition);
+      margin-top: 8px;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary {
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--fill-quaternary);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid var(--separator);
+      transition: background var(--transition);
+    }
+    .btn-secondary:hover { background: var(--bg-secondary); }
+
+    /* AI Ask tab */
+    .ai-question {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      resize: vertical;
+      min-height: 80px;
+      margin-bottom: 8px;
+    }
+    #ai-answer-block {
+      background: var(--fill-quaternary);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 60px;
+      margin-top: 10px;
+    }
+    .ollama-notice {
+      text-align: center;
+      padding: 24px 16px;
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+    .ollama-notice .notice-icon { font-size: 28px; margin-bottom: 8px; }
+
+    /* ── Shortcuts Modal ─────────────────────────────────────────── */
+    /* Toast notifications */
+    #toast-container {
+      position: fixed; top: 16px; right: 16px; z-index: 9999;
+      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+      max-width: 360px;
+    }
+    .toast {
+      background: var(--panel); color: var(--fg);
+      border: 1px solid var(--border); border-left: 3px solid var(--accent);
+      padding: 10px 14px; border-radius: 6px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+      font-size: 13px; pointer-events: auto;
+      animation: toastIn 0.25s ease-out;
+    }
+    .toast.ok    { border-left-color: #10b981; }
+    .toast.warn  { border-left-color: #f59e0b; }
+    .toast.error { border-left-color: #ef4444; }
+    .toast.fade  { opacity: 0; transform: translateX(8px); transition: all 0.3s; }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    #shortcuts-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(4px);
+    }
+    #shortcuts-modal.visible { display: flex; }
+    .modal-box {
+      background: var(--bg-elevated);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-md);
+      padding: 24px;
+      width: 320px;
+      border: 1px solid var(--separator);
+    }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .shortcut-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--separator);
+      font-size: 12px;
+    }
+    .shortcut-row:last-child { border-bottom: none; }
+    .shortcut-desc { color: var(--text-secondary); }
+    .shortcut-key {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 11px;
+      background: var(--fill-quaternary);
+      border: 1px solid var(--separator);
+      border-radius: 5px;
+      padding: 2px 6px;
+      color: var(--text-primary);
+    }
+    .modal-close-btn {
+      margin-top: 16px;
+      width: 100%;
+      padding: 8px;
+      border-radius: var(--radius-sm);
+      background: var(--fill-quaternary);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      transition: background var(--transition);
+    }
+    .modal-close-btn:hover { background: var(--bg-secondary); }
+
+    /* ── Search Results highlight ────────────────────────────────── */
+    .search-snippet { font-size: 11px; color: var(--text-secondary); margin-top: 3px; line-height: 1.5; }
+    .search-score {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      font-variant-numeric: tabular-nums;
+    }
+    mark { background: rgba(255,204,0,0.35); border-radius: 2px; padding: 0 1px; color: inherit; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Toolbar ────────────────────────────────────────────────── -->
+  <header id="toolbar" role="banner">
+    <!-- Logo -->
+    <div class="toolbar-logo">
+      <div class="logo-icon">🔍</div>
+      <span>pdfsearchable</span>
+    </div>
+
+    <!-- Center global search -->
+    <div class="toolbar-center">
+      <div class="toolbar-search-wrap">
+        <input id="toolbar-search" type="search" placeholder="Pesquisar documentos…" autocomplete="off" aria-label="Pesquisa global">
+      </div>
+    </div>
+
+    <!-- Right: stats, health, theme, links -->
+    <div class="toolbar-right">
+      <span id="stat-docs" class="stat-chip">— docs</span>
+      <span id="stat-pages" class="stat-chip">— pág</span>
+      <div id="health-dot" class="health-dot" title="Estado do sistema"></div>
+      <button class="icon-btn" id="theme-toggle" title="Alternar tema" aria-label="Alternar tema">☀️</button>
+      <a class="toolbar-link" href="graph.html" target="_blank" title="Grafo de conhecimento">🕸 Grafo</a>
+      <a class="toolbar-link" href="timeline.html" target="_blank" title="Linha do tempo">📅 Linha</a>
+      <a class="toolbar-link" href="wordcloud.html" target="_blank" title="Nuvem de palavras">☁️ Nuvem</a>
+      <a class="toolbar-link" href="map.html" target="_blank" title="Mapa de locais">🗺️ Mapa</a>
+      <button class="icon-btn" id="shortcuts-btn" title="Atalhos (⌘/)">⌨️</button>
+    </div>
+  </header>
+
+  <!-- ── Error Banner ───────────────────────────────────────────── -->
+  <div id="error-banner" role="alert">⚠ Índice com problemas — verifique o serviço pdfsearchable</div>
+
+  <!-- ── Main 3-column layout ──────────────────────────────────── -->
+  <div id="main-layout">
+
+    <!-- ── Left Sidebar ───────────────────────────────────────── -->
+    <nav id="sidebar" aria-label="Navegação">
+      <!-- BIBLIOTECA section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">Biblioteca</div>
+        <div class="sidebar-item active" id="nav-all" data-filter="">
+          <span class="sidebar-item-emoji">📚</span>
+          <span class="sidebar-item-label">Todos os documentos</span>
+          <span class="sidebar-badge" id="nav-all-count">0</span>
+        </div>
+      </div>
+
+      <!-- TIPOS section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">Tipos</div>
+        <div id="type-filters"></div>
+      </div>
+
+      <!-- FERRAMENTAS section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">Ferramentas</div>
+        <a class="sidebar-link" href="graph.html" target="_blank">
+          <span>🕸</span> Grafo de Conhecimento
+        </a>
+        <a class="sidebar-link" href="timeline.html" target="_blank">
+          <span>📅</span> Linha do Tempo
+        </a>
+        <a class="sidebar-link" href="wordcloud.html" target="_blank">
+          <span>☁️</span> Nuvem de Palavras
+        </a>
+        <a class="sidebar-link" href="map.html" target="_blank">
+          <span>🗺️</span> Mapa de Locais
+        </a>
+      </div>
+
+      <div class="sidebar-bottom">
+        <span class="version-chip">v0.4.0</span>
+      </div>
+    </nav>
+
+    <!-- ── Center Content ─────────────────────────────────────── -->
+    <main id="content" role="main">
+      <!-- Sticky search bar -->
+      <div id="content-search-bar">
+        <div class="search-wrap">
+          <input id="search-input" type="search" placeholder="Pesquisar…" autocomplete="off" aria-label="Pesquisar documentos">
+          <span id="search-clear" class="search-clear" role="button" aria-label="Limpar pesquisa" tabindex="0">×</span>
+        </div>
+        <select id="sort-select" aria-label="Ordenar por">
+          <option value="recent">Recente</option>
+          <option value="name">Nome</option>
+          <option value="type">Tipo</option>
+          <option value="size">Tamanho</option>
+        </select>
+        <div class="view-toggle" role="group" aria-label="Modo de visualização">
+          <button class="view-btn active" id="view-grid" title="Grelha" aria-pressed="true">⊞</button>
+          <button class="view-btn" id="view-list" title="Lista" aria-pressed="false">☰</button>
+        </div>
+      </div>
+
+      <!-- Stats strip (hidden during search) -->
+      <div id="stats-strip">
+        <div class="stat-card">
+          <div class="stat-card-num" id="s-docs">—</div>
+          <div class="stat-card-label">Documentos</div>
+          <div class="stat-card-sub" id="s-docs-sub"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-num" id="s-pages">—</div>
+          <div class="stat-card-label">Páginas</div>
+          <div class="stat-card-sub" id="s-pages-sub"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-num" id="s-size">—</div>
+          <div class="stat-card-label">Tamanho total</div>
+          <div class="stat-card-sub" id="s-size-sub"></div>
+        </div>
+        <div class="stat-card" id="s-ocr-card">
+          <div class="stat-card-num" id="s-ocr">—</div>
+          <div class="stat-card-label">Confiança OCR</div>
+          <div class="stat-card-sub" id="s-ocr-sub"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-num" id="s-entities">—</div>
+          <div class="stat-card-label">Entidades</div>
+          <div class="stat-card-sub" id="s-entities-sub"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-num" id="s-langs">—</div>
+          <div class="stat-card-label">Idiomas</div>
+          <div class="stat-card-sub" id="s-langs-sub"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-num" id="s-semantic">—</div>
+          <div class="stat-card-label">Embeddings RAG</div>
+          <div class="stat-card-sub" id="s-semantic-sub"></div>
+        </div>
+        <div class="stat-card" id="s-alerts-card">
+          <div class="stat-card-num" id="s-alerts">—</div>
+          <div class="stat-card-label">Alertas</div>
+          <div class="stat-card-sub" id="s-alerts-sub"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-num" id="s-extended">—</div>
+          <div class="stat-card-label">Dados estendidos</div>
+          <div class="stat-card-sub" id="s-extended-sub"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-num" id="s-indexing">—</div>
+          <div class="stat-card-label">Última indexação</div>
+          <div class="stat-card-sub" id="s-indexing-sub"></div>
+        </div>
+      </div>
+
+      <!-- Dashboard extra panels (hidden during search) -->
+      <div id="dashboard-extra">
+        <div class="panel">
+          <div class="panel-title">Linha do tempo de indexação (90 dias)</div>
+          <svg class="sparkline" id="timeline-spark" viewBox="0 0 300 36" preserveAspectRatio="none"></svg>
+          <div id="timeline-info" class="stat-card-sub" style="margin-top:4px;"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Distribuição de tipos</div>
+          <div class="bar-chart" id="types-chart"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Top partes / pessoas</div>
+          <div class="bar-chart" id="parties-chart"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Top localizações</div>
+          <div class="bar-chart" id="locations-chart"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Dados estendidos (PDF)</div>
+          <div id="extended-rows"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Distribuição de tamanho</div>
+          <div class="bar-chart" id="size-chart"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Ferramentas criadoras (XMP)</div>
+          <div class="bar-chart" id="creators-chart"></div>
+          <div id="creators-empty" class="alert-empty" style="display:none;">Sem metadados XMP nos documentos atuais.</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">Alertas</div>
+          <div id="alerts-list"></div>
+        </div>
+      </div>
+
+      <!-- Document list -->
+      <div id="doc-list-wrap">
+        <div id="doc-list" class="grid-view" role="list" aria-label="Lista de documentos"></div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="empty-state" role="status" aria-live="polite">
+        <div class="empty-icon">📄</div>
+        <div class="empty-title">Nenhum documento indexado</div>
+        <div class="empty-sub">Adicione PDFs com o comando abaixo para começar a pesquisar.</div>
+        <div class="empty-code">pdfsearchable add arquivo.pdf</div>
+      </div>
+    </main>
+
+    <!-- ── Detail Panel ────────────────────────────────────────── -->
+    <aside id="detail" aria-label="Detalhes do documento">
+      <div class="detail-header">
+        <div class="detail-header-top">
+          <div class="detail-title" id="detail-title">—</div>
+          <button class="detail-close" id="detail-close" aria-label="Fechar painel">×</button>
+        </div>
+        <!-- Tab bar -->
+        <div class="tab-bar" role="tablist">
+          <button class="tab-btn active" data-tab="meta" role="tab" aria-selected="true">Metadados</button>
+          <button class="tab-btn" data-tab="viewer" role="tab" aria-selected="false">Visualizar</button>
+          <button class="tab-btn" data-tab="annotations" role="tab" aria-selected="false">Anotações</button>
+          <button class="tab-btn" data-tab="ai" role="tab" aria-selected="false" id="ai-tab-btn">Perguntar IA</button>
+        </div>
+      </div>
+
+      <!-- Tab: Metadados -->
+      <div class="tab-panel active" id="tab-meta" role="tabpanel">
+        <!-- Summary -->
+        <div id="meta-summary" class="meta-summary" style="display:none"></div>
+
+        <!-- Editable fields -->
+        <div class="meta-field">
+          <div class="meta-field-label">Tipo</div>
+          <div class="meta-field-row">
+            <select id="edit-type">
+              <option value="documento">documento</option>
+              <option value="contrato">contrato</option>
+              <option value="fatura">fatura</option>
+              <option value="nota_fiscal">nota_fiscal</option>
+              <option value="relatorio">relatorio</option>
+              <option value="memorando">memorando</option>
+              <option value="oficio">oficio</option>
+              <option value="procuracao">procuracao</option>
+              <option value="certidao">certidao</option>
+              <option value="laudo">laudo</option>
+              <option value="ata">ata</option>
+              <option value="proposta">proposta</option>
+              <option value="edital">edital</option>
+              <option value="declaracao">declaracao</option>
+            </select>
+            <button class="save-btn" id="save-type" title="Salvar tipo" aria-label="Salvar tipo">✓</button>
+          </div>
+        </div>
+
+        <div class="meta-field">
+          <div class="meta-field-label">Assunto</div>
+          <div class="meta-field-row">
+            <input type="text" id="edit-subject" placeholder="Assunto do documento…">
+            <button class="save-btn" id="save-subject" title="Salvar assunto" aria-label="Salvar assunto">✓</button>
+          </div>
+        </div>
+
+        <div class="meta-field">
+          <div class="meta-field-label">Tags</div>
+          <div class="meta-field-row">
+            <div class="tags-container" id="tags-container" role="group" aria-label="Tags">
+              <input class="tags-text-input" id="tags-input" type="text" placeholder="Adicionar tag…" aria-label="Nova tag">
+            </div>
+            <button class="save-btn" id="save-tags" title="Salvar tags" aria-label="Salvar tags">✓</button>
+          </div>
+        </div>
+
+        <!-- Metadata grid -->
+        <div class="meta-grid">
+          <div class="meta-grid-item"><div class="meta-grid-key">Páginas</div><div class="meta-grid-val" id="mg-pages">—</div></div>
+          <div class="meta-grid-item"><div class="meta-grid-key">Palavras</div><div class="meta-grid-val" id="mg-words">—</div></div>
+          <div class="meta-grid-item"><div class="meta-grid-key">Tamanho</div><div class="meta-grid-val" id="mg-size">—</div></div>
+          <div class="meta-grid-item"><div class="meta-grid-key">Idioma</div><div class="meta-grid-val" id="mg-lang">—</div></div>
+          <div class="meta-grid-item"><div class="meta-grid-key">Indexado em</div><div class="meta-grid-val" id="mg-indexed">—</div></div>
+          <div class="meta-grid-item"><div class="meta-grid-key">OCR %</div><div class="meta-grid-val" id="mg-ocr">—</div></div>
+        </div>
+
+        <!-- Collapsible extras -->
+        <div id="section-parties" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>Partes</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-parties"></div>
+        </div>
+        <div id="section-money" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>Valores monetários</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-money"></div>
+        </div>
+        <div id="section-emails" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>E-mails identificados</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-emails"></div>
+        </div>
+        <div id="section-cpfs" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>CPFs identificados</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-cpfs"></div>
+        </div>
+        <div id="section-cnpjs" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>CNPJs identificados</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-cnpjs"></div>
+        </div>
+        <div id="section-ips" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>IPs identificados</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-ips"></div>
+        </div>
+        <div id="section-phones" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>Telefones</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-phones"></div>
+        </div>
+        <div id="section-urls" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>URLs</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-urls"></div>
+        </div>
+        <div id="section-domains" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>Domínios</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-domains"></div>
+        </div>
+        <div id="section-ceps" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>CEPs</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-ceps"></div>
+        </div>
+        <div id="section-processos" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>Processos judiciais</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-processos"></div>
+        </div>
+        <div id="section-placas" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>Placas de veículos</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-placas"></div>
+        </div>
+        <div id="section-rgs" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>RGs / Identidades</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-rgs"></div>
+        </div>
+        <div id="section-protocolos" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>Protocolos / Referências</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-protocolos"></div>
+        </div>
+        <div id="section-hashes" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>Hashes (MD5/SHA)</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-hashes"></div>
+        </div>
+        <div id="section-coords" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>Coordenadas GPS</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-coords"></div>
+        </div>
+        <div id="section-timestamps" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>Timestamps</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-timestamps"></div>
+        </div>
+        <div id="section-leis" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>Referências legais</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-leis"></div>
+        </div>
+        <div id="section-sigs" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>Assinaturas digitais</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-sigs"></div>
+        </div>
+        <div id="section-pdfmeta" class="collapsible-section" style="display:none">
+          <div class="collapsible-header" onclick="toggleSection(this)">
+            <span>Metadados do arquivo</span><span class="collapsible-arrow">▶</span>
+          </div>
+          <div class="collapsible-body hidden" id="body-pdfmeta"></div>
+        </div>
+
+        <!-- Highlight strip: pills for detected items -->
+        <div id="detail-highlights" class="highlight-strip" style="margin-top:10px"></div>
+
+        <!-- Forensics, redaction, contract badges -->
+        <div id="detail-badges" style="margin-top:10px"></div>
+      </div>
+
+      <!-- Tab: Visualizador PDF -->
+      <div class="tab-panel" id="tab-viewer" role="tabpanel" style="padding:0; display:flex; flex-direction:column;">
+        <div class="viewer-toolbar" style="padding:8px 12px; border-bottom:1px solid var(--border); display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <input id="viewer-search" type="text" placeholder="Pesquisar no documento… (Enter)"
+                 style="flex:1; min-width:160px; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--fg);">
+          <button id="viewer-search-btn" class="save-btn" title="Pesquisar" aria-label="Pesquisar">🔎</button>
+          <a id="viewer-open-ext" href="#" target="_blank" rel="noopener" class="save-btn" title="Abrir em nova aba" aria-label="Abrir em nova aba">↗</a>
+          <a id="viewer-download" href="#" download class="save-btn" title="Descarregar PDF" aria-label="Descarregar PDF">⬇</a>
+        </div>
+        <div id="viewer-status" style="padding:6px 12px; font-size:12px; color:var(--muted); display:none;"></div>
+        <iframe id="viewer-iframe" title="Visualizador PDF" style="flex:1; width:100%; min-height:60vh; border:0; background:#222;"></iframe>
+      </div>
+
+      <!-- Tab: Anotações -->
+      <div class="tab-panel" id="tab-annotations" role="tabpanel">
+        <div class="annotation-list" id="annotation-list"></div>
+        <div class="new-annot-form">
+          <h4>Nova anotação</h4>
+          <div class="form-row">
+            <label for="annot-type">Tipo</label>
+            <select id="annot-type">
+              <option value="highlight">highlight</option>
+              <option value="note">note</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="annot-page">Página</label>
+            <input type="number" id="annot-page" min="1" placeholder="1">
+          </div>
+          <div class="form-row">
+            <label for="annot-text">Texto</label>
+            <textarea id="annot-text" placeholder="Texto anotado…"></textarea>
+          </div>
+          <div class="form-row">
+            <label for="annot-note">Nota (opcional)</label>
+            <input type="text" id="annot-note" placeholder="Nota adicional…">
+          </div>
+          <div class="form-row">
+            <label>Cor</label>
+            <div class="color-chips" id="color-chips" role="group" aria-label="Escolher cor">
+              <span class="color-chip selected" style="background:#FFFF00" data-color="#FFFF00" title="Amarelo" role="button" tabindex="0" aria-pressed="true"></span>
+              <span class="color-chip" style="background:#FF6B6B" data-color="#FF6B6B" title="Vermelho" role="button" tabindex="0"></span>
+              <span class="color-chip" style="background:#4ECDC4" data-color="#4ECDC4" title="Turquesa" role="button" tabindex="0"></span>
+              <span class="color-chip" style="background:#45B7D1" data-color="#45B7D1" title="Azul" role="button" tabindex="0"></span>
+              <span class="color-chip" style="background:#96CEB4" data-color="#96CEB4" title="Verde" role="button" tabindex="0"></span>
+              <span class="color-chip" style="background:#FFEAA7" data-color="#FFEAA7" title="Amarelo claro" role="button" tabindex="0"></span>
+            </div>
+          </div>
+          <button class="btn-primary" id="add-annot-btn">Adicionar anotação</button>
+        </div>
+      </div>
+
+      <!-- Tab: Perguntar IA -->
+      <div class="tab-panel" id="tab-ai" role="tabpanel">
+        <div id="ai-panel-content">
+          <!-- Shown when Ollama is active -->
+          <div id="ai-active" style="display:none">
+            <textarea class="ai-question" id="ai-question" placeholder="Faça uma pergunta sobre este documento…" aria-label="Pergunta para IA"></textarea>
+            <button class="btn-primary" id="ai-ask-btn">Perguntar</button>
+            <pre id="ai-answer-block" aria-live="polite" aria-label="Resposta da IA"></pre>
+          </div>
+          <!-- Shown when Ollama is not active -->
+          <div id="ai-inactive" class="ollama-notice">
+            <div class="notice-icon">🤖</div>
+            <div>Ollama não activo</div>
+            <div style="margin-top:4px;font-size:11px;color:var(--text-tertiary)">Inicie o Ollama para usar perguntas em linguagem natural.</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div><!-- /#main-layout -->
+</div><!-- /#app -->
+
+<!-- ── Toast notifications ─────────────────────────────────────── -->
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ── Keyboard Shortcuts Modal ───────────────────────────────── -->
+<div id="shortcuts-modal" role="dialog" aria-modal="true" aria-label="Atalhos de teclado">
+  <div class="modal-box">
+    <div class="modal-title">Atalhos de teclado</div>
+    <div class="shortcut-row">
+      <span class="shortcut-desc">Focar pesquisa</span>
+      <span class="shortcut-key">⌘K</span>
+    </div>
+    <div class="shortcut-row">
+      <span class="shortcut-desc">Fechar painel / limpar</span>
+      <span class="shortcut-key">Esc</span>
+    </div>
+    <div class="shortcut-row">
+      <span class="shortcut-desc">Navegar lista</span>
+      <span class="shortcut-key">↑ ↓</span>
+    </div>
+    <div class="shortcut-row">
+      <span class="shortcut-desc">Mostrar atalhos</span>
+      <span class="shortcut-key">⌘/</span>
+    </div>
+    <button class="modal-close-btn" id="shortcuts-close">Fechar</button>
+  </div>
+</div>
+
+<script>
+// ── Constants & helpers ────────────────────────────────────────────
+const TYPE_EMOJI = {
+  contrato: '📋', fatura: '💰', nota_fiscal: '🧾', relatorio: '📊',
+  memorando: '🗒', oficio: '📬', procuracao: '⚖️', certidao: '🏛',
+  laudo: '🔬', ata: '📝', proposta: '📨', edital: '📢',
+  declaracao: '📃', documento: '📄'
+};
+const typeEmoji = t => TYPE_EMOJI[t] || '📄';
+
+function fmtBytes(b) {
+  if (!b) return '—';
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  return (b/1024/1024).toFixed(1) + ' MB';
+}
+function fmtDate(s) {
+  if (!s) return '—';
+  try {
+    return new Date(s).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' });
+  } catch { return s; }
+}
+function fmtNum(n) {
+  if (n == null) return '—';
+  return Number(n).toLocaleString('pt-BR');
+}
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function debounce(fn, ms) {
+  let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+
+// ── State ────────────────────────────────────────────────────────
+let allDocs = [];
+let filteredDocs = [];
+let selectedDocId = null;
+let currentFilter = '';
+let currentSort = 'recent';
+let currentView = 'grid';
+let isSearchMode = false;
+let searchResults = [];
+let ollamaOk = false;
+let selectedColor = '#FFFF00';
+let currentTags = [];
+let healthPollInterval = null;
+let sseSource = null;
+
+// ── Theme ─────────────────────────────────────────────────────────
+(function initTheme() {
+  const saved = localStorage.getItem('pdfsearchable-theme');
+  if (saved) {
+    document.documentElement.setAttribute('data-theme', saved);
+  }
+  updateThemeIcon();
+})();
+
+function updateThemeIcon() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+    (!document.documentElement.hasAttribute('data-theme') &&
+     window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.getElementById('theme-toggle').textContent = isDark ? '☀️' : '🌙';
+}
+
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+    (!document.documentElement.hasAttribute('data-theme') &&
+     window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const next = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('pdfsearchable-theme', next);
+  updateThemeIcon();
+});
+
+// ── API helpers ───────────────────────────────────────────────────
+async function apiFetch(url, opts) {
+  const r = await fetch(url, opts);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+// ── Fetch index ───────────────────────────────────────────────────
+async function loadIndex(silent = false) {
+  if (!silent) showSkeletons();
+  try {
+    const data = await apiFetch('/api/index');
+    allDocs = data.files || [];
+    applyFilterAndSort();
+    updateSidebar();
+    updateStatsStrip();
+    updateToolbarStats();
+  } catch (e) {
+    if (!silent) showEmpty();
+  }
+}
+
+function showSkeletons() {
+  const list = document.getElementById('doc-list');
+  list.innerHTML = Array(6).fill(0).map(() =>
+    `<div class="skeleton"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>`
+  ).join('');
+  document.getElementById('empty-state').classList.remove('visible');
+}
+
+function showEmpty() {
+  document.getElementById('doc-list').innerHTML = '';
+  document.getElementById('empty-state').classList.add('visible');
+}
+
+// ── Toolbar stats ─────────────────────────────────────────────────
+function updateToolbarStats() {
+  document.getElementById('stat-docs').textContent =
+    fmtNum(allDocs.length) + ' docs';
+  const pages = allDocs.reduce((s, d) => s + (d.num_pages || 0), 0);
+  document.getElementById('stat-pages').textContent =
+    fmtNum(pages) + ' pág';
+}
+
+// ── Stats strip ───────────────────────────────────────────────────
+let dashboardStats = null;
+
+async function fetchDashboardStats() {
+  try {
+    const r = await fetch('/api/stats');
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (_e) { return null; }
+}
+
+function relTime(isoDate) {
+  if (!isoDate) return '—';
+  const d = new Date(isoDate + (isoDate.length === 10 ? 'T00:00:00Z' : ''));
+  if (isNaN(d)) return isoDate;
+  const diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 60) return 'agora mesmo';
+  if (diff < 3600) return `há ${Math.floor(diff/60)}min`;
+  if (diff < 86400) return `há ${Math.floor(diff/3600)}h`;
+  if (diff < 86400*30) return `há ${Math.floor(diff/86400)}d`;
+  return isoDate.slice(0,10);
+}
+
+function updateStatsStrip() {
+  const strip = document.getElementById('stats-strip');
+  const extra = document.getElementById('dashboard-extra');
+  const displayMode = isSearchMode ? 'none' : '';
+  strip.style.display = isSearchMode ? 'none' : 'grid';
+  if (extra) extra.style.display = isSearchMode ? 'none' : 'grid';
+
+  // Basic from allDocs (sempre disponível)
+  document.getElementById('s-docs').textContent = fmtNum(allDocs.length);
+  const pages = allDocs.reduce((s, d) => s + (d.num_pages || 0), 0);
+  document.getElementById('s-pages').textContent = fmtNum(pages);
+  const size = allDocs.reduce((s, d) => s + (d.file_size || 0), 0);
+  document.getElementById('s-size').textContent = fmtBytes(size);
+
+  // Fetch rich stats from API and populate the rest
+  if (!isSearchMode) {
+    fetchDashboardStats().then(stats => {
+      if (!stats) return;
+      dashboardStats = stats;
+      renderRichStats(stats);
+    });
+  }
+}
+
+function renderRichStats(s) {
+  const n = s.total_docs || 0;
+  const typesCount = (s.doc_types || []).length;
+
+  // Sub-lines em cards básicos
+  document.getElementById('s-docs-sub').textContent =
+    `${typesCount} tipos · ${fmtNum(s.total_words || 0)} palavras`;
+  document.getElementById('s-pages-sub').textContent =
+    `${s.avg_pages || 0} média · ${fmtNum((s.extended||{}).total_outline_entries || 0)} bookmarks`;
+  document.getElementById('s-size-sub').textContent =
+    `${fmtBytes(s.avg_size || 0)} média · ${fmtBytes(s.median_size || 0)} mediana`;
+
+  // OCR
+  const ocr = s.ocr || {};
+  const ocrConf = ocr.avg_confidence;
+  const ocrCard = document.getElementById('s-ocr-card');
+  if (ocrConf != null) {
+    document.getElementById('s-ocr').textContent = ocrConf.toFixed(1) + '%';
+    ocrCard.classList.remove('warn', 'bad');
+    if (ocrConf < 60) ocrCard.classList.add('bad');
+    else if (ocrConf < 75) ocrCard.classList.add('warn');
+  } else {
+    document.getElementById('s-ocr').textContent = '—';
+  }
+  document.getElementById('s-ocr-sub').textContent =
+    `${ocr.weighted_pct || 0}% páginas OCR · min ${ocr.min_confidence != null ? ocr.min_confidence + '%' : '—'}`;
+
+  // Entities
+  const ents = s.entities || {};
+  document.getElementById('s-entities').textContent = fmtNum(ents.sum || 0);
+  const topEntTypes = Object.entries(ents.totals || {})
+    .filter(([,v]) => v > 0)
+    .sort((a,b) => b[1]-a[1]).slice(0,3)
+    .map(([k]) => k.replace('identified_','').replace('parties','partes'))
+    .join(', ');
+  document.getElementById('s-entities-sub').textContent = topEntTypes || '—';
+
+  // Languages
+  const langs = s.languages || [];
+  document.getElementById('s-langs').textContent = fmtNum(langs.length);
+  document.getElementById('s-langs-sub').textContent =
+    langs.slice(0,3).map(l => `${l.label} (${l.count})`).join(', ') || '—';
+
+  // Semantic (RAG)
+  const sem = s.semantic || {};
+  document.getElementById('s-semantic').textContent = fmtNum(sem.doc_embeddings || 0);
+  document.getElementById('s-semantic-sub').textContent =
+    `${fmtNum(sem.page_chunks || 0)} chunks por página`;
+
+  // Alerts
+  const alerts = s.alerts || {};
+  const alertsTotal = alerts.total || 0;
+  document.getElementById('s-alerts').textContent = fmtNum(alertsTotal);
+  const alertsCard = document.getElementById('s-alerts-card');
+  alertsCard.classList.remove('warn', 'bad');
+  if (alertsTotal > 0) {
+    alertsCard.classList.add(alertsTotal >= 5 ? 'bad' : 'warn');
+  }
+  const parts = [];
+  if ((alerts.low_ocr_confidence||[]).length) parts.push(`${alerts.low_ocr_confidence.length} OCR baixo`);
+  if ((alerts.empty_text||[]).length) parts.push(`${alerts.empty_text.length} sem texto`);
+  if ((alerts.encrypted||[]).length) parts.push(`${alerts.encrypted.length} encriptado`);
+  if ((alerts.high_confidentiality||[]).length) parts.push(`${alerts.high_confidentiality.length} confidencial`);
+  document.getElementById('s-alerts-sub').textContent = parts.join(' · ') || 'tudo OK';
+
+  // Extended data
+  const ext = s.extended || {};
+  const extSum = (ext.docs_with_outline||0) + (ext.docs_with_hyperlinks||0)
+    + (ext.docs_with_attached||0) + (ext.docs_with_signatures||0)
+    + (ext.docs_with_forms||0) + (ext.docs_with_annotations||0);
+  document.getElementById('s-extended').textContent = fmtNum(extSum);
+  document.getElementById('s-extended-sub').textContent =
+    `${fmtNum(ext.unique_fonts||0)} fontes · ${fmtNum(ext.total_hyperlinks||0)} links`;
+
+  // Last indexed
+  document.getElementById('s-indexing').textContent = relTime(s.latest_indexed);
+  document.getElementById('s-indexing-sub').textContent = s.latest_indexed || '—';
+
+  // Panels
+  renderSparkline('timeline-spark', s.indexing_timeline || []);
+  const tl = s.indexing_timeline || [];
+  if (tl.length) {
+    const tot = tl.reduce((a,b) => a + (b.count||0), 0);
+    document.getElementById('timeline-info').textContent =
+      `${tot} indexações em ${tl.length} dias · pico: ${Math.max(...tl.map(x => x.count))}/dia`;
+  } else {
+    document.getElementById('timeline-info').textContent = 'Sem histórico ainda.';
+  }
+
+  renderBarChart('types-chart', (s.doc_types || []).slice(0,8), n);
+  renderBarChart('parties-chart', ents.top_parties || [], null, 'Sem partes detetadas.');
+  renderBarChart('locations-chart', ents.top_locations || [], null, 'Sem localizações detetadas.');
+  renderBarChart('size-chart', (s.size_histogram || []).map(b => ({label: b.bucket, count: b.count})), n);
+  renderBarChart('creators-chart', ext.top_creators || [], null, 'Sem metadados XMP.');
+
+  // Extended rows
+  const extRows = document.getElementById('extended-rows');
+  extRows.innerHTML = [
+    ['Outline (bookmarks)', `${ext.docs_with_outline||0} docs · ${ext.total_outline_entries||0} entradas`],
+    ['Hyperlinks', `${ext.docs_with_hyperlinks||0} docs · ${ext.total_hyperlinks||0} links`],
+    ['Arquivos anexados', `${ext.docs_with_attached||0} docs · ${ext.total_attached||0} anexos`],
+    ['Assinaturas digitais', `${ext.docs_with_signatures||0} docs`],
+    ['Formulários', `${ext.docs_with_forms||0} docs`],
+    ['Anotações', `${ext.docs_with_annotations||0} docs`],
+    ['Fontes únicas', `${ext.unique_fonts||0}`],
+  ].map(([l,v]) => `<div class="panel-row"><span class="lbl">${esc(l)}</span><span class="val">${esc(v)}</span></div>`).join('');
+
+  // Alerts list
+  const al = document.getElementById('alerts-list');
+  const alertItems = [];
+  (alerts.low_ocr_confidence||[]).slice(0,5).forEach(a =>
+    alertItems.push({cls: a.confidence < 50 ? 'bad' : '', txt: `⚠ OCR ${a.confidence}%`, name: a.name, id: a.id}));
+  (alerts.empty_text||[]).slice(0,5).forEach(a =>
+    alertItems.push({cls: '', txt: `⚠ OCR pendente (${a.pages}p)`, name: a.name, id: a.id}));
+  (alerts.encrypted||[]).slice(0,5).forEach(a =>
+    alertItems.push({cls: '', txt: '🔒 Encriptado', name: a.name, id: a.id}));
+  (alerts.high_confidentiality||[]).slice(0,5).forEach(a =>
+    alertItems.push({cls: 'bad', txt: `🔴 ${a.level}`, name: a.name, id: a.id}));
+  if (alertItems.length === 0) {
+    al.innerHTML = '<div class="alert-empty">✓ Nenhum alerta — tudo OK.</div>';
+  } else {
+    al.innerHTML = alertItems.map(a =>
+      `<div class="alert-row ${a.cls}" onclick="selectDocById('${esc(a.id)}')">
+        <span class="lbl">${esc(a.txt)} ${esc(a.name).slice(0,42)}</span>
+      </div>`
+    ).join('');
+  }
+}
+
+function renderBarChart(elId, items, total, emptyMsg) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (!items || items.length === 0) {
+    el.innerHTML = `<div class="alert-empty">${esc(emptyMsg || 'Sem dados.')}</div>`;
+    return;
+  }
+  const max = total || Math.max(...items.map(i => i.count || 0), 1);
+  el.innerHTML = items.map(i => {
+    const pct = Math.max(2, Math.round(((i.count || 0) / max) * 100));
+    return `<div class="bar-row">
+      <span class="bar-lbl" title="${esc(i.label)}">${esc(i.label)}</span>
+      <span class="bar-fill-wrap"><span class="bar-fill" style="width:${pct}%"></span></span>
+      <span class="bar-val">${fmtNum(i.count)}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderSparkline(elId, series) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (!series || series.length === 0) {
+    el.innerHTML = '<text x="4" y="20" font-size="10" fill="currentColor" opacity="0.5">sem dados</text>';
+    return;
+  }
+  const w = 300, h = 36, pad = 2;
+  const counts = series.map(s => s.count || 0);
+  const maxV = Math.max(...counts, 1);
+  const step = series.length > 1 ? (w - pad*2) / (series.length - 1) : 0;
+  let path = '';
+  let fillPath = `M ${pad} ${h-pad}`;
+  series.forEach((s, i) => {
+    const x = pad + i * step;
+    const y = h - pad - ((s.count || 0) / maxV) * (h - pad*2);
+    path += (i === 0 ? 'M' : 'L') + ` ${x.toFixed(1)} ${y.toFixed(1)} `;
+    fillPath += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+  });
+  fillPath += ` L ${(pad + (series.length-1)*step).toFixed(1)} ${h-pad} Z`;
+  el.innerHTML = `<path class="fill" d="${fillPath}"/><path d="${path}"/>`;
+}
+
+// ── Toasts ────────────────────────────────────────────────────────
+function showToast(msg, kind, ttl) {
+  const c = document.getElementById('toast-container');
+  if (!c) return;
+  const el = document.createElement('div');
+  el.className = 'toast ' + (kind || '');
+  el.textContent = msg;
+  c.appendChild(el);
+  const lifetime = ttl || 3200;
+  setTimeout(() => { el.classList.add('fade'); }, lifetime - 300);
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, lifetime);
+}
+
+function selectDocById(id) {
+  if (!id) return;
+  selectDoc(id).then(() => {
+    // Ao clicar em alerta ou em card de dashboard, abrir diretamente o visualizador
+    switchTab('viewer');
+  }).catch(() => {});
+}
+
+// Detecção de suporte a `#search=` no visualizador PDF embutido.
+// Chromium/Edge/Opera → suportam. Safari/Firefox → fallback para contagem de
+// ocorrências via /api/text e destaque manual via Cmd+F.
+const _IS_CHROMIUM_PDF = /Chrome|Chromium|Edg|OPR/.test(navigator.userAgent)
+  && !/Firefox/.test(navigator.userAgent);
+
+// Carregar PDF no iframe; suporta pesquisa dentro do arquivo via #search= (Chromium)
+async function openViewer(doc, query) {
+  const iframe = document.getElementById('viewer-iframe');
+  const openExt = document.getElementById('viewer-open-ext');
+  const dlBtn = document.getElementById('viewer-download');
+  const statusEl = document.getElementById('viewer-status');
+  if (!doc) return;
+  const url = `/arquivos-processados/${encodeURIComponent(doc.id)}.pdf`;
+  const q = (query || '').trim();
+  let hash = '';
+  if (q && _IS_CHROMIUM_PDF) {
+    hash = '#search=' + encodeURIComponent(q);
+  }
+  iframe.src = url + hash;
+  openExt.href = url + hash;
+  dlBtn.href = url;
+  dlBtn.setAttribute('download', (doc.name || 'documento') + '.pdf');
+  if (!statusEl) return;
+  if (!q) {
+    statusEl.style.display = 'none';
+    statusEl.innerHTML = '';
+    return;
+  }
+  statusEl.style.display = 'block';
+  if (_IS_CHROMIUM_PDF) {
+    statusEl.textContent = `Pesquisando "${q}" no documento…`;
+    return;
+  }
+  // Fallback: contar ocorrências via /api/text (Safari/Firefox não suportam #search=)
+  statusEl.textContent = `Contando "${q}" no texto extraído…`;
+  try {
+    const resp = await apiFetch(`/api/text?id=${encodeURIComponent(doc.id)}`);
+    if (!resp.ok) throw new Error('sem texto');
+    const text = await resp.text();
+    const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const matches = (text.match(re) || []).length;
+    const hint = _IS_CHROMIUM_PDF ? '' : ' — use <b>Cmd+F</b> no visualizador para destacar';
+    statusEl.innerHTML = matches > 0
+      ? `<b>${matches}</b> ocorrência${matches === 1 ? '' : 's'} de "${esc(q)}"${hint}`
+      : `Nenhuma ocorrência de "${esc(q)}" no texto extraído.`;
+  } catch (e) {
+    statusEl.textContent = `Pesquise "${q}" usando Cmd+F no visualizador.`;
+  }
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const match = b.dataset.tab === name;
+    b.classList.toggle('active', match);
+    b.setAttribute('aria-selected', match ? 'true' : 'false');
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.toggle('active', p.id === 'tab-' + name);
+  });
+}
+
+// ── Sidebar type filters ──────────────────────────────────────────
+function updateSidebar() {
+  const typeCounts = {};
+  for (const d of allDocs) {
+    const t = d.doc_type || 'documento';
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
+  }
+  document.getElementById('nav-all-count').textContent = allDocs.length;
+
+  const wrap = document.getElementById('type-filters');
+  const sorted = Object.entries(typeCounts).sort((a,b) => b[1]-a[1]);
+  wrap.innerHTML = sorted.map(([t, c]) =>
+    `<div class="sidebar-item" data-filter="${esc(t)}" onclick="setFilter('${esc(t)}')">
+      <span class="sidebar-item-emoji">${typeEmoji(t)}</span>
+      <span class="sidebar-item-label">${esc(t)}</span>
+      <span class="sidebar-badge">${c}</span>
+    </div>`
+  ).join('');
+}
+
+function setFilter(type) {
+  currentFilter = type;
+  // Update active state
+  document.querySelectorAll('#sidebar .sidebar-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.filter === type);
+  });
+  isSearchMode = false;
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-clear').classList.remove('visible');
+  updateStatsStrip();
+  applyFilterAndSort();
+}
+
+document.getElementById('nav-all').addEventListener('click', () => setFilter(''));
+
+// ── Filter & sort ─────────────────────────────────────────────────
+function applyFilterAndSort() {
+  let docs = allDocs;
+  if (currentFilter) {
+    docs = docs.filter(d => (d.doc_type || 'documento') === currentFilter);
+  }
+  // Sort
+  docs = [...docs];
+  if (currentSort === 'recent') {
+    docs.sort((a,b) => (b.indexed_at||'').localeCompare(a.indexed_at||''));
+  } else if (currentSort === 'name') {
+    docs.sort((a,b) => (a.name||'').localeCompare(b.name||'', 'pt-BR'));
+  } else if (currentSort === 'type') {
+    docs.sort((a,b) => (a.doc_type||'').localeCompare(b.doc_type||''));
+  } else if (currentSort === 'size') {
+    docs.sort((a,b) => (b.file_size||0) - (a.file_size||0));
+  }
+  filteredDocs = docs;
+  renderDocList(docs);
+}
+
+// ── Render document list ──────────────────────────────────────────
+function renderDocList(docs) {
+  const list = document.getElementById('doc-list');
+  const empty = document.getElementById('empty-state');
+
+  if (docs.length === 0) {
+    list.innerHTML = '';
+    empty.classList.add('visible');
+    return;
+  }
+  empty.classList.remove('visible');
+
+  list.innerHTML = docs.map((d, i) => {
+    const tags = (d.tags || []).slice(0,3).map(t =>
+      `<span class="tag-pill">${esc(t)}</span>`).join('');
+    const langBadge = d.language ? `<span class="badge">${esc(d.language)}</span>` : '';
+    const typeBadge = `<span class="badge badge-accent">${typeEmoji(d.doc_type || 'documento')} ${esc(d.doc_type || 'documento')}</span>`;
+    const selected = d.id === selectedDocId ? ' selected' : '';
+    return `<div class="doc-card${selected}" role="listitem" tabindex="0"
+        data-id="${esc(d.id)}" data-idx="${i}"
+        onclick="selectDoc('${esc(d.id)}')"
+        onkeydown="if(event.key==='Enter'||event.key===' ')selectDoc('${esc(d.id)}')"
+        aria-label="${esc(d.name)}">
+      <div class="doc-card-header">
+        <div class="doc-emoji">${typeEmoji(d.doc_type)}</div>
+        <div class="doc-card-body">
+          <div class="doc-name" title="${esc(d.name)}">${esc(d.name)}</div>
+          <div class="doc-meta">
+            <span class="doc-meta-item">${fmtDate(d.indexed_at)}</span>
+            <span class="doc-meta-sep">·</span>
+            <span class="doc-meta-item">${fmtBytes(d.file_size)}</span>
+            <span class="doc-meta-sep">·</span>
+            <span class="doc-meta-item">${d.num_pages || '?'} pág</span>
+          </div>
+          <div class="doc-meta" style="margin-top:4px">
+            ${typeBadge}${langBadge}${tags}
+          </div>
+          <div class="highlight-strip" style="margin-top:4px">${docHighlightPills(d)}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Search ────────────────────────────────────────────────────────
+const doSearch = debounce(async (q) => {
+  if (!q.trim()) {
+    isSearchMode = false;
+    document.getElementById('search-clear').classList.remove('visible');
+    document.getElementById('stats-strip').style.display = 'grid';
+    applyFilterAndSort();
+    return;
+  }
+  isSearchMode = true;
+  document.getElementById('search-clear').classList.add('visible');
+  document.getElementById('stats-strip').style.display = 'none';
+  try {
+    const params = new URLSearchParams({ q: q.trim() });
+    if (currentFilter) params.set('type', currentFilter);
+    const data = await apiFetch(`/api/search?${params}`);
+    searchResults = data.results || [];
+    renderSearchResults(searchResults);
+  } catch (e) {
+    // fall back to client-side filter
+    const lower = q.toLowerCase();
+    const hits = allDocs.filter(d =>
+      (d.name||'').toLowerCase().includes(lower) ||
+      (d.subject||'').toLowerCase().includes(lower) ||
+      (d.summary||'').toLowerCase().includes(lower)
+    );
+    renderDocList(hits);
+  }
+}, 250);
+
+function renderSearchResults(results) {
+  const list = document.getElementById('doc-list');
+  const empty = document.getElementById('empty-state');
+  if (results.length === 0) {
+    list.innerHTML = `<div style="padding:32px;text-align:center;color:var(--text-secondary);font-size:13px">
+      Nenhum resultado encontrado</div>`;
+    empty.classList.remove('visible');
+    return;
+  }
+  empty.classList.remove('visible');
+  list.innerHTML = results.map(r => {
+    const selected = r.id === selectedDocId ? ' selected' : '';
+    return `<div class="doc-card${selected}" role="listitem" tabindex="0"
+        data-id="${esc(r.id)}"
+        onclick="selectDoc('${esc(r.id)}')"
+        onkeydown="if(event.key==='Enter'||event.key===' ')selectDoc('${esc(r.id)}')"
+        aria-label="${esc(r.name)}">
+      <div class="doc-card-header">
+        <div class="doc-emoji">${typeEmoji(r.doc_type)}</div>
+        <div class="doc-card-body">
+          <div class="doc-name" title="${esc(r.name)}">${esc(r.name)}</div>
+          ${r.snippet ? `<div class="search-snippet">${esc(r.snippet)}</div>` : ''}
+          <div class="doc-meta" style="margin-top:4px">
+            <span class="badge badge-accent">${typeEmoji(r.doc_type)} ${esc(r.doc_type||'documento')}</span>
+            ${r.score != null ? `<span class="search-score">relevância: ${Number(r.score).toFixed(2)}</span>` : ''}
+          </div>
+          <div class="highlight-strip" style="margin-top:4px">${docHighlightPills(r)}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Search input events
+document.getElementById('search-input').addEventListener('input', e => {
+  doSearch(e.target.value);
+});
+document.getElementById('search-clear').addEventListener('click', () => {
+  document.getElementById('search-input').value = '';
+  doSearch('');
+});
+
+// Toolbar search (syncs to content search)
+document.getElementById('toolbar-search').addEventListener('input', e => {
+  const v = e.target.value;
+  document.getElementById('search-input').value = v;
+  doSearch(v);
+});
+
+// Sort
+document.getElementById('sort-select').addEventListener('change', e => {
+  currentSort = e.target.value;
+  applyFilterAndSort();
+});
+
+// View toggle
+document.getElementById('view-grid').addEventListener('click', () => {
+  currentView = 'grid';
+  document.getElementById('doc-list').className = 'grid-view';
+  document.getElementById('view-grid').classList.add('active');
+  document.getElementById('view-list').classList.remove('active');
+});
+document.getElementById('view-list').addEventListener('click', () => {
+  currentView = 'list';
+  document.getElementById('doc-list').className = 'list-view';
+  document.getElementById('view-list').classList.add('active');
+  document.getElementById('view-grid').classList.remove('active');
+});
+
+// ── Select document & open detail panel ───────────────────────────
+async function selectDoc(id) {
+  selectedDocId = id;
+  // Update selected visual
+  document.querySelectorAll('.doc-card').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id === id);
+  });
+  // Open detail panel
+  document.getElementById('detail').classList.add('open');
+
+  const doc = allDocs.find(d => d.id === id);
+  if (!doc) return;
+
+  populateDetail(doc);
+  loadAnnotations(id);
+  // Carregar PDF no visualizador embutido (passando o termo de busca actual, se houver)
+  try {
+    const qEl = document.getElementById('q');
+    const currentQuery = qEl ? qEl.value : '';
+    openViewer(doc, currentQuery);
+  } catch (_e) { /* não bloquear se iframe indisponível */ }
+}
+
+function populateDetail(doc) {
+  document.getElementById('detail-title').textContent = doc.name || '—';
+
+  // Summary
+  const sumEl = document.getElementById('meta-summary');
+  if (doc.summary) { sumEl.textContent = doc.summary; sumEl.style.display = 'block'; }
+  else sumEl.style.display = 'none';
+
+  // Editable fields
+  document.getElementById('edit-type').value = doc.doc_type || 'documento';
+  document.getElementById('edit-subject').value = doc.subject || '';
+
+  // Tags
+  currentTags = [...(doc.tags || [])];
+  renderTags();
+
+  // Meta grid
+  document.getElementById('mg-pages').textContent = fmtNum(doc.num_pages);
+  document.getElementById('mg-words').textContent = fmtNum(doc.word_count);
+  document.getElementById('mg-size').textContent = fmtBytes(doc.file_size);
+  document.getElementById('mg-lang').textContent = doc.language || '—';
+  document.getElementById('mg-indexed').textContent = fmtDate(doc.indexed_at);
+
+  // OCR %
+  const ocr = doc.metadata?.ocr_ratio ?? doc.metadata?.ocr_percent;
+  document.getElementById('mg-ocr').textContent =
+    ocr != null ? Math.round(Number(ocr) * (ocr <= 1 ? 100 : 1)) + '%' : '—';
+
+  // Parties
+  setCollapsible('section-parties', 'body-parties',
+    (doc.parties || []).join(', ') || null);
+  // Money
+  setCollapsible('section-money', 'body-money',
+    (doc.monetary_values || []).join(', ') || null);
+  // Emails
+  setEditableEntityList('section-emails', 'body-emails',
+    doc.identified_emails || [], 'identified_emails',
+    { validateFn: validateEmail, placeholder: 'nome@exemplo.com.br' });
+  // CPFs
+  setEditableEntityList('section-cpfs', 'body-cpfs',
+    doc.identified_cpfs || [], 'identified_cpfs',
+    { maskFn: maskCPF, validateFn: validateCPF, placeholder: '000.000.000-00' });
+  // CNPJs
+  setCollapsible('section-cnpjs', 'body-cnpjs',
+    (doc.identified_cnpjs || []).join(', ') || null);
+  // IPs
+  setCollapsible('section-ips', 'body-ips',
+    (doc.identified_ips || []).join(', ') || null);
+  // Phones
+  setEditableEntityList('section-phones', 'body-phones',
+    doc.identified_phones || [], 'identified_phones',
+    { maskFn: maskPhone, validateFn: validatePhone, placeholder: '(00) 00000-0000' });
+  // URLs
+  setCollapsible('section-urls', 'body-urls',
+    (doc.identified_urls || []).join('\n') || null);
+  // Domains
+  setCollapsible('section-domains', 'body-domains',
+    (doc.identified_domains || []).join(', ') || null);
+  // CEPs
+  setCollapsible('section-ceps', 'body-ceps',
+    (doc.identified_ceps || []).join(', ') || null);
+  // Processos judiciais
+  setCollapsible('section-processos', 'body-processos',
+    (doc.identified_processos || []).join('\n') || null);
+  // Placas
+  setCollapsible('section-placas', 'body-placas',
+    (doc.identified_placas || []).join(', ') || null);
+  // RGs
+  setCollapsible('section-rgs', 'body-rgs',
+    (doc.identified_rgs || []).join(', ') || null);
+  // Protocolos
+  setCollapsible('section-protocolos', 'body-protocolos',
+    (doc.identified_protocolos || []).join('\n') || null);
+  // Hashes
+  setCollapsible('section-hashes', 'body-hashes',
+    (doc.identified_hashes || []).join('\n') || null);
+  // Coordenadas
+  setCollapsible('section-coords', 'body-coords',
+    (doc.identified_coordenadas || []).join(', ') || null);
+  // Timestamps
+  setCollapsible('section-timestamps', 'body-timestamps',
+    (doc.identified_timestamps || []).join('\n') || null);
+  // Leis
+  setCollapsible('section-leis', 'body-leis',
+    (doc.identified_leis || []).join('\n') || null);
+  // Assinaturas digitais
+  const sigs = (doc.metadata?.extended?.signatures || []);
+  if (sigs.length) {
+    const sigText = sigs.map(s =>
+      `${s.field_name || 'Assinatura'}${s.signed ? ' (assinado)' : ' (não assinado)'}${s.signer ? ' — ' + s.signer : ''}` +
+      (s.page ? ` [p.${s.page}]` : '')
+    ).join('\n');
+    setCollapsible('section-sigs', 'body-sigs', sigText);
+  } else {
+    setCollapsible('section-sigs', 'body-sigs', null);
+  }
+  // Metadados do arquivo PDF
+  const m = doc.metadata || {};
+  const metaParts = [];
+  if (m.title) metaParts.push(`Título: ${m.title}`);
+  if (m.author) metaParts.push(`Autor: ${m.author}`);
+  if (m.creator) metaParts.push(`Criador: ${m.creator}`);
+  if (m.producer) metaParts.push(`Produtor: ${m.producer}`);
+  if (m.creation_date) metaParts.push(`Criado em: ${m.creation_date}`);
+  if (m.mod_date) metaParts.push(`Modificado em: ${m.mod_date}`);
+  if (m.keywords) metaParts.push(`Palavras-chave: ${m.keywords}`);
+  setCollapsible('section-pdfmeta', 'body-pdfmeta',
+    metaParts.length ? metaParts.join('\n') : null);
+
+  // Highlight strip (pills)
+  renderHighlights(doc);
+
+  // Badges
+  renderBadges(doc);
+
+  // AI tab visibility
+  document.getElementById('ai-active').style.display = ollamaOk ? 'block' : 'none';
+  document.getElementById('ai-inactive').style.display = ollamaOk ? 'none' : 'block';
+  document.getElementById('ai-answer-block').textContent = '';
+  document.getElementById('ai-question').value = '';
+}
+
+function setCollapsible(sectionId, bodyId, content) {
+  const sec = document.getElementById(sectionId);
+  if (!content) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  document.getElementById(bodyId).textContent = content;
+}
+
+// ── Input masks ───────────────────────────────────────────────────
+function maskPhone(raw) {
+  const d = raw.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2)  return d.length ? '(' + d : '';
+  if (d.length <= 6)  return '(' + d.slice(0,2) + ') ' + d.slice(2);
+  if (d.length <= 10) return '(' + d.slice(0,2) + ') ' + d.slice(2,6) + '-' + d.slice(6);
+  return '(' + d.slice(0,2) + ') ' + d.slice(2,7) + '-' + d.slice(7);
+}
+
+function maskCPF(raw) {
+  const d = raw.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 3)  return d;
+  if (d.length <= 6)  return d.slice(0,3) + '.' + d.slice(3);
+  if (d.length <= 9)  return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6);
+  return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6,9) + '-' + d.slice(9);
+}
+
+function validateEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
+}
+
+function validatePhone(v) { return v.replace(/\D/g, '').length >= 10; }
+function validateCPF(v)   { return v.replace(/\D/g, '').length === 11; }
+
+function setEditableEntityList(sectionId, bodyId, items, fieldName, opts) {
+  const { maskFn, validateFn, placeholder } = opts;
+  const sec  = document.getElementById(sectionId);
+  const body = document.getElementById(bodyId);
+  sec.style.display = 'block';
+
+  function renderList(arr) {
+    const pills = arr.map((item, i) =>
+      `<span class="entity-pill">${item}<button class="entity-pill-remove" data-idx="${i}" aria-label="Remover">×</button></span>`
+    ).join('');
+    body.innerHTML = `
+      <div class="entity-edit-list">${pills}</div>
+      <div class="entity-add-row">
+        <input class="entity-add-input" type="text" placeholder="${placeholder}"
+          autocomplete="off" spellcheck="false">
+        <button class="entity-add-btn">+ Adicionar</button>
+      </div>`;
+
+    const input  = body.querySelector('.entity-add-input');
+    const addBtn = body.querySelector('.entity-add-btn');
+
+    if (maskFn) {
+      input.addEventListener('input', () => {
+        const pos    = input.selectionStart;
+        const before = input.value;
+        const after  = maskFn(before);
+        input.value  = after;
+        const shift  = after.length - before.length;
+        input.setSelectionRange(pos + shift, pos + shift);
+      });
+    }
+
+    input.addEventListener('blur',  () => {
+      if (input.value && validateFn && !validateFn(input.value)) input.classList.add('invalid');
+      else input.classList.remove('invalid');
+    });
+    input.addEventListener('focus', () => input.classList.remove('invalid'));
+
+    function doAdd() {
+      const val = input.value.trim();
+      if (!val) return;
+      if (validateFn && !validateFn(val)) { input.classList.add('invalid'); input.focus(); return; }
+      const newArr = [...arr, val];
+      saveMeta({ [fieldName]: newArr });
+      const doc = allDocs.find(d => d.id === selectedDocId);
+      if (doc) doc[fieldName] = newArr;
+      renderList(newArr);
+    }
+
+    addBtn.addEventListener('click', doAdd);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
+
+    body.querySelector('.entity-edit-list').addEventListener('click', e => {
+      const btn = e.target.closest('.entity-pill-remove');
+      if (!btn) return;
+      const newArr = arr.filter((_, i) => i !== +btn.dataset.idx);
+      saveMeta({ [fieldName]: newArr });
+      const doc = allDocs.find(d => d.id === selectedDocId);
+      if (doc) doc[fieldName] = newArr;
+      renderList(newArr);
+    });
+  }
+
+  renderList(items);
+}
+
+function renderBadges(doc) {
+  const wrap = document.getElementById('detail-badges');
+  let html = '';
+
+  const forensics = doc.metadata?.forensics;
+  if (forensics?.risk_score != null) {
+    const score = forensics.risk_score;
+    const cls = score < 33 ? 'risk-low' : score < 67 ? 'risk-med' : 'risk-high';
+    html += `<div class="forensics-badge ${cls}">🔬 Forense: risco ${score}</div>`;
+  }
+  const redaction = doc.metadata?.redaction_report;
+  if (redaction?.has_redactions) {
+    html += `<div class="forensics-badge risk-med" style="margin-top:4px">⬛ Documento com redações</div>`;
+  }
+  const contract = doc.metadata?.contract_data;
+  if (contract?.end_date) {
+    const end = new Date(contract.end_date);
+    const daysLeft = Math.ceil((end - Date.now()) / 86400000);
+    const color = daysLeft < 30 ? 'var(--danger)' : daysLeft < 90 ? 'var(--warning)' : 'var(--success)';
+    html += `<div style="margin-top:6px;font-size:11px;color:${color}">
+      📅 Contrato vence: ${fmtDate(contract.end_date)} (${daysLeft > 0 ? daysLeft + ' dias' : 'vencido'})
+    </div>`;
+  }
+
+  wrap.innerHTML = html;
+}
+
+function docHighlightPills(doc) {
+  let pills = '';
+  const m = doc.metadata || {};
+  const _p = (cls, icon, n, label, plural) => {
+    if (!n) return '';
+    const s = typeof n === 'number' ? (n > 1 ? (plural||label+'s') : label) : label;
+    const count = typeof n === 'number' ? n + ' ' : '';
+    return `<span class="hl-pill ${cls}">${icon} ${count}${s}</span>`;
+  };
+  // Confidencialidade (sempre primeiro)
+  if (doc.confidentiality) {
+    const isPub = doc.confidentiality === 'PÚBLICO';
+    pills += `<span class="hl-pill hl-pill-conf${isPub ? ' public' : ''}">${isPub ? '🔓' : '🔒'} ${esc(doc.confidentiality)}</span>`;
+  }
+  // OCR baixa confiança
+  if (doc.ocr_avg_confidence != null && doc.ocr_avg_confidence >= 0 && doc.ocr_avg_confidence < 60 && doc.ocr_percentage > 0) {
+    pills += _p('hl-pill-ocr', '⚠️', 0, 'OCR baixa confiança', '');
+  }
+  // Metadados do arquivo
+  if (m.title || m.author) pills += _p('hl-pill-meta', '📄', 0, 'Metadados', '');
+  // Pessoas / Documentos
+  pills += _p('hl-pill-cpf', '🪪', (doc.identified_cpfs||[]).length, 'CPF', 'CPFs');
+  pills += _p('hl-pill-cnpj', '🏢', (doc.identified_cnpjs||[]).length, 'CNPJ', 'CNPJs');
+  pills += _p('hl-pill-rg', '🪪', (doc.identified_rgs||[]).length, 'RG', 'RGs');
+  // Contactos
+  pills += _p('hl-pill-email', '📧', (doc.identified_emails||[]).length, 'E-mail', 'E-mails');
+  pills += _p('hl-pill-phone', '📞', (doc.identified_phones||[]).length, 'Telefone', 'Telefones');
+  // Rede
+  pills += _p('hl-pill-ip', '🌐', (doc.identified_ips||[]).length, 'IP', 'IPs');
+  pills += _p('hl-pill-url', '🔗', (doc.identified_urls||[]).length, 'URL', 'URLs');
+  pills += _p('hl-pill-domain', '🌍', (doc.identified_domains||[]).length, 'Domínio', 'Domínios');
+  // Endereços
+  pills += _p('hl-pill-cep', '📮', (doc.identified_ceps||[]).length, 'CEP', 'CEPs');
+  pills += _p('hl-pill-coord', '📍', (doc.identified_coordenadas||[]).length, 'Coordenada', 'Coordenadas');
+  // Jurídico
+  pills += _p('hl-pill-proc', '⚖️', (doc.identified_processos||[]).length, 'Processo', 'Processos');
+  pills += _p('hl-pill-lei', '📜', (doc.identified_leis||[]).length, 'Lei/Art.', 'Leis/Arts.');
+  // Financeiro
+  pills += _p('hl-pill-money', '💰', (doc.monetary_values||[]).length, 'Valor', 'Valores');
+  // Referências
+  pills += _p('hl-pill-proto', '📋', (doc.identified_protocolos||[]).length, 'Protocolo', 'Protocolos');
+  pills += _p('hl-pill-placa', '🚗', (doc.identified_placas||[]).length, 'Placa', 'Placas');
+  // Técnico
+  pills += _p('hl-pill-hash', '#️⃣', (doc.identified_hashes||[]).length, 'Hash', 'Hashes');
+  pills += _p('hl-pill-ts', '🕐', (doc.identified_timestamps||[]).length, 'Timestamp', 'Timestamps');
+  // Datas
+  pills += _p('hl-pill-date', '📅', (doc.identified_dates||[]).length, 'Data', 'Datas');
+  // Assinaturas digitais
+  const sigs = m.extended?.signatures || [];
+  pills += _p('hl-pill-sig', '✍️', sigs.length, 'Assinatura', 'Assinaturas');
+  return pills;
+}
+
+function renderHighlights(doc) {
+  document.getElementById('detail-highlights').innerHTML = docHighlightPills(doc);
+}
+
+// ── Tags editing ──────────────────────────────────────────────────
+function renderTags() {
+  const container = document.getElementById('tags-container');
+  const input = document.getElementById('tags-input');
+  // Remove old pills (keep input)
+  Array.from(container.children).forEach(ch => {
+    if (ch !== input) container.removeChild(ch);
+  });
+  // Prepend pills
+  currentTags.forEach((tag, i) => {
+    const span = document.createElement('span');
+    span.className = 'tag-pill';
+    span.innerHTML = `${esc(tag)}<span class="tag-remove" data-idx="${i}" onclick="removeTag(${i})" role="button" tabindex="0" aria-label="Remover tag ${esc(tag)}">×</span>`;
+    container.insertBefore(span, input);
+  });
+}
+
+function removeTag(i) {
+  currentTags.splice(i, 1);
+  renderTags();
+}
+
+document.getElementById('tags-input').addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ',') && e.target.value.trim()) {
+    e.preventDefault();
+    const val = e.target.value.trim().replace(/,+$/, '');
+    if (val && !currentTags.includes(val)) currentTags.push(val);
+    e.target.value = '';
+    renderTags();
+  }
+  if (e.key === 'Backspace' && !e.target.value && currentTags.length) {
+    currentTags.pop(); renderTags();
+  }
+});
+
+// Make tags container focus-through
+document.getElementById('tags-container').addEventListener('click', () => {
+  document.getElementById('tags-input').focus();
+});
+
+// ── Save meta ─────────────────────────────────────────────────────
+async function saveMeta(fields) {
+  if (!selectedDocId) return;
+  try {
+    await apiFetch('/api/meta/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: selectedDocId, ...fields })
+    });
+    // Update local state
+    const doc = allDocs.find(d => d.id === selectedDocId);
+    if (doc) Object.assign(doc, fields);
+    applyFilterAndSort();
+    updateSidebar();
+    showToast('✓ Alterações salvas', 'ok');
+  } catch (e) {
+    showToast('Erro ao salvar: ' + e.message, 'error', 5000);
+  }
+}
+
+document.getElementById('save-type').addEventListener('click', () =>
+  saveMeta({ doc_type: document.getElementById('edit-type').value }));
+document.getElementById('save-subject').addEventListener('click', () =>
+  saveMeta({ subject: document.getElementById('edit-subject').value }));
+document.getElementById('save-tags').addEventListener('click', () =>
+  saveMeta({ tags: [...currentTags] }));
+
+// ── Detail tabs ───────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-selected', 'false');
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Viewer search (pesquisa dentro do PDF) ────────────────────────
+(function wireViewerSearch() {
+  const input = document.getElementById('viewer-search');
+  const btn = document.getElementById('viewer-search-btn');
+  if (!input || !btn) return;
+  function runSearch() {
+    if (!selectedDocId) return;
+    const doc = allDocs.find(d => d.id === selectedDocId);
+    if (!doc) return;
+    openViewer(doc, input.value || '');
+  }
+  btn.addEventListener('click', runSearch);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); runSearch(); } });
+})();
+
+// ── Close detail panel ────────────────────────────────────────────
+document.getElementById('detail-close').addEventListener('click', closeDetail);
+function closeDetail() {
+  document.getElementById('detail').classList.remove('open');
+  selectedDocId = null;
+  document.querySelectorAll('.doc-card').forEach(el => el.classList.remove('selected'));
+}
+
+// ── Collapsible sections ──────────────────────────────────────────
+function toggleSection(header) {
+  const body = header.nextElementSibling;
+  const open = !body.classList.contains('hidden');
+  body.classList.toggle('hidden', open);
+  header.classList.toggle('open', !open);
+}
+
+// ── Annotations ───────────────────────────────────────────────────
+async function loadAnnotations(id) {
+  const list = document.getElementById('annotation-list');
+  list.innerHTML = '<div style="color:var(--text-tertiary);font-size:12px">A carregar…</div>';
+  try {
+    const data = await apiFetch(`/api/annotations?id=${encodeURIComponent(id)}`);
+    const anns = data.annotations || [];
+    if (anns.length === 0) {
+      list.innerHTML = '<div style="color:var(--text-tertiary);font-size:12px;padding:8px 0">Sem anotações.</div>';
+      return;
+    }
+    list.innerHTML = anns.map(a => `
+      <div class="annotation-item" style="border-left-color:${esc(a.color||'var(--accent)')}">
+        <div class="annotation-item-header">
+          <span class="badge">${esc(a.type||'note')}</span>
+          <span class="annotation-page-badge">pág. ${a.page||'?'}</span>
+        </div>
+        <div class="annotation-text">${esc(a.text||'')}</div>
+        ${a.note ? `<div class="annotation-note">${esc(a.note)}</div>` : ''}
+      </div>`).join('');
+  } catch {
+    list.innerHTML = '<div style="color:var(--text-tertiary);font-size:12px">Erro ao carregar anotações.</div>';
+  }
+}
+
+// Color chip selection
+document.getElementById('color-chips').addEventListener('click', e => {
+  const chip = e.target.closest('.color-chip');
+  if (!chip) return;
+  document.querySelectorAll('.color-chip').forEach(c => {
+    c.classList.remove('selected');
+    c.removeAttribute('aria-pressed');
+  });
+  chip.classList.add('selected');
+  chip.setAttribute('aria-pressed', 'true');
+  selectedColor = chip.dataset.color;
+});
+
+document.getElementById('add-annot-btn').addEventListener('click', async () => {
+  if (!selectedDocId) return;
+  const btn = document.getElementById('add-annot-btn');
+  btn.disabled = true;
+  try {
+    await apiFetch('/api/annotations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_id: selectedDocId,
+        type: document.getElementById('annot-type').value,
+        page: parseInt(document.getElementById('annot-page').value) || 1,
+        text: document.getElementById('annot-text').value,
+        note: document.getElementById('annot-note').value || undefined,
+        color: selectedColor
+      })
+    });
+    // Clear form
+    document.getElementById('annot-text').value = '';
+    document.getElementById('annot-note').value = '';
+    document.getElementById('annot-page').value = '';
+    await loadAnnotations(selectedDocId);
+  } catch (e) {
+    showToast('Erro ao adicionar anotação: ' + e.message, 'error', 5000);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── AI Ask ────────────────────────────────────────────────────────
+document.getElementById('ai-ask-btn').addEventListener('click', async () => {
+  if (!selectedDocId) return;
+  const question = document.getElementById('ai-question').value.trim();
+  if (!question) return;
+  const btn = document.getElementById('ai-ask-btn');
+  const answer = document.getElementById('ai-answer-block');
+  btn.disabled = true;
+  answer.textContent = 'A pensar…';
+  try {
+    const data = await apiFetch('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: selectedDocId, question })
+    });
+    answer.textContent = data.answer || '(sem resposta)';
+  } catch (e) {
+    answer.textContent = 'Erro: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Health polling ────────────────────────────────────────────────
+async function pollHealth() {
+  try {
+    const data = await apiFetch('/api/health');
+    const dot = document.getElementById('health-dot');
+    const banner = document.getElementById('error-banner');
+    const ok = data.index_ok !== false;
+    dot.classList.toggle('bad', !ok);
+    banner.classList.toggle('visible', !ok);
+    ollamaOk = data.ollama_ok === true;
+    // Update AI panel if detail open
+    if (selectedDocId) {
+      document.getElementById('ai-active').style.display = ollamaOk ? 'block' : 'none';
+      document.getElementById('ai-inactive').style.display = ollamaOk ? 'none' : 'block';
+    }
+  } catch {
+    document.getElementById('health-dot').classList.add('bad');
+  }
+}
+
+// ── SSE live updates ──────────────────────────────────────────────
+function connectSSE() {
+  if (sseSource) sseSource.close();
+  sseSource = new EventSource('/api/events');
+  let backoff = 1000;
+
+  sseSource.onmessage = e => {
+    if (e.data.trim() === 'index_updated') {
+      // Reload index silently (preserve scroll & selection)
+      const contentEl = document.getElementById('content');
+      const scrollTop = contentEl.scrollTop;
+      loadIndex(true).then(() => {
+        contentEl.scrollTop = scrollTop;
+        // Re-select if still present
+        if (selectedDocId) {
+          const doc = allDocs.find(d => d.id === selectedDocId);
+          if (doc) populateDetail(doc);
+        }
+      });
+    }
+    backoff = 1000;
+  };
+  sseSource.onerror = () => {
+    sseSource.close();
+    setTimeout(connectSSE, backoff);
+    backoff = Math.min(backoff * 2, 30000);
+  };
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  const active = document.activeElement;
+  const inInput = active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT';
+
+  // ⌘K / Ctrl+K: focus search
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    document.getElementById('search-input').focus();
+    document.getElementById('search-input').select();
+    return;
+  }
+  // ⌘/ Ctrl+/: shortcuts modal
+  if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+    e.preventDefault();
+    document.getElementById('shortcuts-modal').classList.toggle('visible');
+    return;
+  }
+  // Escape
+  if (e.key === 'Escape') {
+    if (document.getElementById('shortcuts-modal').classList.contains('visible')) {
+      document.getElementById('shortcuts-modal').classList.remove('visible');
+      return;
+    }
+    if (document.getElementById('detail').classList.contains('open')) {
+      closeDetail(); return;
+    }
+    if (document.getElementById('search-input').value) {
+      document.getElementById('search-input').value = '';
+      doSearch(''); return;
+    }
+  }
+  // Arrow keys: navigate doc list (only when not in input)
+  if (!inInput && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+    e.preventDefault();
+    const cards = Array.from(document.querySelectorAll('.doc-card'));
+    if (!cards.length) return;
+    const idx = cards.findIndex(c => c.dataset.id === selectedDocId);
+    let next = e.key === 'ArrowDown' ? idx + 1 : idx - 1;
+    next = Math.max(0, Math.min(next, cards.length - 1));
+    const id = cards[next]?.dataset.id;
+    if (id) {
+      selectDoc(id);
+      cards[next].focus();
+      cards[next].scrollIntoView({ block: 'nearest' });
+    }
+  }
+});
+
+// Shortcuts modal close
+document.getElementById('shortcuts-close').addEventListener('click', () => {
+  document.getElementById('shortcuts-modal').classList.remove('visible');
+});
+document.getElementById('shortcuts-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('shortcuts-modal'))
+    document.getElementById('shortcuts-modal').classList.remove('visible');
+});
+document.getElementById('shortcuts-btn').addEventListener('click', () => {
+  document.getElementById('shortcuts-modal').classList.toggle('visible');
+});
+
+// ── Init ──────────────────────────────────────────────────────────
+(async function init() {
+  await loadIndex();
+  await pollHealth();
+  healthPollInterval = setInterval(pollHealth, 30000);
+  connectSSE();
+  // Pré-preencher pesquisa se vindo de outra view (wordcloud, mapa, grafo, linha do tempo)
+  const initSearch = localStorage.getItem('pdfs-search-init');
+  if (initSearch) {
+    localStorage.removeItem('pdfs-search-init');
+    const inp = document.getElementById('search-input');
+    if (inp) { inp.value = initSearch; doSearch(initSearch); }
+  }
+})();
+</script>
+
+<!-- ============================================================
+     Enhancements Pack v2026-04-15
+     Dark mode persistente + atalhos + i18n minimal + chat citations
+     clicáveis + feedback UI + timeline brush hook + KG click hook
+     ============================================================ -->
+<script>
+(function(){
+  'use strict';
+
+  // -------- Dark mode persistente --------
+  try {
+    const saved = localStorage.getItem('pdfs-theme');
+    if (saved === 'dark' || saved === 'light') {
+      document.documentElement.setAttribute('data-theme', saved);
+    }
+  } catch(e) {}
+
+  window.toggleDarkMode = function(){
+    const cur = document.documentElement.getAttribute('data-theme') || 'auto';
+    const next = cur === 'dark' ? 'light' : (cur === 'light' ? 'auto' : 'dark');
+    if (next === 'auto') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', next);
+    }
+    try { localStorage.setItem('pdfs-theme', next); } catch(e) {}
+    if (window.showToast) window.showToast('Tema: ' + next, 'info', 2000);
+  };
+
+  // -------- Atalhos de teclado globais --------
+  document.addEventListener('keydown', function(ev){
+    // Ignorar quando focado em input/textarea
+    const tag = (ev.target && ev.target.tagName || '').toLowerCase();
+    const isInput = tag === 'input' || tag === 'textarea' || ev.target.isContentEditable;
+
+    // / — focar busca
+    if (!isInput && ev.key === '/') {
+      const inp = document.getElementById('search-input');
+      if (inp) {
+        ev.preventDefault();
+        inp.focus();
+        inp.select();
+      }
+      return;
+    }
+
+    // Esc — fechar modal/overlay
+    if (ev.key === 'Escape') {
+      document.querySelectorAll('.modal[open], dialog[open], .overlay.open').forEach(function(m){
+        if (m.close) m.close();
+        else m.classList.remove('open');
+      });
+      return;
+    }
+
+    // j/k — navegar resultados (quando lista visível)
+    if (!isInput && (ev.key === 'j' || ev.key === 'k')) {
+      const items = document.querySelectorAll('.result-item, [data-result-index]');
+      if (!items.length) return;
+      let cur = -1;
+      items.forEach(function(el, i){ if (el.classList.contains('focused')) cur = i; });
+      const next = ev.key === 'j'
+        ? Math.min(items.length - 1, cur + 1)
+        : Math.max(0, cur - 1);
+      items.forEach(function(el){ el.classList.remove('focused'); });
+      items[next].classList.add('focused');
+      items[next].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      ev.preventDefault();
+      return;
+    }
+
+    // Enter — abrir resultado focado
+    if (!isInput && ev.key === 'Enter') {
+      const focused = document.querySelector('.result-item.focused, [data-result-index].focused');
+      if (focused) { focused.click(); ev.preventDefault(); }
+    }
+
+    // ? — mostrar ajuda de atalhos
+    if (!isInput && ev.key === '?') {
+      showShortcutsHelp();
+      ev.preventDefault();
+    }
+
+    // d — toggle dark mode
+    if (!isInput && ev.key === 'd' && ev.ctrlKey) {
+      window.toggleDarkMode();
+      ev.preventDefault();
+    }
+  });
+
+  function showShortcutsHelp(){
+    const existing = document.getElementById('shortcuts-help-modal');
+    if (existing) { existing.remove(); return; }
+    const modal = document.createElement('div');
+    modal.id = 'shortcuts-help-modal';
+    modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg,#fff);color:var(--fg,#000);border:1px solid #999;border-radius:12px;padding:24px;box-shadow:0 10px 40px rgba(0,0,0,0.3);z-index:10000;min-width:320px;font-family:system-ui';
+    modal.innerHTML = '<h3 style="margin:0 0 16px 0">Atalhos</h3>'
+      + '<ul style="list-style:none;padding:0;margin:0;line-height:1.9">'
+      + '<li><kbd>/</kbd> focar busca</li>'
+      + '<li><kbd>j</kbd>/<kbd>k</kbd> navegar resultados</li>'
+      + '<li><kbd>Enter</kbd> abrir resultado</li>'
+      + '<li><kbd>Esc</kbd> fechar modal</li>'
+      + '<li><kbd>Ctrl+D</kbd> alternar tema</li>'
+      + '<li><kbd>?</kbd> esta ajuda</li>'
+      + '</ul>'
+      + '<button onclick="this.parentNode.remove()" style="margin-top:16px;padding:8px 16px;border-radius:6px;border:1px solid #ccc;background:#f0f0f0;cursor:pointer">Fechar</button>';
+    document.body.appendChild(modal);
+  }
+
+  // -------- i18n minimal (pt-BR default; expansível para en/es) --------
+  window.PDFS_I18N = window.PDFS_I18N || {};
+  window.PDFS_I18N['pt-BR'] = {
+    'search.placeholder': 'Buscar nos documentos...',
+    'results.empty': 'Nenhum resultado encontrado.',
+    'results.count': '{n} resultados',
+    'error.generic': 'Ocorreu um erro. Tente novamente.',
+    'error.network': 'Erro de rede. Verifique a conexão.',
+    'feedback.title': 'O tipo deste documento está correto?',
+    'feedback.correct': 'Sim, está correto',
+    'feedback.wrong': 'Não, corrigir',
+    'feedback.thanks': 'Obrigado pelo feedback!',
+    'theme.dark': 'Tema escuro',
+    'theme.light': 'Tema claro',
+    'theme.auto': 'Tema automático',
+    'loading': 'Carregando...',
+  };
+  window.tr = function(key, params){
+    const lang = (navigator.language || 'pt-BR').startsWith('pt') ? 'pt-BR' : 'pt-BR';
+    const dict = window.PDFS_I18N[lang] || window.PDFS_I18N['pt-BR'];
+    let s = dict[key] || key;
+    if (params) {
+      Object.keys(params).forEach(function(k){
+        s = s.replace('{' + k + '}', params[k]);
+      });
+    }
+    return s;
+  };
+
+  // -------- Chat citações clicáveis [doc:file_id#page:N] --------
+  // Converte padrões [doc:abc123#page:5] em links clicáveis que abrem o viewer
+  window.renderCitations = function(text){
+    if (!text) return '';
+    return String(text).replace(
+      /\[doc:([a-f0-9]{8,16})#page:(\d+)\]/gi,
+      function(match, fid, page){
+        return '<a href="#" class="citation-link" data-file-id="' + fid
+             + '" data-page="' + page + '" onclick="event.preventDefault();'
+             + 'window.openViewerFromCitation(\'' + fid + '\',' + page + ')">['
+             + fid.slice(0, 6) + '…p.' + page + ']</a>';
+      }
+    );
+  };
+
+  window.openViewerFromCitation = function(fileId, page){
+    try {
+      // Tenta usar openViewer se existir; caso contrário navega
+      if (typeof window.openViewer === 'function') {
+        // Encontrar o doc no índice cached
+        const docs = (window.__PDFS_INDEX__ || {}).files || [];
+        const doc = docs.find(function(d){ return (d.id || '') === fileId; });
+        if (doc) {
+          window.openViewer(doc, '');
+          return;
+        }
+      }
+      // Fallback: abre via file_id directamente
+      window.location.hash = '#view=' + fileId + '&page=' + page;
+    } catch(e) {
+      console.error('Falha ao abrir citação:', e);
+    }
+  };
+
+  // -------- Feedback UI do classificador --------
+  window.showClassifierFeedback = function(fileId, currentLabel){
+    const div = document.createElement('div');
+    div.className = 'classifier-feedback';
+    div.style.cssText = 'padding:12px;margin:8px 0;background:#f5f5f7;border-radius:8px;font-size:13px';
+    div.innerHTML = '<strong>' + window.tr('feedback.title') + '</strong> '
+      + '<em>(' + (currentLabel || '?') + ')</em><br>'
+      + '<button data-ok="1" style="margin:8px 4px 0 0;padding:4px 12px;border-radius:4px;border:1px solid #34c759;background:#34c759;color:#fff;cursor:pointer">'
+      + window.tr('feedback.correct') + '</button>'
+      + '<button data-ok="0" style="margin:8px 0 0 0;padding:4px 12px;border-radius:4px;border:1px solid #ff3b30;background:#fff;color:#ff3b30;cursor:pointer">'
+      + window.tr('feedback.wrong') + '</button>';
+    div.addEventListener('click', function(ev){
+      const btn = ev.target.closest('button[data-ok]');
+      if (!btn) return;
+      if (btn.dataset.ok === '1') {
+        div.innerHTML = '<span style="color:#34c759">✓ ' + window.tr('feedback.thanks') + '</span>';
+        setTimeout(function(){ div.remove(); }, 2000);
+      } else {
+        const newLabel = prompt('Qual é o tipo correto?', currentLabel || '');
+        if (newLabel && newLabel.trim()) {
+          fetch('/api/classifier/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_id: fileId, correct_label: newLabel.trim() }),
+          }).then(function(r){
+            if (r.ok) {
+              div.innerHTML = '<span style="color:#34c759">✓ ' + window.tr('feedback.thanks') + '</span>';
+              setTimeout(function(){ div.remove(); }, 2000);
+            }
+          });
+        }
+      }
+    });
+    return div;
+  };
+
+  // -------- Timeline brush-select hook --------
+  // Quando a timeline tem brush, ela deve emitir CustomEvent('timeline-brush', {detail:{from,to}})
+  window.addEventListener('timeline-brush', function(ev){
+    const d = ev.detail || {};
+    if (d.from && d.to) {
+      // Filtra resultados por data (os componentes de lista devem ouvir este evento também)
+      document.querySelectorAll('.result-item[data-date]').forEach(function(el){
+        const dt = el.dataset.date;
+        el.style.display = (dt >= d.from && dt <= d.to) ? '' : 'none';
+      });
+    }
+  });
+
+  // -------- KG node click hook --------
+  // Quando um nó do grafo é clicado, dispara 'kg-node-click' com {entity, type}
+  window.addEventListener('kg-node-click', function(ev){
+    const d = ev.detail || {};
+    if (d.entity) {
+      const inp = document.getElementById('search-input');
+      if (inp) {
+        inp.value = '"' + d.entity + '"';
+        inp.focus();
+        if (typeof window.doSearch === 'function') window.doSearch(inp.value);
+      }
+    }
+  });
+
+  console.log('[pdfsearchable] Enhancements v2026-04-15 carregado');
+})();
+</script>
+</body>
+</html>

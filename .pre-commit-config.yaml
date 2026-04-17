@@ -1,0 +1,45 @@
+repos:
+  # ─── Formatação e lint ───────────────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # ─── Segurança: SAST ─────────────────────────────────────────────────────
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        args: ["-c", "pyproject.toml", "-r", "src/"]
+        pass_filenames: false
+
+  # ─── Segurança: secrets ──────────────────────────────────────────────────
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  # ─── Segurança: trailing whitespace / encoding ───────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: detect-private-key
+      - id: check-ast          # Python syntax check
+      - id: debug-statements   # no print() / breakpoint() left in
+
+  # ─── Ficheiros Python ─────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      - id: python-no-eval           # proibe eval()
+      - id: python-no-log-warn       # usa logging.warning não .warn
+      - id: python-check-blanket-noqa

@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Linha do Tempo — pdfsearchable</title>
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self';">
+  <style>
+    /* ── Design tokens (Apple HIG, em sincronia com app.html) ── */
+    :root {
+      --bg:             #f5f5f7;
+      --bg-elevated:    #ffffff;
+      --bg-secondary:   #f2f2f7;
+      --text-primary:   #1d1d1f;
+      --text-secondary: #6e6e73;
+      --text-tertiary:  #aeaeb2;
+      --separator:      rgba(0,0,0,0.1);
+      --accent:         #007AFF;
+      --accent-hover:   #0051d5;
+      --accent-muted:   rgba(0,122,255,0.1);
+      --success:        #34c759;
+      --warning:        #ff9f0a;
+      --fill-quaternary: rgba(0,0,0,0.04);
+      --shadow-sm:  0 1px 2px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+      --shadow-md:  0 4px 16px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
+      --radius-sm:  8px;
+      --radius-md:  12px;
+      --radius-lg:  16px;
+      --font:       -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      --transition: 0.2s cubic-bezier(0.25,0.46,0.45,0.94);
+    }
+    [data-theme="dark"] {
+      --bg:             #000000;
+      --bg-elevated:    #1c1c1e;
+      --bg-secondary:   #2c2c2e;
+      --text-primary:   #f5f5f7;
+      --text-secondary: #98989d;
+      --text-tertiary:  #636366;
+      --separator:      rgba(255,255,255,0.08);
+      --accent:         #0A84FF;
+      --fill-quaternary: rgba(255,255,255,0.05);
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Toolbar ── */
+    #toolbar {
+      position: sticky;
+      top: 0;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      background: rgba(245,245,247,0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--separator);
+      z-index: 100;
+    }
+    [data-theme="dark"] #toolbar {
+      background: rgba(0,0,0,0.82);
+    }
+    #toolbar .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 15px;
+      color: var(--accent);
+      text-decoration: none;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      transition: background var(--transition);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    #toolbar .back-btn:hover { background: var(--accent-muted); }
+    #toolbar .back-btn svg { flex-shrink: 0; }
+    #toolbar .title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      flex: 1;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #toolbar .stats-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    #theme-toggle {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--fill-quaternary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      transition: background var(--transition), color var(--transition);
+      font-size: 16px;
+      line-height: 1;
+    }
+    #theme-toggle:hover { background: var(--separator); }
+
+    /* ── Main content ── */
+    #main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+
+    /* ── Loading state ── */
+    #loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 96px 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 2.5px solid var(--separator);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error state ── */
+    #error-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 96px 0;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+    #error-state .error-icon {
+      font-size: 40px;
+      line-height: 1;
+    }
+    #error-state .error-msg {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    #error-state .error-detail {
+      font-size: 13px;
+      color: var(--text-secondary);
+      max-width: 320px;
+    }
+
+    /* ── Empty state ── */
+    #empty-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 96px 0;
+      text-align: center;
+    }
+    #empty-state .empty-icon {
+      font-size: 48px;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    #empty-state .empty-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    #empty-state .empty-sub {
+      font-size: 14px;
+      color: var(--text-secondary);
+      max-width: 320px;
+      line-height: 1.5;
+    }
+
+    /* ── Timeline container ── */
+    #timeline { display: none; }
+
+    /* ── Year group ── */
+    .year-group { margin-bottom: 8px; }
+
+    /* Year heading row: label + line */
+    .year-heading {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      margin-top: 36px;
+      position: relative;
+    }
+    .year-heading:first-child { margin-top: 0; }
+    .year-label {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .year-line {
+      flex: 1;
+      height: 1px;
+      background: var(--separator);
+    }
+
+    /* ── Entry list ── */
+    .entries-list {
+      position: relative;
+      padding-left: 32px;
+    }
+    /* Vertical connecting line */
+    .entries-list::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: var(--separator);
+      border-radius: 1px;
+    }
+
+    /* ── Single entry ── */
+    .entry {
+      position: relative;
+      margin-bottom: 10px;
+    }
+    /* Dot on the line */
+    .entry::before {
+      content: '';
+      position: absolute;
+      left: -27px;
+      top: 16px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--bg-elevated);
+      border: 2px solid var(--accent);
+      box-shadow: 0 0 0 3px var(--bg);
+      transition: border-color var(--transition);
+    }
+    .entry:hover::before {
+      border-color: var(--accent-hover);
+    }
+
+    /* Card */
+    .entry-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
+      box-shadow: var(--shadow-sm);
+    }
+    .entry-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+      border-color: rgba(0,122,255,0.2);
+    }
+    [data-theme="dark"] .entry-card:hover {
+      border-color: rgba(10,132,255,0.3);
+    }
+    .entry-card:active {
+      transform: translateY(0);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Card top row: badges + confidence */
+    .card-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .badge-type {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      color: #fff;
+      letter-spacing: 0.1px;
+      text-transform: capitalize;
+      flex-shrink: 0;
+    }
+    .badge-source {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      background: var(--fill-quaternary);
+      padding: 2px 7px;
+      border-radius: 20px;
+      flex-shrink: 0;
+    }
+    .confidence-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+
+    /* Card name */
+    .card-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    /* Card date */
+    .card-date {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Toolbar ── -->
+<div id="toolbar">
+  <a href="app.html" class="back-btn">
+    <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true">
+      <path d="M7 1L1 7L7 13" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Voltar
+  </a>
+  <span class="title">Linha do Tempo</span>
+  <span class="stats-label" id="stats-label"></span>
+  <button id="theme-toggle" title="Alternar tema" aria-label="Alternar tema claro/escuro">
+    <span id="theme-icon">☀️</span>
+  </button>
+</div>
+
+<!-- ── Content ── -->
+<div id="main">
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <span>A carregar linha do tempo…</span>
+  </div>
+
+  <div id="error-state">
+    <div class="error-icon">⚠️</div>
+    <div class="error-msg">Não foi possível carregar</div>
+    <div class="error-detail" id="error-detail">Ocorreu um erro ao obter os dados da linha do tempo.</div>
+  </div>
+
+  <div id="empty-state">
+    <div class="empty-icon">📅</div>
+    <div class="empty-title">Nenhum documento com data detectada</div>
+    <div class="empty-sub">Os documentos precisam de ter datas extraíveis para aparecer na linha do tempo.</div>
+  </div>
+
+  <div id="timeline"></div>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── Constants ── */
+  const MONTHS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+  const SOURCE_LABELS = {
+    content_date:  'data do documento',
+    pdf_metadata:  'data PDF',
+    indexed_date:  'data de indexação',
+  };
+
+  const TYPE_COLORS = {
+    contrato:    '#34c759',
+    nota_fiscal: '#ff9f0a',
+    relatório:   '#5856d6',
+    'e-mail':    '#ff2d55',
+    fatura:      '#ff6b35',
+    edital:      '#af52de',
+    procuração:  '#00c7be',
+    petição:     '#ff453a',
+    ata:         '#32d74b',
+    certidão:    '#64d2ff',
+    documento:   '#8e8e93',
+  };
+  const DEFAULT_TYPE_COLOR = '#007AFF';
+
+  /* ── Theme ── */
+  const THEME_KEY = 'pdfsearchable-theme';
+
+  function getSystemTheme() {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem(THEME_KEY);
+    applyTheme(saved || getSystemTheme());
+  }
+
+  document.getElementById('theme-toggle').addEventListener('click', function () {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
+
+  initTheme();
+
+  /* ── Helpers ── */
+  function formatDate(isoStr) {
+    // "2023-06-15" → "15 jun 2023"
+    const parts = isoStr.split('-');
+    if (parts.length < 3) return isoStr;
+    const day = parseInt(parts[2], 10);
+    const mon = parseInt(parts[1], 10) - 1;
+    const yr  = parts[0];
+    return day + ' ' + (MONTHS[mon] || parts[1]) + ' ' + yr;
+  }
+
+  function confidenceColor(conf) {
+    if (conf >= 0.8) return '#34c759';
+    if (conf >= 0.5) return '#ff9f0a';
+    return '#aeaeb2';
+  }
+
+  function typeColor(docType) {
+    return TYPE_COLORS[(docType || '').toLowerCase()] || DEFAULT_TYPE_COLOR;
+  }
+
+  function sourceLabel(src) {
+    return SOURCE_LABELS[src] || src || '';
+  }
+
+  function escHtml(str) {
+    return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ── Render ── */
+  function setState(id) {
+    ['loading','error-state','empty-state','timeline'].forEach(function (s) {
+      const el = document.getElementById(s);
+      if (!el) return;
+      el.style.display = (s === id) ? (s === 'timeline' ? 'block' : 'flex') : 'none';
+    });
+  }
+
+  function renderTimeline(data) {
+    const entries = data.entries || [];
+    const stats   = data.stats   || {};
+
+    // Stats label
+    const statsEl = document.getElementById('stats-label');
+    if (stats.total !== undefined) {
+      const yr = stats.span_years;
+      statsEl.textContent = stats.total + ' documento' + (stats.total !== 1 ? 's' : '')
+        + (yr ? ' · ' + yr + ' ano' + (yr !== 1 ? 's' : '') : '');
+    }
+
+    if (entries.length === 0) {
+      setState('empty-state');
+      return;
+    }
+
+    // Group by year (entries assumed sorted desc from API; we sort asc for display)
+    const sorted = entries.slice().sort(function (a, b) {
+      return (a.date_iso || '').localeCompare(b.date_iso || '');
+    });
+
+    const byYear = {};
+    const yearOrder = [];
+    sorted.forEach(function (entry) {
+      const yr = entry.year || (entry.date_iso || '').slice(0, 4);
+      if (!byYear[yr]) {
+        byYear[yr] = [];
+        yearOrder.push(yr);
+      }
+      byYear[yr].push(entry);
+    });
+    // Show most recent year first
+    yearOrder.reverse();
+
+    const container = document.getElementById('timeline');
+    container.innerHTML = '';
+
+    yearOrder.forEach(function (yr) {
+      const group = document.createElement('div');
+      group.className = 'year-group';
+
+      // Year heading
+      const heading = document.createElement('div');
+      heading.className = 'year-heading';
+      heading.innerHTML = '<span class="year-label">' + escHtml(String(yr)) + '</span>'
+        + '<div class="year-line"></div>';
+      group.appendChild(heading);
+
+      // Entries list
+      const list = document.createElement('div');
+      list.className = 'entries-list';
+
+      // Show most recent day first within year
+      const yearEntries = byYear[yr].slice().reverse();
+
+      yearEntries.forEach(function (entry) {
+        const item = document.createElement('div');
+        item.className = 'entry';
+
+        const color   = typeColor(entry.doc_type);
+        const conf    = typeof entry.confidence === 'number' ? entry.confidence : 1.0;
+        const dotClr  = confidenceColor(conf);
+        const srcLbl  = sourceLabel(entry.source);
+        const dateStr = entry.date_iso ? formatDate(entry.date_iso) : '';
+
+        const card = document.createElement('div');
+        card.className = 'entry-card';
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', escHtml(entry.name) + ', ' + dateStr);
+
+        card.innerHTML =
+          '<div class="card-top">'
+          + '<span class="badge-type" style="background:' + color + '">'
+          +   escHtml(entry.doc_type || 'documento')
+          + '</span>'
+          + (srcLbl ? '<span class="badge-source">' + escHtml(srcLbl) + '</span>' : '')
+          + '<span class="confidence-dot" style="background:' + dotClr + '" '
+          +   'title="Confiança: ' + Math.round(conf * 100) + '%"></span>'
+          + '</div>'
+          + '<div class="card-name">' + escHtml(entry.name) + '</div>'
+          + '<div class="card-date">' + escHtml(dateStr) + '</div>';
+
+        function openEntry() {
+          localStorage.setItem('pdfs-search-init', entry.name);
+          window.location.href = 'app.html';
+        }
+
+        card.addEventListener('click', openEntry);
+        card.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openEntry();
+          }
+        });
+
+        item.appendChild(card);
+        list.appendChild(item);
+      });
+
+      group.appendChild(list);
+      container.appendChild(group);
+    });
+
+    setState('timeline');
+  }
+
+  /* ── Fetch ── */
+  function load() {
+    setState('loading');
+    fetch('/api/timeline')
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(renderTimeline)
+      .catch(function (err) {
+        document.getElementById('error-detail').textContent =
+          err && err.message ? err.message : 'Ocorreu um erro ao obter os dados.';
+        setState('error-state');
+      });
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>
