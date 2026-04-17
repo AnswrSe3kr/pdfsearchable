@@ -25,6 +25,7 @@ Exemplo:
             details={"file": str(path), "error": str(exc)},
         ) from exc
 """
+
 from __future__ import annotations
 
 import logging
@@ -61,13 +62,19 @@ class PdfSearchableError(Exception):
         if level >= logging.ERROR:
             logger.exception(
                 "%s [%s]: %s | details=%s",
-                type(self).__name__, self.code, self.message, self.details,
+                type(self).__name__,
+                self.code,
+                self.message,
+                self.details,
             )
         else:
             logger.log(
                 level,
                 "%s [%s]: %s | details=%s",
-                type(self).__name__, self.code, self.message, self.details,
+                type(self).__name__,
+                self.code,
+                self.message,
+                self.details,
             )
 
 

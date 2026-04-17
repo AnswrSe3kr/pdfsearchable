@@ -138,9 +138,7 @@ def test_export_markdown(store_with_two_docs, tmp_path) -> None:
     assert len(md_files) == 2
 
     # Verificar conteúdo de um ficheiro Markdown
-    contrato_md = next(
-        (f for f in md_files if "contrato" in f.name.lower()), None
-    )
+    contrato_md = next((f for f in md_files if "contrato" in f.name.lower()), None)
     assert contrato_md is not None
     content = contrato_md.read_text(encoding="utf-8")
     assert "# contrato.pdf" in content
@@ -153,9 +151,7 @@ def test_export_markdown_includes_dates(store_with_two_docs, tmp_path) -> None:
     out_dir = tmp_path / "md_output"
     export_markdown(out_dir)
 
-    relatorio_md = next(
-        (f for f in out_dir.glob("*.md") if "relatorio" in f.name.lower()), None
-    )
+    relatorio_md = next((f for f in out_dir.glob("*.md") if "relatorio" in f.name.lower()), None)
     assert relatorio_md is not None
     content = relatorio_md.read_text(encoding="utf-8")
     assert "2024-01-15" in content

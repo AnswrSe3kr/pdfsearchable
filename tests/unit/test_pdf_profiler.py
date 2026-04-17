@@ -210,11 +210,17 @@ import unittest.mock as mock
 
 # --- _classify missing branches ---
 
+
 def test_classify_table_heavy():
     """avg_drawings > 20 and avg_text_chars > 50 → table_heavy (line 370)."""
     kind, conf = _classify(
-        avg_text_chars=100, avg_images=0, avg_drawings=25,
-        img_coverage=0.1, producer="", metadata={}, features={},
+        avg_text_chars=100,
+        avg_images=0,
+        avg_drawings=25,
+        img_coverage=0.1,
+        producer="",
+        metadata={},
+        features={},
     )
     assert kind == "table_heavy"
     assert conf == 0.7
@@ -223,9 +229,13 @@ def test_classify_table_heavy():
 def test_classify_historical_print():
     """historical producer + high img_coverage + enough text → historical_print (line 385)."""
     kind, conf = _classify(
-        avg_text_chars=300, avg_images=2, avg_drawings=0,
-        img_coverage=0.7, producer="abbyy finereader",
-        metadata={}, features={},
+        avg_text_chars=300,
+        avg_images=2,
+        avg_drawings=0,
+        img_coverage=0.7,
+        producer="abbyy finereader",
+        metadata={},
+        features={},
     )
     assert kind == "historical_print"
 
@@ -233,9 +243,13 @@ def test_classify_historical_print():
 def test_classify_historical_old_year():
     """Old creation year triggers historical detection (line 377-378)."""
     kind, conf = _classify(
-        avg_text_chars=50, avg_images=1, avg_drawings=0,
-        img_coverage=0.6, producer="",
-        metadata={"creation_date": "D:19200101"}, features={},
+        avg_text_chars=50,
+        avg_images=1,
+        avg_drawings=0,
+        img_coverage=0.6,
+        producer="",
+        metadata={"creation_date": "D:19200101"},
+        features={},
     )
     assert kind in ("historical_print", "historical_manuscript")
 
@@ -243,8 +257,13 @@ def test_classify_historical_old_year():
 def test_classify_scanned_noisy():
     """Low text + images + drawings > 5 → scanned_noisy (line 391)."""
     kind, conf = _classify(
-        avg_text_chars=5, avg_images=2, avg_drawings=8,
-        img_coverage=0.75, producer="", metadata={}, features={},
+        avg_text_chars=5,
+        avg_images=2,
+        avg_drawings=8,
+        img_coverage=0.75,
+        producer="",
+        metadata={},
+        features={},
     )
     assert kind == "scanned_noisy"
 
@@ -252,8 +271,13 @@ def test_classify_scanned_noisy():
 def test_classify_image_only_fallback():
     """Low text + images but low img_coverage → image_only fallback (line 404)."""
     kind, conf = _classify(
-        avg_text_chars=5, avg_images=1, avg_drawings=0,
-        img_coverage=0.2, producer="", metadata={}, features={},
+        avg_text_chars=5,
+        avg_images=1,
+        avg_drawings=0,
+        img_coverage=0.2,
+        producer="",
+        metadata={},
+        features={},
     )
     assert kind == "image_only"
     assert conf == 0.6
@@ -262,8 +286,13 @@ def test_classify_image_only_fallback():
 def test_classify_mixed():
     """Some text but no other strong signals → mixed (line 408)."""
     kind, conf = _classify(
-        avg_text_chars=50, avg_images=0, avg_drawings=0,
-        img_coverage=0.1, producer="", metadata={}, features={},
+        avg_text_chars=50,
+        avg_images=0,
+        avg_drawings=0,
+        img_coverage=0.1,
+        producer="",
+        metadata={},
+        features={},
     )
     assert kind == "mixed"
 
@@ -271,8 +300,13 @@ def test_classify_mixed():
 def test_classify_unknown():
     """No text, no images → unknown (line 410)."""
     kind, conf = _classify(
-        avg_text_chars=0, avg_images=0, avg_drawings=0,
-        img_coverage=0.0, producer="", metadata={}, features={},
+        avg_text_chars=0,
+        avg_images=0,
+        avg_drawings=0,
+        img_coverage=0.0,
+        producer="",
+        metadata={},
+        features={},
     )
     assert kind == "unknown"
 
@@ -280,8 +314,13 @@ def test_classify_unknown():
 def test_classify_xfa_form():
     """has_xfa flag → form (line 365-366)."""
     kind, _ = _classify(
-        avg_text_chars=0, avg_images=0, avg_drawings=0,
-        img_coverage=0.0, producer="", metadata={}, features={"has_xfa": True},
+        avg_text_chars=0,
+        avg_images=0,
+        avg_drawings=0,
+        img_coverage=0.0,
+        producer="",
+        metadata={},
+        features={"has_xfa": True},
     )
     assert kind == "form"
 
@@ -294,6 +333,7 @@ def test_classify_pdf_a_producer():
 
 
 # --- profile_pdf: missing branches ---
+
 
 def test_profile_corrupted_file(tmp_path):
     """Non-PDF file causes fitz.open to raise → kind=corrupted (lines 112-115)."""
@@ -397,6 +437,7 @@ def test_profile_get_images_exception(tmp_path):
 def test_profile_language_detection(tmp_path, monkeypatch):
     """Dominant language detected from text (lines 324-331)."""
     import pdfsearchable.language as lang_mod
+
     monkeypatch.setattr(lang_mod, "detect_language", lambda text: "pt")
     pdf = _make_text_pdf(tmp_path, "Este é um texto em português. " * 30)
     p = profile_pdf(pdf)
@@ -406,7 +447,10 @@ def test_profile_language_detection(tmp_path, monkeypatch):
 def test_profile_language_exception_swallowed(tmp_path, monkeypatch):
     """Language detection exception is swallowed (lines 330-331)."""
     import pdfsearchable.language as lang_mod
-    monkeypatch.setattr(lang_mod, "detect_language", lambda text: (_ for _ in ()).throw(RuntimeError("lang fail")))
+
+    monkeypatch.setattr(
+        lang_mod, "detect_language", lambda text: (_ for _ in ()).throw(RuntimeError("lang fail"))
+    )
     pdf = _make_text_pdf(tmp_path, "texto " * 30)
     p = profile_pdf(pdf)  # must not raise
 
@@ -479,6 +523,7 @@ def test_profile_doc_close_exception(tmp_path, monkeypatch):
 
 # --- recommend_pipeline missing branches ---
 
+
 def test_recommend_corrupted():
     """kind=corrupted → warn_corrupted=True (lines 443-445)."""
     rec = recommend_pipeline({"kind": "corrupted", "features": {}})
@@ -529,6 +574,7 @@ def test_recommend_unknown():
 
 
 # --- Additional pdf_profiler gap tests ---
+
 
 def test_profile_get_ocgs_exception(tmp_path):
     """get_ocgs() exception is swallowed (lines 156-157)."""
@@ -587,6 +633,7 @@ def test_profile_encrypted_authenticates_ok(tmp_path):
 
     class FakeDoc:
         """Wrapper that reports is_encrypted=True but authenticates OK."""
+
         def __init__(self, inner):
             self._inner = inner
             self.is_encrypted = True
@@ -615,9 +662,13 @@ def test_profile_encrypted_authenticates_ok(tmp_path):
 def test_classify_historical_manuscript_old_year():
     """Old year + high img_coverage + low text → historical_manuscript (line 384)."""
     kind, conf = _classify(
-        avg_text_chars=50, avg_images=2, avg_drawings=0,
-        img_coverage=0.7, producer="",
-        metadata={"creation_date": "D:19200101"}, features={},
+        avg_text_chars=50,
+        avg_images=2,
+        avg_drawings=0,
+        img_coverage=0.7,
+        producer="",
+        metadata={"creation_date": "D:19200101"},
+        features={},
     )
     assert kind == "historical_manuscript"
     assert conf == 0.65
@@ -626,6 +677,7 @@ def test_classify_historical_manuscript_old_year():
 def test_profile_language_detection_short_text(tmp_path, monkeypatch):
     """Language detection skipped when total_text_chars <= 50 (line 319 branch)."""
     import pdfsearchable.language as lang_mod
+
     detect_called = {"n": 0}
     original = lang_mod.detect_language
 
@@ -640,6 +692,7 @@ def test_profile_language_detection_short_text(tmp_path, monkeypatch):
 
 
 # --- Final pdf_profiler gap tests ---
+
 
 def test_profile_form_widgets_break(tmp_path):
     """Form widgets >= _FORM_FIELD_MIN triggers inner and outer break (lines 164-168)."""
@@ -710,20 +763,26 @@ def test_profile_page_access_exception_appends_error(tmp_path):
     class _PatchedDoc:
         def __init__(self, inner):
             self._inner = inner
+
         def __getattr__(self, name):
             return getattr(self._inner, name)
+
         def __len__(self):
             return len(self._inner)
+
         def __iter__(self):
             return iter(self._inner)
+
         def __getitem__(self, idx):
             if idx == 1:
                 raise Exception("page inaccessible")
             return self._inner[idx]
+
         def close(self):
             self._inner.close()
 
     real_open = fitz.open
+
     def fake_open(p, *a, **kw):
         doc = real_open(p, *a, **kw)
         return _PatchedDoc(doc)
@@ -736,14 +795,17 @@ def test_profile_page_access_exception_appends_error(tmp_path):
 def test_profile_image_block_area(tmp_path):
     """PDF page with image block exercises area calculation (lines 245-246)."""
     import struct
+
     # Create a PDF with an actual image embedded via fitz
     path = tmp_path / "img.pdf"
     d = fitz.open()
     pg = d.new_page()
     # Create a tiny 4x4 JPEG in memory
     import io as _io
+
     try:
         from PIL import Image as PILImage
+
         img = PILImage.new("RGB", (4, 4), color=(128, 128, 128))
         buf = _io.BytesIO()
         img.save(buf, format="JPEG")
@@ -784,7 +846,9 @@ def test_profile_block_type_other(tmp_path):
         if mode == "dict" and isinstance(result, dict):
             # Inject a block with type=2 (neither text nor image)
             result = dict(result)
-            result["blocks"] = [{"type": 2, "bbox": (0, 0, 10, 10)}] + list(result.get("blocks", []))
+            result["blocks"] = [{"type": 2, "bbox": (0, 0, 10, 10)}] + list(
+                result.get("blocks", [])
+            )
         return result
 
     with mock.patch.object(fitz.Page, "get_text", patched_get_text):
@@ -805,9 +869,9 @@ def test_profile_multi_column_detected(tmp_path):
         # left blocks at x=50 (< 267.75), right blocks at x=350 (> 327.25)
         blocks = []
         for i in range(3):
-            blocks.append({"type": 0, "bbox": (50, 100 + i*40, 200, 130 + i*40), "lines": []})
+            blocks.append({"type": 0, "bbox": (50, 100 + i * 40, 200, 130 + i * 40), "lines": []})
         for i in range(3):
-            blocks.append({"type": 0, "bbox": (350, 100 + i*40, 500, 130 + i*40), "lines": []})
+            blocks.append({"type": 0, "bbox": (350, 100 + i * 40, 500, 130 + i * 40), "lines": []})
         return {"blocks": blocks}
 
     with mock.patch.object(fitz.Page, "get_text", patched_get_text):
@@ -818,6 +882,7 @@ def test_profile_multi_column_detected(tmp_path):
 def test_profile_dominant_lang_from_text(tmp_path, monkeypatch):
     """Language detection executed from accumulated text (lines 324-325)."""
     import pdfsearchable.language as lang_mod
+
     detected = {"lang": None}
 
     def fake_detect(text):

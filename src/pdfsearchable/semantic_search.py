@@ -37,9 +37,7 @@ _CREATE_CHUNKS_SQL = (
     "(file_id TEXT, page INTEGER, embedding BLOB, model TEXT, indexed_at TEXT, "
     "PRIMARY KEY (file_id, page, model))"
 )
-_CREATE_CHUNKS_IDX = (
-    "CREATE INDEX IF NOT EXISTS idx_chunks_file ON embeddings_chunks(file_id)"
-)
+_CREATE_CHUNKS_IDX = "CREATE INDEX IF NOT EXISTS idx_chunks_file ON embeddings_chunks(file_id)"
 _WAL_PRAGMAS = ("PRAGMA journal_mode=WAL", "PRAGMA synchronous=NORMAL")
 
 
@@ -105,9 +103,7 @@ def _load_all_embeddings(model: str | None = None) -> dict[str, list[float]]:
                     "SELECT file_id, embedding FROM embeddings WHERE model=?", (model,)
                 ).fetchall()
             else:
-                rows = conn.execute(
-                    "SELECT file_id, embedding FROM embeddings"
-                ).fetchall()
+                rows = conn.execute("SELECT file_id, embedding FROM embeddings").fetchall()
         finally:
             conn.close()
     result: dict[str, list[float]] = {}
@@ -138,6 +134,7 @@ def _cosine(a: list[float], b: list[float]) -> float:
     if na <= 0.0 or nb <= 0.0:
         return 0.0
     import math as _m
+
     return dot / (_m.sqrt(na) * _m.sqrt(nb))
 
 
@@ -467,9 +464,7 @@ def semantic_search(
     if doc_type_filter:
         files = [f for f in files if f.get("doc_type") == doc_type_filter]
     allowed_ids = {f.get("id") for f in files if f.get("id")}
-    id_to_meta: dict[str, dict[str, Any]] = {
-        f["id"]: f for f in files if f.get("id")
-    }
+    id_to_meta: dict[str, dict[str, Any]] = {f["id"]: f for f in files if f.get("id")}
 
     if not allowed_ids:
         return []
@@ -484,7 +479,12 @@ def semantic_search(
             try:
                 sim = _cosine(q_vec, vec)
             except Exception as _e:
-                _log.debug("semantic_search(chunks): erro ao calcular cosine para %s p%s: %s", fid, page, _e)
+                _log.debug(
+                    "semantic_search(chunks): erro ao calcular cosine para %s p%s: %s",
+                    fid,
+                    page,
+                    _e,
+                )
                 continue
             cur = best_per_doc.get(fid)
             if cur is None or sim > cur[0]:
@@ -500,7 +500,9 @@ def semantic_search(
                     if page_text:
                         snippet = page_text.strip()[:300]
                 except Exception as _e:
-                    _log.debug("semantic_search(chunks): falha ao ler página %d de %s: %s", page, fid, _e)
+                    _log.debug(
+                        "semantic_search(chunks): falha ao ler página %d de %s: %s", page, fid, _e
+                    )
                 chunk_results.append(
                     {
                         "file_id": fid,
@@ -610,7 +612,12 @@ def find_semantic_duplicate_groups(
                 if sim >= threshold:
                     _union(i, j)
             except Exception as _e:
-                _log.debug("find_semantic_duplicates: erro ao calcular cosine para par (%s, %s): %s", items[i][0], items[j][0], _e)
+                _log.debug(
+                    "find_semantic_duplicates: erro ao calcular cosine para par (%s, %s): %s",
+                    items[i][0],
+                    items[j][0],
+                    _e,
+                )
                 continue
 
     # Recolher grupos

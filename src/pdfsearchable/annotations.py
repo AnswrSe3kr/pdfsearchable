@@ -131,7 +131,8 @@ class AnnotationStore:
         except (json.JSONDecodeError, OSError) as exc:
             _log.warning(
                 "AnnotationStore._load_raw: falha ao ler '%s': %s — devolvendo estrutura vazia.",
-                path, exc,
+                path,
+                exc,
             )
             return {
                 "version": _SCHEMA_VERSION,
@@ -151,9 +152,7 @@ class AnnotationStore:
                 json.dump(data, fh, ensure_ascii=False, indent=2)
             tmp.replace(path)
         except OSError as exc:
-            _log.error(
-                "AnnotationStore._save_raw: falha ao gravar '%s': %s", path, exc
-            )
+            _log.error("AnnotationStore._save_raw: falha ao gravar '%s': %s", path, exc)
             try:
                 tmp.unlink(missing_ok=True)
             except OSError:
@@ -218,9 +217,7 @@ class AnnotationStore:
 
         page = annotation.get("page")
         if not isinstance(page, int) or page < 1:
-            raise ValueError(
-                f"Campo 'page' inválido: '{page}'. Deve ser int >= 1."
-            )
+            raise ValueError(f"Campo 'page' inválido: '{page}'. Deve ser int >= 1.")
 
         text = annotation.get("text")
         if not text or not isinstance(text, str) or not text.strip():
@@ -233,7 +230,8 @@ class AnnotationStore:
         if not _validate_color(color):
             _log.debug(
                 "AnnotationStore.add: cor inválida '%s', usando default '%s'",
-                color, _DEFAULT_COLOR,
+                color,
+                _DEFAULT_COLOR,
             )
             color = _DEFAULT_COLOR
 
@@ -274,7 +272,9 @@ class AnnotationStore:
 
         _log.debug(
             "AnnotationStore.add: adicionada anotação '%s' ao documento '%s' (página %d)",
-            ann_id, file_id, page,
+            ann_id,
+            file_id,
+            page,
         )
         return ann_id
 
@@ -312,27 +312,22 @@ class AnnotationStore:
                             continue
                         # Validações específicas por campo
                         if key == "type" and value not in _VALID_TYPES:
-                            raise ValueError(
-                                f"Campo 'type' inválido: '{value}'."
-                            )
+                            raise ValueError(f"Campo 'type' inválido: '{value}'.")
                         if key == "page" and (not isinstance(value, int) or value < 1):
                             raise ValueError(
                                 f"Campo 'page' inválido: '{value}'. Deve ser int >= 1."
                             )
                         if key == "color" and not _validate_color(str(value)):
-                            raise ValueError(
-                                f"Campo 'color' inválido: '{value}'."
-                            )
+                            raise ValueError(f"Campo 'color' inválido: '{value}'.")
                         if key == "position" and not _validate_position(value):
-                            raise ValueError(
-                                f"Campo 'position' inválido: '{value}'."
-                            )
+                            raise ValueError(f"Campo 'position' inválido: '{value}'.")
                         ann[key] = value
                     ann["updated_at"] = _now_iso()
                     self._save_raw(file_id, data)
                     _log.debug(
                         "AnnotationStore.update: anotação '%s' do documento '%s' actualizada.",
-                        ann_id, file_id,
+                        ann_id,
+                        file_id,
                     )
                     return True
         return False
@@ -364,7 +359,8 @@ class AnnotationStore:
 
         _log.debug(
             "AnnotationStore.delete: anotação '%s' removida do documento '%s'.",
-            ann_id, file_id,
+            ann_id,
+            file_id,
         )
         return True
 

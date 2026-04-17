@@ -5,6 +5,7 @@ valida o comportamento correcto.
 
 Referência: MEMORY.md "Bugs Corrigidos (sessão 2026-03-03)"
 """
+
 from __future__ import annotations
 
 import json
@@ -23,7 +24,10 @@ from click.testing import CliRunner
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_pdf(directory: Path, name: str = "reg_doc.pdf", text: str = "Texto de regressão.") -> Path:
+
+def _make_pdf(
+    directory: Path, name: str = "reg_doc.pdf", text: str = "Texto de regressão."
+) -> Path:
     p = directory / name
     doc = fitz.open()
     page = doc.new_page()
@@ -45,6 +49,7 @@ def _add(runner, pdf, isolated_store, monkeypatch):
 # Corrigido: usa temp file + Path.replace()
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.regression
 def test_save_index_atomic_write(isolated_store, monkeypatch):
     """
@@ -53,6 +58,7 @@ def test_save_index_atomic_write(isolated_store, monkeypatch):
     Corrigido com: temp file + Path.replace() (atómico no POSIX).
     """
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
     idx = {"files": [{"id": "abc123", "name": "reg_test.pdf"}], "version": 1}
@@ -76,6 +82,7 @@ def test_save_index_concurrent_writes_no_corruption(isolated_store, monkeypatch)
     sob contenção extrema, mas o ficheiro resultante é sempre JSON válido.
     """
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
     # Inicializar o store sequencialmente
@@ -103,6 +110,7 @@ def test_save_index_concurrent_writes_no_corruption(isolated_store, monkeypatch)
 # Corrigido: adicionado _index_lock à função
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.regression
 def test_remove_file_meta_thread_safe(isolated_store, monkeypatch):
     """
@@ -110,6 +118,7 @@ def test_remove_file_meta_thread_safe(isolated_store, monkeypatch):
     Race condition com add/remove concorrente causava corrupção.
     """
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
     # Criar índice com 5 ficheiros
@@ -131,10 +140,9 @@ def test_remove_file_meta_thread_safe(isolated_store, monkeypatch):
             errors.append(e)
 
     # Remove e leitura concorrentes
-    threads = (
-        [threading.Thread(target=_remove, args=(f"id{i}",)) for i in range(5)]
-        + [threading.Thread(target=_load) for _ in range(5)]
-    )
+    threads = [threading.Thread(target=_remove, args=(f"id{i}",)) for i in range(5)] + [
+        threading.Thread(target=_load) for _ in range(5)
+    ]
     for t in threads:
         t.start()
     for t in threads:
@@ -148,6 +156,7 @@ def test_remove_file_meta_thread_safe(isolated_store, monkeypatch):
 # Corrigido: timeout=30 + PRAGMA journal_mode=WAL
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.regression
 def test_fts_wal_mode_enabled(isolated_store, monkeypatch):
     """
@@ -156,6 +165,7 @@ def test_fts_wal_mode_enabled(isolated_store, monkeypatch):
     """
     import sqlite3
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
     # Garantir que o directório existe antes de criar o DB
@@ -177,6 +187,7 @@ def test_fts_concurrent_search_no_timeout(isolated_store, monkeypatch):
     devem dar timeout com WAL mode.
     """
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
     (isolated_store / ".pdfsearchable").mkdir(exist_ok=True)
@@ -204,6 +215,7 @@ def test_fts_concurrent_search_no_timeout(isolated_store, monkeypatch):
 # Corrigido: DELETE FROM fts_idx WHERE file_id = ?
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.regression
 def test_fts_delete_by_file_id_correct(isolated_store, monkeypatch):
     """
@@ -211,6 +223,7 @@ def test_fts_delete_by_file_id_correct(isolated_store, monkeypatch):
     Simplificado para DELETE WHERE file_id = ?.
     """
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
     # Indexar usando a API pública
@@ -233,6 +246,7 @@ def test_fts_delete_by_file_id_correct(isolated_store, monkeypatch):
 # Corrigido: adicionado "content_hash": c_hash no return do worker
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.regression
 def test_indexed_document_has_content_hash(isolated_store, monkeypatch):
     """
@@ -241,6 +255,7 @@ def test_indexed_document_has_content_hash(isolated_store, monkeypatch):
     Corrigido: worker inclui content_hash no return dict.
     """
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
     pdf = _make_pdf(isolated_store)
@@ -261,6 +276,7 @@ def test_indexed_document_has_content_hash(isolated_store, monkeypatch):
 # Corrigido: threading.RLock() em vez de threading.Lock()
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.regression
 def test_index_rlock_allows_reentrant_acquisition(isolated_store, monkeypatch):
     """
@@ -269,6 +285,7 @@ def test_index_rlock_allows_reentrant_acquisition(isolated_store, monkeypatch):
     causaria deadlock.
     """
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
     store_mod.save_index({"files": [], "version": 1})
@@ -291,6 +308,7 @@ def test_index_rlock_allows_reentrant_acquisition(isolated_store, monkeypatch):
 # Corrigido: _pending_add_file() função usa cwd em runtime
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.regression
 def test_pending_add_file_uses_runtime_cwd(isolated_store, monkeypatch):
     """
@@ -311,6 +329,7 @@ def test_pending_add_file_uses_runtime_cwd(isolated_store, monkeypatch):
 # BUG #8 — audit.py: faltava threading.Lock()
 # Corrigido: _audit_lock = threading.Lock() + with _audit_lock:
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.regression
 def test_audit_concurrent_writes_no_corruption(isolated_store, monkeypatch):
@@ -347,13 +366,14 @@ def test_audit_concurrent_writes_no_corruption(isolated_store, monkeypatch):
             try:
                 json.loads(line)
             except json.JSONDecodeError:
-                pytest.fail(f"Linha {i+1} corrompida: {line!r}")
+                pytest.fail(f"Linha {i + 1} corrompida: {line!r}")
 
 
 # ---------------------------------------------------------------------------
 # BUG #9 — store.py index cache: deepcopy garante imutabilidade
 # Corrigido: retorna copy.deepcopy(_index_cache)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.regression
 def test_load_index_cache_is_independent_copy(isolated_store, monkeypatch):
@@ -363,6 +383,7 @@ def test_load_index_cache_is_independent_copy(isolated_store, monkeypatch):
     Corrigido: retorna copy.deepcopy(_index_cache).
     """
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
     store_mod.save_index({"files": [{"id": "copy_test", "name": "doc.pdf"}], "version": 1})
@@ -380,6 +401,7 @@ def test_load_index_cache_is_independent_copy(isolated_store, monkeypatch):
 # ---------------------------------------------------------------------------
 # Testes de regressão funcionais — comportamentos que não devem regredir
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.regression
 @pytest.mark.functional

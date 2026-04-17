@@ -68,6 +68,7 @@ def _get_fernet():
         import base64
 
         from cryptography.fernet import Fernet
+
         key = base64.urlsafe_b64encode(_derive_key(passphrase))
         return Fernet(key)
     except ImportError:

@@ -30,9 +30,21 @@ _log = _get_logger("pdfsearchable.export")
 
 # Campos de metadados incluídos no CSV e no cabeçalho Markdown
 _META_FIELDS = (
-    "id", "name", "doc_type", "language", "num_pages", "word_count",
-    "indexed_at", "updated_at", "summary", "subject", "tags",
-    "ocr_percentage", "ocr_avg_confidence", "content_hash", "original_path",
+    "id",
+    "name",
+    "doc_type",
+    "language",
+    "num_pages",
+    "word_count",
+    "indexed_at",
+    "updated_at",
+    "summary",
+    "subject",
+    "tags",
+    "ocr_percentage",
+    "ocr_avg_confidence",
+    "content_hash",
+    "original_path",
     "identified_dates",
 )
 
@@ -40,6 +52,7 @@ _META_FIELDS = (
 # ---------------------------------------------------------------------------
 # Helpers internos
 # ---------------------------------------------------------------------------
+
 
 def _iter_docs_with_text(include_text: bool = True) -> list[dict[str, Any]]:
     """Itera sobre todos os documentos indexados, opcionalmente com texto completo."""
@@ -76,6 +89,7 @@ def _safe_str(v: Any) -> str:
 # Exportação JSON (dump do índice)
 # ---------------------------------------------------------------------------
 
+
 def export_json(output: Path) -> int:
     """
     Exporta o índice completo (sem texto de páginas) para JSON.
@@ -91,6 +105,7 @@ def export_json(output: Path) -> int:
 # ---------------------------------------------------------------------------
 # Exportação JSONL (fine-tuning / RAG)
 # ---------------------------------------------------------------------------
+
 
 def export_jsonl(output: Path, include_text: bool = True) -> int:
     """
@@ -125,6 +140,7 @@ def export_jsonl(output: Path, include_text: bool = True) -> int:
 # ---------------------------------------------------------------------------
 # Exportação CSV (metadados tabulares)
 # ---------------------------------------------------------------------------
+
 
 def export_csv(output: Path) -> int:
     """
@@ -184,7 +200,10 @@ def export_markdown(output_dir: Path, max_chars_per_doc: int = 200_000) -> int:
 
         text = (doc.get("text") or "").strip()
         if len(text) > max_chars_per_doc:
-            text = text[:max_chars_per_doc] + f"\n\n[Texto truncado: {max_chars_per_doc:,} de {len(doc.get('text', '')):,} caracteres]"
+            text = (
+                text[:max_chars_per_doc]
+                + f"\n\n[Texto truncado: {max_chars_per_doc:,} de {len(doc.get('text', '')):,} caracteres]"
+            )
 
         subject = doc.get("subject") or ""
         tags = doc.get("tags") or []
@@ -201,7 +220,12 @@ def export_markdown(output_dir: Path, max_chars_per_doc: int = 200_000) -> int:
         fdict = doc.get("formulas")
         if isinstance(fdict, dict) and fdict.get("total", 0) > 0:
             try:
-                from pdfsearchable.formulas import FormulaHit, FormulaReport, render_markdown_section
+                from pdfsearchable.formulas import (
+                    FormulaHit,
+                    FormulaReport,
+                    render_markdown_section,
+                )
+
                 hits = [
                     FormulaHit(
                         page=int(h.get("page", 0) or 0),
@@ -249,6 +273,7 @@ def export_markdown(output_dir: Path, max_chars_per_doc: int = 200_000) -> int:
 # Entry point unificado
 # ---------------------------------------------------------------------------
 
+
 def export(
     fmt: str,
     output: Path,
@@ -272,7 +297,4 @@ def export(
     elif fmt in ("markdown", "md"):
         return export_markdown(output, max_chars_per_doc=max_chars_per_doc)
     else:
-        raise ValueError(
-            f"Formato desconhecido: '{fmt}'. "
-            "Use: json | jsonl | csv | markdown"
-        )
+        raise ValueError(f"Formato desconhecido: '{fmt}'. Use: json | jsonl | csv | markdown")

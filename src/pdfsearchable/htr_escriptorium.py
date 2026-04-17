@@ -52,6 +52,7 @@ _session_project_pk: int | None = None
 # Configuração
 # ---------------------------------------------------------------------------
 
+
 def _base_url() -> str:
     raw = (os.environ.get("PDFSEARCHABLE_ESCRIPTORIUM_URL") or "").rstrip("/")
     return raw
@@ -82,6 +83,7 @@ def _cleanup_enabled() -> bool:
 # Verificação de disponibilidade
 # ---------------------------------------------------------------------------
 
+
 def available() -> bool:
     """True se URL, token e modelo estiverem configurados."""
     return bool(_base_url() and _token() and _model_spec())
@@ -90,6 +92,7 @@ def available() -> bool:
 # ---------------------------------------------------------------------------
 # HTTP helpers
 # ---------------------------------------------------------------------------
+
 
 def _api_request(
     method: str,
@@ -171,6 +174,7 @@ def _api_multipart(
 # Projecto
 # ---------------------------------------------------------------------------
 
+
 def _ensure_project() -> int:
     """Garante projecto de trabalho; retorna pk."""
     global _session_project_pk
@@ -207,6 +211,7 @@ def _ensure_project() -> int:
 # Documento
 # ---------------------------------------------------------------------------
 
+
 def _create_document(project_pk: int) -> int:
     """Cria documento no projecto. Retorna pk do documento."""
     base = _base_url()
@@ -214,12 +219,14 @@ def _create_document(project_pk: int) -> int:
     result = _api_request(
         "POST",
         f"{base}/api/documents/",
-        data=json.dumps({
-            "name": doc_name,
-            "project": project_pk,
-            "read_direction": "ltr",
-            "main_script": "Latin",
-        }).encode(),
+        data=json.dumps(
+            {
+                "name": doc_name,
+                "project": project_pk,
+                "read_direction": "ltr",
+                "main_script": "Latin",
+            }
+        ).encode(),
         content_type="application/json",
     )
     pk = int(result["pk"])
@@ -230,6 +237,7 @@ def _create_document(project_pk: int) -> int:
 # ---------------------------------------------------------------------------
 # Upload de imagem
 # ---------------------------------------------------------------------------
+
 
 def _upload_part(doc_pk: int, image_bytes: bytes) -> int:
     """Envia imagem como parte do documento. Retorna pk da parte."""
@@ -248,6 +256,7 @@ def _upload_part(doc_pk: int, image_bytes: bytes) -> int:
 # ---------------------------------------------------------------------------
 # Polling de status da parte
 # ---------------------------------------------------------------------------
+
 
 def _poll_part_workflow(doc_pk: int, part_pk: int, workflow_key: str) -> None:
     """
@@ -271,10 +280,19 @@ def _poll_part_workflow(doc_pk: int, part_pk: int, workflow_key: str) -> None:
             raise OcrError(
                 f"eScriptorium: {workflow_key} falhou (parte {part_pk}, state={state}). "
                 "Verifique o modelo em PDFSEARCHABLE_ESCRIPTORIUM_MODEL.",
-                {"doc_pk": doc_pk, "part_pk": part_pk, "workflow_key": workflow_key, "state": state},
+                {
+                    "doc_pk": doc_pk,
+                    "part_pk": part_pk,
+                    "workflow_key": workflow_key,
+                    "state": state,
+                },
             )
         _log.debug(
-            "eScriptorium: %s estado=%s (parte %s, %ds)", workflow_key, state or "pending", part_pk, elapsed
+            "eScriptorium: %s estado=%s (parte %s, %ds)",
+            workflow_key,
+            state or "pending",
+            part_pk,
+            elapsed,
         )
         time.sleep(interval)
         elapsed += interval
@@ -288,6 +306,7 @@ def _poll_part_workflow(doc_pk: int, part_pk: int, workflow_key: str) -> None:
 # ---------------------------------------------------------------------------
 # Resolução do modelo
 # ---------------------------------------------------------------------------
+
 
 def _resolve_model_pk() -> int | str:
     """
@@ -319,13 +338,16 @@ def _resolve_model_pk() -> int | str:
         pass
 
     # Retorna o spec como string para a API tentar resolver
-    _log.warning("eScriptorium: não foi possível resolver pk do modelo '%s' — a tentar como nome.", spec)
+    _log.warning(
+        "eScriptorium: não foi possível resolver pk do modelo '%s' — a tentar como nome.", spec
+    )
     return spec
 
 
 # ---------------------------------------------------------------------------
 # Transcrição
 # ---------------------------------------------------------------------------
+
 
 def _run_transcription(doc_pk: int, part_pk: int) -> None:
     """Submete job de transcrição HTR para a parte."""
@@ -342,12 +364,15 @@ def _run_transcription(doc_pk: int, part_pk: int) -> None:
         data=json.dumps(payload).encode(),
         content_type="application/json",
     )
-    _log.debug("eScriptorium: transcrição submetida (doc=%s, parte=%s, modelo=%s)", doc_pk, part_pk, model)
+    _log.debug(
+        "eScriptorium: transcrição submetida (doc=%s, parte=%s, modelo=%s)", doc_pk, part_pk, model
+    )
 
 
 # ---------------------------------------------------------------------------
 # Extracção do texto
 # ---------------------------------------------------------------------------
+
 
 def _get_part_text(doc_pk: int, part_pk: int) -> str:
     """
@@ -386,7 +411,9 @@ def _get_part_text(doc_pk: int, part_pk: int) -> str:
         if texts:
             return "\n".join(texts)
     except OcrError as e:
-        _log.debug("eScriptorium: falha ao listar linhas (doc=%s, parte=%s): %s", doc_pk, part_pk, e)
+        _log.debug(
+            "eScriptorium: falha ao listar linhas (doc=%s, parte=%s): %s", doc_pk, part_pk, e
+        )
 
     # Tentativa 3: listar transcriptions da parte e extrair conteúdo via URL
     try:
@@ -430,6 +457,7 @@ def _get_part_text(doc_pk: int, part_pk: int) -> str:
 # Limpeza
 # ---------------------------------------------------------------------------
 
+
 def _cleanup_document(doc_pk: int) -> None:
     """Remove documento temporário (best-effort)."""
     if not _cleanup_enabled():
@@ -451,6 +479,7 @@ def _cleanup_document(doc_pk: int) -> None:
 # ---------------------------------------------------------------------------
 # Ponto de entrada público
 # ---------------------------------------------------------------------------
+
 
 def run(image_bytes: bytes) -> str:
     """

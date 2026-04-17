@@ -4,6 +4,7 @@ Linha do tempo automática de documentos.
 Constrói uma cronologia ordenada a partir das datas extraídas dos PDFs indexados,
 com suporte a agrupamento por ano/mês e estatísticas temporais.
 """
+
 from __future__ import annotations
 
 import logging
@@ -16,12 +17,30 @@ _log = logging.getLogger("pdfsearchable.timeline")
 
 # Meses em português (PT-BR e PT-EU)
 _MONTH_NAMES: dict[str, int] = {
-    "janeiro": 1, "fevereiro": 2, "março": 3, "abril": 4,
-    "maio": 5, "junho": 6, "julho": 7, "agosto": 8,
-    "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12,
-    "jan": 1, "fev": 2, "mar": 3, "abr": 4,
-    "mai": 5, "jun": 6, "jul": 7, "ago": 8,
-    "set": 9, "out": 10, "nov": 11, "dez": 12,
+    "janeiro": 1,
+    "fevereiro": 2,
+    "março": 3,
+    "abril": 4,
+    "maio": 5,
+    "junho": 6,
+    "julho": 7,
+    "agosto": 8,
+    "setembro": 9,
+    "outubro": 10,
+    "novembro": 11,
+    "dezembro": 12,
+    "jan": 1,
+    "fev": 2,
+    "mar": 3,
+    "abr": 4,
+    "mai": 5,
+    "jun": 6,
+    "jul": 7,
+    "ago": 8,
+    "set": 9,
+    "out": 10,
+    "nov": 11,
+    "dez": 12,
 }
 
 _RE_ISO_DATE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
@@ -39,25 +58,27 @@ _CURRENT_YEAR = datetime.now(timezone.utc).year
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TimelineEntry:
     """Uma entrada na linha do tempo — representa um documento e a sua data principal."""
 
     year: int
-    month: int | None          # 1–12 ou None
-    day: int | None            # 1–31 ou None
-    date_iso: str              # "YYYY-MM-DD", "YYYY-MM" ou "YYYY"
+    month: int | None  # 1–12 ou None
+    day: int | None  # 1–31 ou None
+    date_iso: str  # "YYYY-MM-DD", "YYYY-MM" ou "YYYY"
     name: str
     file_id: str
     doc_type: str
-    all_dates: list[str] = field(default_factory=list)   # todas as datas ISO do documento
-    source: str = "indexed_at"                            # origem da data principal
+    all_dates: list[str] = field(default_factory=list)  # todas as datas ISO do documento
+    source: str = "indexed_at"  # origem da data principal
     confidence: float = 0.5
 
 
 # ---------------------------------------------------------------------------
 # Parsing de datas
 # ---------------------------------------------------------------------------
+
 
 def _parse_pdf_date(raw: str) -> tuple[int, int, int] | None:
     """Parseia formato de data PDF: ``D:YYYYMMDDHHmmSS[OHH'mm']``."""
@@ -137,6 +158,7 @@ def _normalise_dates(raw_dates: list[str]) -> list[str]:
 # Construção da linha do tempo
 # ---------------------------------------------------------------------------
 
+
 def _extract_best_date(
     f: dict[str, Any],
 ) -> tuple[int, int | None, int | None, str, str, float] | None:
@@ -203,18 +225,20 @@ def build_timeline(files: list[dict[str, Any]]) -> list[TimelineEntry]:
         # Usar identified_dates para all_dates
         all_dates = _normalise_dates(f.get("identified_dates") or [])
 
-        entries.append(TimelineEntry(
-            year=y,
-            month=mo,
-            day=d,
-            date_iso=date_iso,
-            name=f.get("name", file_id),
-            file_id=file_id,
-            doc_type=f.get("doc_type") or f.get("type") or "documento",
-            all_dates=all_dates,
-            source=source,
-            confidence=confidence,
-        ))
+        entries.append(
+            TimelineEntry(
+                year=y,
+                month=mo,
+                day=d,
+                date_iso=date_iso,
+                name=f.get("name", file_id),
+                file_id=file_id,
+                doc_type=f.get("doc_type") or f.get("type") or "documento",
+                all_dates=all_dates,
+                source=source,
+                confidence=confidence,
+            )
+        )
 
     entries.sort(key=lambda e: e.date_iso)
     return entries

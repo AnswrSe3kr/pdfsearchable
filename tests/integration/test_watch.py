@@ -4,6 +4,7 @@ Testes de integração do comando `watch`.
 Testam as funções internas (_scan, _stable_size) e o comportamento
 do watch com PDFs reais usando um subprocesso com timeout curto.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -21,6 +22,7 @@ from pdfsearchable.cli import main
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_pdf(directory: Path, name: str, text: str = "Texto de watch test.") -> Path:
     p = directory / name
@@ -41,6 +43,7 @@ def _add(runner: CliRunner, pdf: Path, cwd: Path, monkeypatch) -> None:
 # ---------------------------------------------------------------------------
 # Testes unitários das funções internas do watch
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 def test_stable_size_returns_true_for_complete_file(isolated_store, monkeypatch, tmp_path):
@@ -64,7 +67,7 @@ def test_stable_size_returns_false_for_empty_file(isolated_store, tmp_path):
     empty.write_bytes(b"")
     s1 = empty.stat().st_size
     s2 = empty.stat().st_size
-    stable = (s1 == s2 and s1 > 0)
+    stable = s1 == s2 and s1 > 0
     assert not stable, "Ficheiro vazio não deve ser considerado estável"
 
 
@@ -115,9 +118,7 @@ def test_scan_ignores_macos_ghost_files(tmp_path):
 
     pattern = "*.pdf"
     found = {
-        p.resolve()
-        for p in tmp_path.glob(pattern)
-        if p.is_file() and not p.name.startswith("._")
+        p.resolve() for p in tmp_path.glob(pattern) if p.is_file() and not p.name.startswith("._")
     }
     assert len(found) == 1
     assert all("._" not in str(p) for p in found)
@@ -126,6 +127,7 @@ def test_scan_ignores_macos_ghost_files(tmp_path):
 # ---------------------------------------------------------------------------
 # Testes de comportamento do watch via subprocess
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 @pytest.mark.slow
@@ -147,9 +149,8 @@ def test_watch_indexes_new_pdf_when_added(isolated_store, monkeypatch, tmp_path)
 
     # Inicializar índice vazio
     import json
-    (store_dir / "index.json").write_text(
-        json.dumps({"files": [], "version": 1}), encoding="utf-8"
-    )
+
+    (store_dir / "index.json").write_text(json.dumps({"files": [], "version": 1}), encoding="utf-8")
 
     proc = subprocess.Popen(
         [bin_path, "watch", str(watch_dir), "--interval", "2"],
@@ -204,12 +205,15 @@ def test_watch_nonexistent_directory_fails_gracefully(isolated_store, monkeypatc
     runner = CliRunner()
     result = runner.invoke(main, ["watch", "/tmp/dir_que_nao_existe_xyzabc"])
     # exit_code != 0 ou mensagem de erro clara
-    assert result.exit_code != 0 or "não" in result.output.lower() or "error" in result.output.lower()
+    assert (
+        result.exit_code != 0 or "não" in result.output.lower() or "error" in result.output.lower()
+    )
 
 
 # ---------------------------------------------------------------------------
 # Testes de detecção de modificações
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 def test_watch_detects_mtime_change(tmp_path):
@@ -238,6 +242,4 @@ def test_watch_detects_mtime_change(tmp_path):
 
     # O watch detecta modificação quando mtime_v2 > prev_mtime e prev_mtime > 0
     is_modified = (mtime_v2 > prev_mtime) and (prev_mtime > 0)
-    assert is_modified, (
-        f"mtime_v2={mtime_v2} prev={prev_mtime} — modificação não detectada"
-    )
+    assert is_modified, f"mtime_v2={mtime_v2} prev={prev_mtime} — modificação não detectada"

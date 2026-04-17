@@ -1,4 +1,5 @@
 """Testes unitários para htr.py — seleção de modelo multilíngue, cache, backends."""
+
 import os
 import pytest
 from unittest.mock import patch, MagicMock
@@ -84,6 +85,7 @@ class TestGetModelForLang:
     def test_forced_lang(self):
         with patch.dict(os.environ, {"PDFSEARCHABLE_HTR_LANG": "de"}):
             from pdfsearchable.htr import _forced_lang
+
             assert _forced_lang() == "de"
 
 
@@ -255,18 +257,24 @@ class TestHistoricalModelSelection:
             assert model == LARGE_HTR_MODEL
 
     def test_manual_override_trumps_historical(self):
-        with patch.dict(os.environ, {
-            "PDFSEARCHABLE_HTR_MODEL": "my/model",
-            "PDFSEARCHABLE_OCR_HISTORICAL": "on",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "PDFSEARCHABLE_HTR_MODEL": "my/model",
+                "PDFSEARCHABLE_OCR_HISTORICAL": "on",
+            },
+        ):
             model, _ = get_model_for_lang("pt", historical=True)
             assert model == "my/model"
 
     def test_printed_trumps_historical(self):
-        with patch.dict(os.environ, {
-            "PDFSEARCHABLE_HTR_PRINTED": "1",
-            "PDFSEARCHABLE_OCR_HISTORICAL": "on",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "PDFSEARCHABLE_HTR_PRINTED": "1",
+                "PDFSEARCHABLE_OCR_HISTORICAL": "on",
+            },
+        ):
             os.environ.pop("PDFSEARCHABLE_HTR_MODEL", None)
             model, _ = get_model_for_lang("pt", historical=True)
             assert model == PRINTED_HTR_MODEL
@@ -301,46 +309,54 @@ class TestListSupportedLanguagesHistorical:
 
     def test_historical_entries_mention_model(self):
         langs = list_supported_languages()
-        assert "tridis" in langs.get("pt-historical", "").lower() or \
-               "TRIDIS" in langs.get("pt-historical", "")
+        assert "tridis" in langs.get("pt-historical", "").lower() or "TRIDIS" in langs.get(
+            "pt-historical", ""
+        )
 
 
 # ---------------------------------------------------------------------------
 # NEW TESTS — covering previously uncovered lines
 # ---------------------------------------------------------------------------
 
+
 class TestMaxCachedModels:
     """Lines 161-165: _max_cached_models() ValueError branch."""
 
     def test_default_three(self):
         from pdfsearchable.htr import _max_cached_models
+
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("PDFSEARCHABLE_HTR_MAX_MODELS", None)
             assert _max_cached_models() == 3
 
     def test_custom_value(self):
         from pdfsearchable.htr import _max_cached_models
+
         with patch.dict(os.environ, {"PDFSEARCHABLE_HTR_MAX_MODELS": "5"}):
             assert _max_cached_models() == 5
 
     def test_clamp_max(self):
         from pdfsearchable.htr import _max_cached_models
+
         with patch.dict(os.environ, {"PDFSEARCHABLE_HTR_MAX_MODELS": "99"}):
             assert _max_cached_models() == 10
 
     def test_clamp_min(self):
         from pdfsearchable.htr import _max_cached_models
+
         with patch.dict(os.environ, {"PDFSEARCHABLE_HTR_MAX_MODELS": "0"}):
             assert _max_cached_models() == 1
 
     def test_invalid_string_returns_three(self):
         """Lines 164-165: ValueError branch → return 3."""
         from pdfsearchable.htr import _max_cached_models
+
         with patch.dict(os.environ, {"PDFSEARCHABLE_HTR_MAX_MODELS": "banana"}):
             assert _max_cached_models() == 3
 
     def test_whitespace_invalid_returns_three(self):
         from pdfsearchable.htr import _max_cached_models
+
         with patch.dict(os.environ, {"PDFSEARCHABLE_HTR_MAX_MODELS": "  "}):
             assert _max_cached_models() == 3
 
@@ -420,9 +436,13 @@ class TestGetModelForLangNonHistoricalLatinFallback:
 
     def test_historical_env_active_uses_large_for_latin(self):
         """When _historical_htr_enabled() returns True, Latin fallback → LARGE."""
-        with patch.dict(os.environ, {
-            "PDFSEARCHABLE_OCR_HISTORICAL": "on",
-        }, clear=False):
+        with patch.dict(
+            os.environ,
+            {
+                "PDFSEARCHABLE_OCR_HISTORICAL": "on",
+            },
+            clear=False,
+        ):
             os.environ.pop("PDFSEARCHABLE_HTR_MODEL", None)
             os.environ.pop("PDFSEARCHABLE_HTR_PRINTED", None)
             model, desc = get_model_for_lang("vi", historical=False)
@@ -466,26 +486,32 @@ class TestHtrAvailableBackends:
     def setup_method(self):
         # Reset the global cache between tests
         import pdfsearchable.htr as htr_mod
+
         htr_mod._HTR_AVAILABLE = None
 
     def test_trocr_available_when_imports_succeed(self):
         """Lines 293-295: TrOCR branch when torch + transformers import works."""
         import pdfsearchable.htr as htr_mod
+
         htr_mod._HTR_AVAILABLE = None
         mock_torch = MagicMock()
         mock_transformers = MagicMock()
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("PDFSEARCHABLE_HTR_BACKEND", None)
-            with patch.dict("sys.modules", {
-                "torch": mock_torch,
-                "transformers": mock_transformers,
-            }):
+            with patch.dict(
+                "sys.modules",
+                {
+                    "torch": mock_torch,
+                    "transformers": mock_transformers,
+                },
+            ):
                 result = htr_mod.htr_available()
                 assert result is True
 
     def test_trocr_not_available_when_import_fails(self):
         """Lines 296-297: except branch sets _HTR_AVAILABLE = False."""
         import pdfsearchable.htr as htr_mod
+
         htr_mod._HTR_AVAILABLE = None
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("PDFSEARCHABLE_HTR_BACKEND", None)
@@ -499,6 +525,7 @@ class TestHtrAvailableBackends:
     def test_transkribus_backend_available(self):
         """Lines 287-288: transkribus branch."""
         import pdfsearchable.htr as htr_mod
+
         htr_mod._HTR_AVAILABLE = None
         mock_avail = MagicMock(return_value=True)
         mock_transkribus = MagicMock()
@@ -511,6 +538,7 @@ class TestHtrAvailableBackends:
     def test_transkribus_backend_not_available(self):
         """Lines 287-288: transkribus branch returning False."""
         import pdfsearchable.htr as htr_mod
+
         htr_mod._HTR_AVAILABLE = None
         mock_transkribus = MagicMock()
         mock_transkribus.available = MagicMock(return_value=False)
@@ -522,32 +550,31 @@ class TestHtrAvailableBackends:
     def test_escriptorium_backend_available(self):
         """Lines 289-291: escriptorium branch."""
         import pdfsearchable.htr as htr_mod
+
         htr_mod._HTR_AVAILABLE = None
         mock_escriptorium = MagicMock()
         mock_escriptorium.available = MagicMock(return_value=True)
         with patch.dict(os.environ, {"PDFSEARCHABLE_HTR_BACKEND": "escriptorium"}):
-            with patch.dict("sys.modules", {
-                "pdfsearchable.htr_escriptorium": mock_escriptorium
-            }):
+            with patch.dict("sys.modules", {"pdfsearchable.htr_escriptorium": mock_escriptorium}):
                 result = htr_mod.htr_available()
                 assert result is True
 
     def test_escriptorium_backend_not_available(self):
         """Lines 289-291: escriptorium branch returning False."""
         import pdfsearchable.htr as htr_mod
+
         htr_mod._HTR_AVAILABLE = None
         mock_escriptorium = MagicMock()
         mock_escriptorium.available = MagicMock(return_value=False)
         with patch.dict(os.environ, {"PDFSEARCHABLE_HTR_BACKEND": "escriptorium"}):
-            with patch.dict("sys.modules", {
-                "pdfsearchable.htr_escriptorium": mock_escriptorium
-            }):
+            with patch.dict("sys.modules", {"pdfsearchable.htr_escriptorium": mock_escriptorium}):
                 result = htr_mod.htr_available()
                 assert result is False
 
     def test_cached_value_returned_immediately(self):
         """Lines 282-283: cached value short-circuit."""
         import pdfsearchable.htr as htr_mod
+
         htr_mod._HTR_AVAILABLE = True
         assert htr_mod.htr_available() is True
         htr_mod._HTR_AVAILABLE = False
@@ -578,6 +605,7 @@ class TestLoadModel:
     def test_cache_miss_loads_model(self):
         """Lines 319-343: model not in cache → load from transformers."""
         import pdfsearchable.htr as htr_mod
+
         # Clear cache
         with htr_mod._model_cache_lock:
             htr_mod._model_cache.clear()
@@ -592,6 +620,7 @@ class TestLoadModel:
     def test_cache_hit_returns_cached(self):
         """Lines 312-317: model already in cache → return without loading."""
         import pdfsearchable.htr as htr_mod
+
         mock_processor = MagicMock()
         mock_model = MagicMock()
         model_id = "test/model-cached"
@@ -606,6 +635,7 @@ class TestLoadModel:
     def test_cache_hit_moves_to_end_lru(self):
         """Cache hit moves model_id to most-recent position in LRU order."""
         import pdfsearchable.htr as htr_mod
+
         mock_proc_a = MagicMock()
         mock_mod_a = MagicMock()
         mock_proc_b = MagicMock()
@@ -623,6 +653,7 @@ class TestLoadModel:
     def test_lru_eviction_when_over_limit(self):
         """Lines 336-341: oldest model evicted when cache exceeds max_models."""
         import pdfsearchable.htr as htr_mod
+
         with htr_mod._model_cache_lock:
             htr_mod._model_cache.clear()
             htr_mod._model_cache_order.clear()
@@ -644,6 +675,7 @@ class TestLoadModel:
     def test_use_fast_typeerror_fallback(self):
         """Lines 326-328: TrOCRProcessor.from_pretrained raises TypeError → fallback."""
         import pdfsearchable.htr as htr_mod
+
         with htr_mod._model_cache_lock:
             htr_mod._model_cache.pop("test/model-typeerr", None)
             if "test/model-typeerr" in htr_mod._model_cache_order:
@@ -672,6 +704,7 @@ class TestLoadModel:
     def test_use_fast_valueerror_fallback(self):
         """Lines 326-328: TrOCRProcessor.from_pretrained raises ValueError → fallback."""
         import pdfsearchable.htr as htr_mod
+
         with htr_mod._model_cache_lock:
             htr_mod._model_cache.pop("test/model-valerr", None)
             if "test/model-valerr" in htr_mod._model_cache_order:
@@ -704,12 +737,14 @@ class TestSplitLines:
     def _make_image(self, width=200, height=60, color="white"):
         """Create a simple PIL image for testing."""
         from PIL import Image
+
         return Image.new("RGB", (width, height), color=color)
 
     def _make_image_with_lines(self, width=200, height=80):
         """Create a PIL image with dark horizontal bands simulating text lines."""
         from PIL import Image
         import numpy as np
+
         arr = np.ones((height, width, 3), dtype=np.uint8) * 255  # white
         # Draw two dark bands to simulate text lines
         arr[10:18, :, :] = 0  # line 1 (dark = "ink")
@@ -718,6 +753,7 @@ class TestSplitLines:
 
     def test_returns_list(self):
         from pdfsearchable.htr import _split_lines
+
         img = self._make_image()
         result = _split_lines(img)
         assert isinstance(result, list)
@@ -726,6 +762,7 @@ class TestSplitLines:
     def test_blank_image_returns_original(self):
         """Lines 408: no lines found → returns [image]."""
         from pdfsearchable.htr import _split_lines
+
         img = self._make_image(color="white")
         result = _split_lines(img)
         # Blank image has no dark pixels → no lines detected → returns [image]
@@ -734,6 +771,7 @@ class TestSplitLines:
     def test_image_with_lines_returns_crops(self):
         """Lines 376-387: line detection produces crops."""
         from pdfsearchable.htr import _split_lines
+
         img = self._make_image_with_lines()
         result = _split_lines(img)
         assert isinstance(result, list)
@@ -742,6 +780,7 @@ class TestSplitLines:
     def test_historical_mode_lower_threshold(self):
         """Lines 368: historical=True uses thresh_ratio=0.03."""
         from pdfsearchable.htr import _split_lines
+
         img = self._make_image_with_lines()
         result_hist = _split_lines(img, historical=True)
         result_norm = _split_lines(img, historical=False)
@@ -754,10 +793,11 @@ class TestSplitLines:
         from PIL import Image
         import numpy as np
         from pdfsearchable.htr import _split_lines
+
         # Create image with two very close dark bands (gap=3 px, within merge_gap=5)
         arr = np.ones((60, 200, 3), dtype=np.uint8) * 255
-        arr[10:14, :, :] = 0   # line 1
-        arr[17:21, :, :] = 0   # line 2 — gap=3 from line 1
+        arr[10:14, :, :] = 0  # line 1
+        arr[17:21, :, :] = 0  # line 2 — gap=3 from line 1
         img = Image.fromarray(arr)
         result_hist = _split_lines(img, historical=True)
         result_norm = _split_lines(img, historical=False)
@@ -771,9 +811,10 @@ class TestSplitLines:
         from PIL import Image
         import numpy as np
         from pdfsearchable.htr import _split_lines
+
         # Dark band that reaches the bottom edge
         arr = np.ones((40, 200, 3), dtype=np.uint8) * 255
-        arr[30:, :, :] = 0   # dark from row 30 to end
+        arr[30:, :, :] = 0  # dark from row 30 to end
         img = Image.fromarray(arr)
         result = _split_lines(img)
         assert isinstance(result, list)
@@ -783,6 +824,7 @@ class TestSplitLines:
         from PIL import Image
         import numpy as np
         from pdfsearchable.htr import _split_lines
+
         # Very thin dark band (1px) that produces a too-small crop after margin
         arr = np.ones((30, 200, 3), dtype=np.uint8) * 255
         arr[15, :, :] = 0  # 1 px line only
@@ -798,6 +840,7 @@ class TestDetectScriptFromImage:
     def test_returns_unknown_when_pytesseract_fails(self):
         """Lines 428-430: exception path returns 'Unknown'."""
         from pdfsearchable.htr import _detect_script_from_image
+
         mock_img = MagicMock()
         with patch.dict("sys.modules", {"pytesseract": None}):
             # pytesseract not available → import error → 'Unknown'
@@ -807,6 +850,7 @@ class TestDetectScriptFromImage:
     def test_returns_script_name_when_pytesseract_succeeds(self):
         """Lines 422-427: successful OSD parsing returns script name."""
         from pdfsearchable.htr import _detect_script_from_image
+
         mock_pytesseract = MagicMock()
         mock_pytesseract.image_to_osd.return_value = (
             "Orientation in degrees: 0\n"
@@ -823,6 +867,7 @@ class TestDetectScriptFromImage:
     def test_returns_unknown_when_osd_raises(self):
         """Lines 428-430: pytesseract raises → returns 'Unknown'."""
         from pdfsearchable.htr import _detect_script_from_image
+
         mock_pytesseract = MagicMock()
         mock_pytesseract.image_to_osd.side_effect = RuntimeError("tesseract error")
         mock_img = MagicMock()
@@ -833,6 +878,7 @@ class TestDetectScriptFromImage:
     def test_returns_cyrillic_from_osd(self):
         """Lines 423-427: OSD returns 'Cyrillic' script."""
         from pdfsearchable.htr import _detect_script_from_image
+
         mock_pytesseract = MagicMock()
         mock_pytesseract.image_to_osd.return_value = "Script: Cyrillic\n"
         mock_img = MagicMock()
@@ -843,6 +889,7 @@ class TestDetectScriptFromImage:
     def test_returns_unknown_when_no_script_line(self):
         """Lines 421-430: OSD output has no 'Script:' line → returns 'Unknown'."""
         from pdfsearchable.htr import _detect_script_from_image
+
         mock_pytesseract = MagicMock()
         mock_pytesseract.image_to_osd.return_value = "Orientation in degrees: 0\n"
         mock_img = MagicMock()
@@ -886,6 +933,7 @@ class TestRunTrocr:
         """Return raw PNG bytes of a solid-color image."""
         from PIL import Image
         import io as _io
+
         img = Image.new("RGB", (width, height), color=color)
         buf = _io.BytesIO()
         img.save(buf, format="PNG")
@@ -926,6 +974,7 @@ class TestRunTrocr:
             with patch.object(htr_mod, "_load_model", return_value=(mock_processor, mock_model)):
                 with patch.object(htr_mod, "_split_lines") as mock_split:
                     from PIL import Image as PILImage
+
                     mock_line_img = PILImage.new("RGB", (100, 20), "white")
                     mock_split.return_value = [mock_line_img]
                     with patch.dict("sys.modules", {"torch": mock_torch}):
@@ -948,10 +997,12 @@ class TestRunTrocr:
 
             with patch.object(htr_mod, "_detect_script_from_image", return_value="Cyrillic"):
                 with patch.object(htr_mod, "_script_to_lang_hint", return_value="ru"):
-                    with patch.object(htr_mod, "_load_model",
-                                      return_value=(mock_processor, mock_model)):
+                    with patch.object(
+                        htr_mod, "_load_model", return_value=(mock_processor, mock_model)
+                    ):
                         with patch.object(htr_mod, "_split_lines") as mock_split:
                             from PIL import Image as PILImage
+
                             mock_split.return_value = [PILImage.new("RGB", (100, 20))]
                             with patch.dict("sys.modules", {"torch": mock_torch}):
                                 result = _run_trocr(img_bytes, lang=None)
@@ -973,10 +1024,12 @@ class TestRunTrocr:
 
             with patch.object(htr_mod, "_detect_script_from_image", return_value="Unknown"):
                 with patch.object(htr_mod, "_script_to_lang_hint", return_value=None):
-                    with patch.object(htr_mod, "_load_model",
-                                      return_value=(mock_processor, mock_model)):
+                    with patch.object(
+                        htr_mod, "_load_model", return_value=(mock_processor, mock_model)
+                    ):
                         with patch.object(htr_mod, "_split_lines") as mock_split:
                             from PIL import Image as PILImage
+
                             mock_split.return_value = [PILImage.new("RGB", (100, 20))]
                             with patch.dict("sys.modules", {"torch": mock_torch}):
                                 result = _run_trocr(img_bytes, lang=None)
@@ -995,10 +1048,10 @@ class TestRunTrocr:
             os.environ.pop("PDFSEARCHABLE_HTR_MODEL", None)
             os.environ.pop("PDFSEARCHABLE_HTR_PRINTED", None)
 
-            with patch.object(htr_mod, "_load_model",
-                              return_value=(mock_processor, mock_model)):
+            with patch.object(htr_mod, "_load_model", return_value=(mock_processor, mock_model)):
                 with patch.object(htr_mod, "_split_lines") as mock_split:
                     from PIL import Image as PILImage
+
                     mock_split.return_value = [PILImage.new("RGB", (100, 20))]
                     with patch.dict("sys.modules", {"torch": mock_torch}):
                         result = _run_trocr(img_bytes, lang="en")  # overridden to "de"
@@ -1024,10 +1077,10 @@ class TestRunTrocr:
             os.environ.pop("PDFSEARCHABLE_HTR_MODEL", None)
             os.environ.pop("PDFSEARCHABLE_HTR_PRINTED", None)
 
-            with patch.object(htr_mod, "_load_model",
-                              return_value=(mock_processor, mock_model)):
+            with patch.object(htr_mod, "_load_model", return_value=(mock_processor, mock_model)):
                 with patch.object(htr_mod, "_split_lines") as mock_split:
                     from PIL import Image as PILImage
+
                     mock_split.return_value = [PILImage.new("RGB", (100, 20))]
                     with patch.dict("sys.modules", {"torch": mock_torch}):
                         result = _run_trocr(img_bytes, lang="en")
@@ -1046,10 +1099,10 @@ class TestRunTrocr:
             os.environ.pop("PDFSEARCHABLE_HTR_MODEL", None)
             os.environ.pop("PDFSEARCHABLE_HTR_PRINTED", None)
 
-            with patch.object(htr_mod, "_load_model",
-                              return_value=(mock_processor, mock_model)):
+            with patch.object(htr_mod, "_load_model", return_value=(mock_processor, mock_model)):
                 with patch.object(htr_mod, "_split_lines") as mock_split:
                     from PIL import Image as PILImage
+
                     mock_split.return_value = [PILImage.new("RGB", (100, 20))]
                     with patch.dict("sys.modules", {"torch": mock_torch}):
                         result = _run_trocr(img_bytes, lang="pt")
@@ -1090,8 +1143,7 @@ class TestRunTrocr:
             os.environ.pop("PDFSEARCHABLE_HTR_MODEL", None)
             os.environ.pop("PDFSEARCHABLE_HTR_PRINTED", None)
 
-            with patch.object(htr_mod, "_load_model",
-                              return_value=(mock_processor, mock_model)):
+            with patch.object(htr_mod, "_load_model", return_value=(mock_processor, mock_model)):
                 with patch.object(htr_mod, "_split_lines") as mock_split:
                     lines_imgs = [PILImage.new("RGB", (100, 20)) for _ in range(3)]
                     mock_split.return_value = lines_imgs
@@ -1107,11 +1159,13 @@ class TestRunHtrOnImage:
 
     def setup_method(self):
         import pdfsearchable.htr as htr_mod
+
         htr_mod._HTR_AVAILABLE = None
 
     def _make_image_bytes(self):
         from PIL import Image
         import io as _io
+
         img = Image.new("RGB", (80, 30), "white")
         buf = _io.BytesIO()
         img.save(buf, format="PNG")
@@ -1121,6 +1175,7 @@ class TestRunHtrOnImage:
         """Line 516-517: htr_available() False → return ''."""
         import pdfsearchable.htr as htr_mod
         from pdfsearchable.htr import run_htr_on_image
+
         htr_mod._HTR_AVAILABLE = False
         result = run_htr_on_image(self._make_image_bytes(), lang="en")
         assert result == ""
@@ -1129,6 +1184,7 @@ class TestRunHtrOnImage:
         """Lines 519-530: default backend → _run_trocr."""
         import pdfsearchable.htr as htr_mod
         from pdfsearchable.htr import run_htr_on_image
+
         htr_mod._HTR_AVAILABLE = True
 
         with patch.dict(os.environ, {}, clear=False):
@@ -1144,6 +1200,7 @@ class TestRunHtrOnImage:
         """Lines 521-523: transkribus backend → htr_transkribus.run."""
         import pdfsearchable.htr as htr_mod
         from pdfsearchable.htr import run_htr_on_image
+
         htr_mod._HTR_AVAILABLE = True
 
         mock_transkribus = MagicMock()
@@ -1159,15 +1216,14 @@ class TestRunHtrOnImage:
         """Lines 525-527: escriptorium backend → htr_escriptorium.run."""
         import pdfsearchable.htr as htr_mod
         from pdfsearchable.htr import run_htr_on_image
+
         htr_mod._HTR_AVAILABLE = True
 
         mock_escriptorium = MagicMock()
         mock_escriptorium.run = MagicMock(return_value="escriptorium result")
 
         with patch.dict(os.environ, {"PDFSEARCHABLE_HTR_BACKEND": "escriptorium"}):
-            with patch.dict("sys.modules", {
-                "pdfsearchable.htr_escriptorium": mock_escriptorium
-            }):
+            with patch.dict("sys.modules", {"pdfsearchable.htr_escriptorium": mock_escriptorium}):
                 result = run_htr_on_image(self._make_image_bytes(), lang=None)
 
         assert result == "escriptorium result"
@@ -1176,6 +1232,7 @@ class TestRunHtrOnImage:
         """Lines 530: lang param is forwarded to _run_trocr."""
         import pdfsearchable.htr as htr_mod
         from pdfsearchable.htr import run_htr_on_image
+
         htr_mod._HTR_AVAILABLE = True
 
         with patch.dict(os.environ, {}, clear=False):

@@ -276,6 +276,7 @@ def _build_classification_prompt(
     few_shot_block = ""
     try:
         from pdfsearchable.classifier_feedback import get_few_shot_examples
+
         examples = get_few_shot_examples(max_n=5)
         if examples:
             lines = []

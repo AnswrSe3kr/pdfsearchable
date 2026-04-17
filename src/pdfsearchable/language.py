@@ -11,10 +11,52 @@ _log = _get_logger("pdfsearchable.language")
 
 # Palavras comuns para heurística (pt vs en)
 _COMMON_PT = frozenset(
-    ["de", "da", "do", "que", "e", "um", "uma", "os", "as", "no", "na", "por", "para", "com", "não", "mais", "ao", "ela", "em", "dos", "das"]
+    [
+        "de",
+        "da",
+        "do",
+        "que",
+        "e",
+        "um",
+        "uma",
+        "os",
+        "as",
+        "no",
+        "na",
+        "por",
+        "para",
+        "com",
+        "não",
+        "mais",
+        "ao",
+        "ela",
+        "em",
+        "dos",
+        "das",
+    ]
 )
 _COMMON_EN = frozenset(
-    ["the", "of", "and", "to", "a", "in", "that", "is", "it", "for", "you", "was", "on", "are", "with", "as", "be", "have", "this"]
+    [
+        "the",
+        "of",
+        "and",
+        "to",
+        "a",
+        "in",
+        "that",
+        "is",
+        "it",
+        "for",
+        "you",
+        "was",
+        "on",
+        "are",
+        "with",
+        "as",
+        "be",
+        "have",
+        "this",
+    ]
 )
 
 # Mapeamento de códigos Ollama / Hugging Face para retorno

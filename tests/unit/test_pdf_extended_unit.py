@@ -24,11 +24,13 @@ def _make_pdf_with_link(tmp_path: Path) -> Path:
     doc = fitz.open()
     page = doc.new_page()
     page.insert_text((72, 72), "Visit example.com")
-    page.insert_link({
-        "kind": fitz.LINK_URI,
-        "from": fitz.Rect(72, 60, 200, 80),
-        "uri": "https://example.com",
-    })
+    page.insert_link(
+        {
+            "kind": fitz.LINK_URI,
+            "from": fitz.Rect(72, 60, 200, 80),
+            "uri": "https://example.com",
+        }
+    )
     doc.save(str(p))
     doc.close()
     return p

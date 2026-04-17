@@ -66,9 +66,7 @@ _FQDN_TLDS = (
 )
 FQDN_PATTERN = re.compile(
     r"(?<![\w.-])"
-    r"(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+"
-    + _FQDN_TLDS
-    + r"(?![\w-])",
+    r"(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+" + _FQDN_TLDS + r"(?![\w-])",
     re.IGNORECASE,
 )
 

@@ -63,6 +63,7 @@ _XREF_RATIO_THRESHOLD = 50  # xrefs por KB
 # Dataclass de resultado
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ForensicsReport:
     """Resultado da análise forense de um PDF."""
@@ -92,9 +93,9 @@ class ForensicsReport:
 
 # Formato PDF: D:YYYYMMDDHHmmSS seguido de Z ou +HH'mm ou -HH'mm (opcional)
 _PDF_DATE_RE = re.compile(
-    r"D:(\d{4})(\d{2})(\d{2})"      # YYYYMMDD (obrigatório)
-    r"(?:(\d{2})(\d{2})(\d{2}))?"   # HHmmSS (opcional)
-    r"(Z|[+-]\d{2}'\d{2})?",        # timezone (opcional)
+    r"D:(\d{4})(\d{2})(\d{2})"  # YYYYMMDD (obrigatório)
+    r"(?:(\d{2})(\d{2})(\d{2}))?"  # HHmmSS (opcional)
+    r"(Z|[+-]\d{2}'\d{2})?",  # timezone (opcional)
 )
 
 
@@ -149,12 +150,8 @@ def _has_timezone(raw: str | None) -> bool:
 # Helpers de parsing XMP
 # ---------------------------------------------------------------------------
 
-_XMP_CREATE_DATE_RE = re.compile(
-    r"<xmp:CreateDate>\s*([^<]+)\s*</xmp:CreateDate>", re.IGNORECASE
-)
-_XMP_MODIFY_DATE_RE = re.compile(
-    r"<xmp:ModifyDate>\s*([^<]+)\s*</xmp:ModifyDate>", re.IGNORECASE
-)
+_XMP_CREATE_DATE_RE = re.compile(r"<xmp:CreateDate>\s*([^<]+)\s*</xmp:CreateDate>", re.IGNORECASE)
+_XMP_MODIFY_DATE_RE = re.compile(r"<xmp:ModifyDate>\s*([^<]+)\s*</xmp:ModifyDate>", re.IGNORECASE)
 # Formato ISO 8601: 2024-03-15T12:00:00+00:00 ou 2024-03-15T12:00:00Z
 _ISO8601_RE = re.compile(
     r"(\d{4})-(\d{2})-(\d{2})"
@@ -213,6 +210,7 @@ def _extract_xmp_create_date(xml_str: str | None) -> datetime | None:
 # Verificações individuais
 # ---------------------------------------------------------------------------
 
+
 def _check_creation_after_modification(
     meta: dict[str, str],
 ) -> list[dict]:
@@ -224,15 +222,17 @@ def _check_creation_after_modification(
     mod_dt = _parse_pdf_date(mod_raw)
     if creation_dt and mod_dt and creation_dt > mod_dt:
         diff = creation_dt - mod_dt
-        anomalies.append({
-            "type": "creation_after_modification",
-            "severity": "high",
-            "detail": (
-                f"Data de criação ({creation_raw}) é posterior à data de modificação "
-                f"({mod_raw}) em {int(diff.total_seconds() // 3600)}h. "
-                "Indica possível adulteração dos metadados."
-            ),
-        })
+        anomalies.append(
+            {
+                "type": "creation_after_modification",
+                "severity": "high",
+                "detail": (
+                    f"Data de criação ({creation_raw}) é posterior à data de modificação "
+                    f"({mod_raw}) em {int(diff.total_seconds() // 3600)}h. "
+                    "Indica possível adulteração dos metadados."
+                ),
+            }
+        )
     return anomalies
 
 
@@ -247,15 +247,17 @@ def _check_producer_creator_inconsistency(
         return anomalies
     for c_substr, p_substr in _SUSPECT_PAIRS:
         if c_substr in creator and p_substr in producer:
-            anomalies.append({
-                "type": "producer_creator_inconsistency",
-                "severity": "medium",
-                "detail": (
-                    f"Creator '{meta.get('creator')}' e Producer '{meta.get('producer')}' "
-                    "formam uma combinação suspeita, frequentemente associada a conversão "
-                    "não documentada ou adulteração do PDF."
-                ),
-            })
+            anomalies.append(
+                {
+                    "type": "producer_creator_inconsistency",
+                    "severity": "medium",
+                    "detail": (
+                        f"Creator '{meta.get('creator')}' e Producer '{meta.get('producer')}' "
+                        "formam uma combinação suspeita, frequentemente associada a conversão "
+                        "não documentada ou adulteração do PDF."
+                    ),
+                }
+            )
             break  # uma única anomalia deste tipo por documento
     return anomalies
 
@@ -276,15 +278,17 @@ def _check_xmp_vs_docinfo(
     if xmp_dt and docinfo_dt:
         diff = abs((xmp_dt - docinfo_dt).total_seconds())
         if diff > 86400:  # 24h em segundos
-            anomalies.append({
-                "type": "xmp_docinfo_date_conflict",
-                "severity": "high",
-                "detail": (
-                    f"xmp:CreateDate ({xmp_dt.isoformat()}) e DocInfo creationDate "
-                    f"({meta.get('creationDate')}) diferem em "
-                    f"{int(diff // 3600)}h. Indício de metadados manipulados."
-                ),
-            })
+            anomalies.append(
+                {
+                    "type": "xmp_docinfo_date_conflict",
+                    "severity": "high",
+                    "detail": (
+                        f"xmp:CreateDate ({xmp_dt.isoformat()}) e DocInfo creationDate "
+                        f"({meta.get('creationDate')}) diferem em "
+                        f"{int(diff // 3600)}h. Indício de metadados manipulados."
+                    ),
+                }
+            )
     return anomalies
 
 
@@ -303,14 +307,16 @@ def _check_timestamps_without_timezone(
         if raw and not _has_timezone(raw):
             missing.append(label)
     if missing:
-        anomalies.append({
-            "type": "timestamps_without_timezone",
-            "severity": "low",
-            "detail": (
-                f"{', '.join(missing)} sem timezone definido. "
-                "PDFs gerados por ferramentas legítimas normalmente incluem timezone."
-            ),
-        })
+        anomalies.append(
+            {
+                "type": "timestamps_without_timezone",
+                "severity": "low",
+                "detail": (
+                    f"{', '.join(missing)} sem timezone definido. "
+                    "PDFs gerados por ferramentas legítimas normalmente incluem timezone."
+                ),
+            }
+        )
     return anomalies
 
 
@@ -340,15 +346,17 @@ def _check_old_pdf_version(
     creation_raw = meta.get("creationDate", "")
     creation_dt = _parse_pdf_date(creation_raw)
     if creation_dt and creation_dt.year > 2010:
-        anomalies.append({
-            "type": "pdf_version_anachronism",
-            "severity": "medium",
-            "detail": (
-                f"Versão PDF {version_str} é anterior ao PDF 1.4, mas os metadados "
-                f"indicam criação em {creation_dt.year}. "
-                "Versões antigas com datas recentes podem indicar downgrade malicioso."
-            ),
-        })
+        anomalies.append(
+            {
+                "type": "pdf_version_anachronism",
+                "severity": "medium",
+                "detail": (
+                    f"Versão PDF {version_str} é anterior ao PDF 1.4, mas os metadados "
+                    f"indicam criação em {creation_dt.year}. "
+                    "Versões antigas com datas recentes podem indicar downgrade malicioso."
+                ),
+            }
+        )
     return anomalies
 
 
@@ -383,15 +391,17 @@ def _check_fonts_in_scanned_document(
         _log.debug("_check_fonts_in_scanned_document: erro ao ler fontes: %s", exc)
 
     if suspect_fonts:
-        anomalies.append({
-            "type": "text_fonts_in_scanned_document",
-            "severity": "medium",
-            "detail": (
-                f"Documento declarado como escaneado (Producer: '{meta.get('producer')}') "
-                f"contém fontes de texto vetorial: {', '.join(suspect_fonts[:5])}. "
-                "Pode indicar inserção de texto após digitalização."
-            ),
-        })
+        anomalies.append(
+            {
+                "type": "text_fonts_in_scanned_document",
+                "severity": "medium",
+                "detail": (
+                    f"Documento declarado como escaneado (Producer: '{meta.get('producer')}') "
+                    f"contém fontes de texto vetorial: {', '.join(suspect_fonts[:5])}. "
+                    "Pode indicar inserção de texto após digitalização."
+                ),
+            }
+        )
     return anomalies
 
 
@@ -421,15 +431,17 @@ def _check_xref_ratio(
     ratio = xref_len / file_size_kb if file_size_kb > 0 else 0
 
     if ratio > _XREF_RATIO_THRESHOLD:
-        anomalies.append({
-            "type": "high_xref_ratio",
-            "severity": "low",
-            "detail": (
-                f"Ratio xref/tamanho ({xref_len} entradas / {file_size_kb:.1f} KB = "
-                f"{ratio:.1f}) acima do limiar ({_XREF_RATIO_THRESHOLD}). "
-                "Pode indicar número elevado de revisões incrementais."
-            ),
-        })
+        anomalies.append(
+            {
+                "type": "high_xref_ratio",
+                "severity": "low",
+                "detail": (
+                    f"Ratio xref/tamanho ({xref_len} entradas / {file_size_kb:.1f} KB = "
+                    f"{ratio:.1f}) acima do limiar ({_XREF_RATIO_THRESHOLD}). "
+                    "Pode indicar número elevado de revisões incrementais."
+                ),
+            }
+        )
     return anomalies
 
 
@@ -444,20 +456,23 @@ def _check_empty_author_with_producer(
     author = (meta.get("author") or "").strip()
     producer = (meta.get("producer") or "").strip()
     if not author and producer:
-        anomalies.append({
-            "type": "empty_author_with_producer",
-            "severity": "low",
-            "detail": (
-                f"Campo Author está vazio, mas Producer está preenchido ('{producer}'). "
-                "Documentos gerados automaticamente frequentemente omitem o autor."
-            ),
-        })
+        anomalies.append(
+            {
+                "type": "empty_author_with_producer",
+                "severity": "low",
+                "detail": (
+                    f"Campo Author está vazio, mas Producer está preenchido ('{producer}'). "
+                    "Documentos gerados automaticamente frequentemente omitem o autor."
+                ),
+            }
+        )
     return anomalies
 
 
 # ---------------------------------------------------------------------------
 # Cálculo da pontuação e sumário
 # ---------------------------------------------------------------------------
+
 
 def _compute_risk_score(anomalies: list[dict]) -> int:
     """Soma ponderada das anomalias com cap em _RISK_CAP."""
@@ -483,6 +498,7 @@ def _build_summary(anomalies: list[dict], risk_score: int) -> str:
 # ---------------------------------------------------------------------------
 # Função pública principal
 # ---------------------------------------------------------------------------
+
 
 def analyse_forensics(
     pdf_path: Path,
@@ -523,14 +539,10 @@ def analyse_forensics(
             if password:
                 authenticated = doc.authenticate(password)
                 if not authenticated:
-                    _log.warning(
-                        "analyse_forensics: senha incorrecta para '%s'", pdf_path
-                    )
+                    _log.warning("analyse_forensics: senha incorrecta para '%s'", pdf_path)
                     return empty_report
             else:
-                _log.warning(
-                    "analyse_forensics: PDF cifrado sem senha fornecida: '%s'", pdf_path
-                )
+                _log.warning("analyse_forensics: PDF cifrado sem senha fornecida: '%s'", pdf_path)
                 return empty_report
 
         meta: dict[str, str] = doc.metadata or {}
@@ -572,7 +584,10 @@ def analyse_forensics(
 
         _log.debug(
             "analyse_forensics: '%s' → %d anomalia(s), score=%d, suspicious=%s",
-            pdf_path.name, len(all_anomalies), risk_score, suspicious,
+            pdf_path.name,
+            len(all_anomalies),
+            risk_score,
+            suspicious,
         )
 
         return ForensicsReport(
@@ -585,9 +600,7 @@ def analyse_forensics(
         )
 
     except Exception as exc:
-        _log.error(
-            "analyse_forensics: erro inesperado ao analisar '%s': %s", pdf_path, exc
-        )
+        _log.error("analyse_forensics: erro inesperado ao analisar '%s': %s", pdf_path, exc)
         return empty_report
     finally:
         try:

@@ -26,6 +26,7 @@ _log = logging.getLogger("pdfsearchable.table_extractor")
 try:
     from img2table.document import PDF as Img2TablePDF  # noqa: F401
     from img2table.ocr import TesseractOCR  # noqa: F401
+
     _IMG2TABLE_AVAILABLE = True
 except ImportError:
     _IMG2TABLE_AVAILABLE = False
@@ -88,7 +89,9 @@ def _tables_from_page_pymupdf(page: "fitz.Page") -> list[ExtractedTable]:
         except Exception as exc:
             _log.debug(
                 "Falha ao extrair células da tabela %d, página %d: %s",
-                idx, page.number + 1, exc,
+                idx,
+                page.number + 1,
+                exc,
             )
             continue
 
@@ -116,7 +119,10 @@ def _tables_from_page_pymupdf(page: "fitz.Page") -> list[ExtractedTable]:
         try:
             r = tab.bbox
             bbox: tuple[float, float, float, float] = (
-                float(r[0]), float(r[1]), float(r[2]), float(r[3])
+                float(r[0]),
+                float(r[1]),
+                float(r[2]),
+                float(r[3]),
             )
         except Exception:
             bbox = (0.0, 0.0, 0.0, 0.0)
@@ -172,15 +178,14 @@ def _tables_from_page_img2table(
 
         try:
             from pdfsearchable.ocr import get_ocr_lang
+
             lang = get_ocr_lang().split("+")[0]
         except Exception:
             lang = "por"
 
         ocr = _TesseractOCR(n_threads=1, lang=lang)
         doc_img = Img2Image(src=io.BytesIO(img_bytes))
-        extracted = doc_img.extract_tables(
-            ocr=ocr, implicit_rows=True, borderless_tables=False
-        )
+        extracted = doc_img.extract_tables(ocr=ocr, implicit_rows=True, borderless_tables=False)
 
         for rel_idx, tab in enumerate(extracted or []):
             try:
@@ -200,7 +205,10 @@ def _tables_from_page_img2table(
                 try:
                     tb = tab.bbox  # type: ignore[attr-defined]
                     bbox: tuple[float, float, float, float] = (
-                        float(tb.x1), float(tb.y1), float(tb.x2), float(tb.y2)
+                        float(tb.x1),
+                        float(tb.y1),
+                        float(tb.x2),
+                        float(tb.y2),
                     )
                 except Exception:
                     bbox = (0.0, 0.0, 0.0, 0.0)
@@ -219,12 +227,12 @@ def _tables_from_page_img2table(
             except Exception as exc:
                 _log.debug(
                     "Falha ao converter tabela img2table %d, página %d: %s",
-                    rel_idx, page_number_1based, exc,
+                    rel_idx,
+                    page_number_1based,
+                    exc,
                 )
     except Exception as exc:
-        _log.debug(
-            "img2table falhou na página %d: %s", page_number_1based, exc
-        )
+        _log.debug("img2table falhou na página %d: %s", page_number_1based, exc)
 
     return tables
 
@@ -304,8 +312,7 @@ def extract_tables(
 
             # Filtrar por min_rows e min_cols
             pymupdf_tables = [
-                t for t in pymupdf_tables
-                if len(t.rows) >= min_rows and len(t.headers) >= min_cols
+                t for t in pymupdf_tables if len(t.rows) >= min_rows and len(t.headers) >= min_cols
             ]
             all_tables.extend(pymupdf_tables)
 
@@ -317,8 +324,7 @@ def extract_tables(
                     start_table_index=0,
                 )
                 img2_tables = [
-                    t for t in img2_tables
-                    if len(t.rows) >= min_rows and len(t.headers) >= min_cols
+                    t for t in img2_tables if len(t.rows) >= min_rows and len(t.headers) >= min_cols
                 ]
                 all_tables.extend(img2_tables)
 
@@ -356,9 +362,7 @@ def tables_to_csv(
                 writer.writerow(table.headers)
                 writer.writerows(table.rows)
             created.append(out_path)
-            _log.debug(
-                "CSV gravado: %s (%d linhas)", out_path.name, len(table.rows)
-            )
+            _log.debug("CSV gravado: %s (%d linhas)", out_path.name, len(table.rows))
         except OSError as exc:
             _log.error("Falha ao gravar CSV %s: %s", out_path, exc)
 
@@ -403,9 +407,7 @@ def tables_to_json(
     try:
         with open(out_path, "w", encoding="utf-8") as fh:
             json.dump(payload, fh, ensure_ascii=False, indent=2)
-        _log.debug(
-            "JSON de tabelas gravado: %s (%d tabelas)", out_path.name, len(tables)
-        )
+        _log.debug("JSON de tabelas gravado: %s (%d tabelas)", out_path.name, len(tables))
     except OSError as exc:
         _log.error("Falha ao gravar JSON de tabelas %s: %s", out_path, exc)
 

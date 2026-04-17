@@ -125,6 +125,7 @@ def _open_source_pdf(file_id: str):
     """Abre o PDF original a partir do file_id via store."""
     try:
         from pdfsearchable.store import FILES_DIR, load_index
+
         idx = load_index() or {}
         files = idx.get("files", {}) if isinstance(idx, dict) else {}
         meta = files.get(file_id)

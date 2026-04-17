@@ -1,4 +1,5 @@
 """Testes unitários para exceptions.py — hierarquia de exceções."""
+
 import logging
 import pytest
 

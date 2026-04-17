@@ -3,6 +3,7 @@ Testes de segurança (DevSecOps).
 Cobrem: path traversal, injection, validação de entrada, exposição de credenciais,
 permissões de ficheiros e integridade do audit log.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,6 +22,7 @@ from pdfsearchable.cli import main
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_runner():
     return CliRunner()
@@ -47,6 +49,7 @@ def _make_pdf(directory: Path, name: str = "doc.pdf") -> Path:
 # PATH TRAVERSAL (OWASP A01)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.security
 class TestPathTraversal:
     """
@@ -54,9 +57,7 @@ class TestPathTraversal:
     fora do directório do projecto via sequências '../'.
     """
 
-    def test_search_path_traversal_query_is_sanitised(
-        self, isolated_store, monkeypatch
-    ):
+    def test_search_path_traversal_query_is_sanitised(self, isolated_store, monkeypatch):
         """search não interpreta '../' como acesso ao sistema de ficheiros."""
         monkeypatch.chdir(isolated_store)
         runner = _make_runner()
@@ -66,9 +67,7 @@ class TestPathTraversal:
         assert "/etc/passwd" not in result.output
         assert "root:" not in result.output
 
-    def test_serve_static_path_traversal_blocked(
-        self, isolated_store, monkeypatch
-    ):
+    def test_serve_static_path_traversal_blocked(self, isolated_store, monkeypatch):
         """
         O servidor HTTP não deve servir ficheiros fora de .pdfsearchable/
         quando o caminho contém '../' ou sequências equivalentes.
@@ -83,16 +82,19 @@ class TestPathTraversal:
         # Sufixo com traversal deve ser barrado pelo guard no handler
         assert ".." in payload  # simples sanidade: confirma o vector
 
-    def test_remove_id_with_traversal_fails(
-        self, isolated_store, monkeypatch
-    ):
+    def test_remove_id_with_traversal_fails(self, isolated_store, monkeypatch):
         """remove com ID contendo '/' não remove ficheiros arbitrários."""
         monkeypatch.chdir(isolated_store)
         runner = _make_runner()
         malicious_id = "../../important_file"
         result = runner.invoke(main, ["remove", malicious_id, "--yes"])
         # Deve falhar graciosamente — não encontrar o ID
-        assert result.exit_code != 0 or "não encontrado" in result.output.lower() or "not found" in result.output.lower() or result.output.strip() != ""
+        assert (
+            result.exit_code != 0
+            or "não encontrado" in result.output.lower()
+            or "not found" in result.output.lower()
+            or result.output.strip() != ""
+        )
 
     def test_info_path_traversal_in_id(self, isolated_store, monkeypatch):
         """info com ID contendo '../' não lê ficheiros do sistema."""
@@ -108,6 +110,7 @@ class TestPathTraversal:
 # INJECTION (OWASP A03)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.security
 class TestInjection:
     """
@@ -115,9 +118,7 @@ class TestInjection:
     command injection, ou template injection.
     """
 
-    def test_fts_search_sql_injection_safe(
-        self, isolated_store, monkeypatch
-    ):
+    def test_fts_search_sql_injection_safe(self, isolated_store, monkeypatch):
         """FTS search não é vulnerável a SQL injection."""
         monkeypatch.chdir(isolated_store)
         pdf = _make_pdf(isolated_store, "injecao.pdf")
@@ -126,7 +127,7 @@ class TestInjection:
 
         injections = [
             "'; DROP TABLE fts_idx; --",
-            "\" OR 1=1 --",
+            '" OR 1=1 --',
             "1; SELECT * FROM sqlite_master; --",
             "' UNION SELECT 1,2,3 --",
             "\\x00null byte",
@@ -138,12 +139,11 @@ class TestInjection:
             # dados reais do SQLite (tables, schemas) como RESULTADOS de busca
             # e que o FTS table ainda exista (não tenha sido dropada)
             from pdfsearchable.store import fts_search
+
             # Se DROP TABLE tivesse funcionado, esta linha lançaria OperationalError
             fts_search("verificacao_integridade", limit=1)
 
-    def test_search_special_characters_safe(
-        self, isolated_store, monkeypatch
-    ):
+    def test_search_special_characters_safe(self, isolated_store, monkeypatch):
         """Caracteres especiais na busca não causam crash."""
         monkeypatch.chdir(isolated_store)
         runner = _make_runner()
@@ -152,20 +152,20 @@ class TestInjection:
             result = runner.invoke(main, ["search", s])
             assert result.exit_code == 0, f"Crash para: {s!r}"
 
-    def test_pdf_with_malicious_metadata_does_not_crash(
-        self, isolated_store, monkeypatch
-    ):
+    def test_pdf_with_malicious_metadata_does_not_crash(self, isolated_store, monkeypatch):
         """PDF com metadados contendo chars especiais é indexado sem crash."""
         pdf_path = isolated_store / "malicious_meta.pdf"
         doc = fitz.open()
         page = doc.new_page()
         page.insert_text((72, 72), "Texto normal.")
-        doc.set_metadata({
-            "title": "'; DROP TABLE fts_idx; --",
-            "author": "<script>alert('xss')</script>",
-            "subject": "{{7*7}} ${env.HOME}",
-            "keywords": "\x00\x01\x02\x03",
-        })
+        doc.set_metadata(
+            {
+                "title": "'; DROP TABLE fts_idx; --",
+                "author": "<script>alert('xss')</script>",
+                "subject": "{{7*7}} ${env.HOME}",
+                "keywords": "\x00\x01\x02\x03",
+            }
+        )
         doc.save(str(pdf_path))
         doc.close()
 
@@ -186,6 +186,7 @@ class TestInjection:
 # EXPOSIÇÃO DE CREDENCIAIS (OWASP A02 / A07)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.security
 class TestCredentialExposure:
     """
@@ -193,9 +194,7 @@ class TestCredentialExposure:
     expostas em output, logs ou ficheiros gerados.
     """
 
-    def test_auth_token_not_in_status_output(
-        self, isolated_store, monkeypatch
-    ):
+    def test_auth_token_not_in_status_output(self, isolated_store, monkeypatch):
         """Auth token (PDFSEARCHABLE_AUTH_TOKEN) não aparece no status."""
         monkeypatch.chdir(isolated_store)
         monkeypatch.setenv("PDFSEARCHABLE_AUTH_TOKEN", "s3cr3t-t0k3n-abc123")
@@ -203,24 +202,18 @@ class TestCredentialExposure:
         result = runner.invoke(main, ["status"])
         assert "s3cr3t-t0k3n-abc123" not in result.output
 
-    def test_pdf_password_not_in_index(
-        self, isolated_store, monkeypatch, tmp_path
-    ):
+    def test_pdf_password_not_in_index(self, isolated_store, monkeypatch, tmp_path):
         """Senha do PDF (--password) não fica registada no index.json."""
         monkeypatch.chdir(isolated_store)
         pdf = _make_pdf(isolated_store)
         runner = _make_runner()
-        runner.invoke(
-            main, ["add", str(pdf), "--workers", "1", "--password", "supersecret"]
-        )
+        runner.invoke(main, ["add", str(pdf), "--workers", "1", "--password", "supersecret"])
         index_file = isolated_store / ".pdfsearchable" / "index.json"
         if index_file.exists():
             content = index_file.read_text(encoding="utf-8")
             assert "supersecret" not in content
 
-    def test_ollama_url_not_exposed_in_search(
-        self, isolated_store, monkeypatch
-    ):
+    def test_ollama_url_not_exposed_in_search(self, isolated_store, monkeypatch):
         """URL do Ollama não aparece em resultados de busca."""
         monkeypatch.chdir(isolated_store)
         monkeypatch.setenv("PDFSEARCHABLE_OLLAMA_URL", "http://internal-server:11434")
@@ -228,9 +221,7 @@ class TestCredentialExposure:
         result = runner.invoke(main, ["search", "qualquer"])
         assert "internal-server" not in result.output
 
-    def test_env_vars_not_leaked_in_report(
-        self, isolated_store, monkeypatch
-    ):
+    def test_env_vars_not_leaked_in_report(self, isolated_store, monkeypatch):
         """Variáveis de ambiente sensíveis não aparecem no report.html."""
         monkeypatch.chdir(isolated_store)
         monkeypatch.setenv("PDFSEARCHABLE_AUTH_TOKEN", "LEAKED_TOKEN_XYZ")
@@ -239,8 +230,9 @@ class TestCredentialExposure:
         runner.invoke(main, ["add", str(pdf), "--workers", "1"])
 
         from pdfsearchable.report import generate_report
+
         generate_report()
-        report = (isolated_store / ".pdfsearchable" / "report.html")
+        report = isolated_store / ".pdfsearchable" / "report.html"
         if report.exists():
             html = report.read_text(encoding="utf-8")
             assert "LEAKED_TOKEN_XYZ" not in html
@@ -250,6 +242,7 @@ class TestCredentialExposure:
 # PERMISSÕES DE FICHEIROS
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.security
 class TestFilePermissions:
     """
@@ -257,9 +250,7 @@ class TestFilePermissions:
     têm permissões adequadas (não world-writable).
     """
 
-    def test_index_json_not_world_writable(
-        self, isolated_store, monkeypatch
-    ):
+    def test_index_json_not_world_writable(self, isolated_store, monkeypatch):
         """index.json não tem permissão de escrita para outros (world-writable)."""
         monkeypatch.chdir(isolated_store)
         pdf = _make_pdf(isolated_store)
@@ -272,9 +263,7 @@ class TestFilePermissions:
             # Verificar que others não têm escrita (bit 0o002)
             assert not (mode & stat.S_IWOTH), "index.json está world-writable!"
 
-    def test_audit_log_not_world_writable(
-        self, isolated_store, monkeypatch
-    ):
+    def test_audit_log_not_world_writable(self, isolated_store, monkeypatch):
         """audit.jsonl não é world-writable."""
         monkeypatch.chdir(isolated_store)
         pdf = _make_pdf(isolated_store)
@@ -286,9 +275,7 @@ class TestFilePermissions:
             mode = audit_file.stat().st_mode
             assert not (mode & stat.S_IWOTH), "audit.jsonl está world-writable!"
 
-    def test_fts_db_not_world_writable(
-        self, isolated_store, monkeypatch
-    ):
+    def test_fts_db_not_world_writable(self, isolated_store, monkeypatch):
         """fts.sqlite não é world-writable."""
         monkeypatch.chdir(isolated_store)
         pdf = _make_pdf(isolated_store)
@@ -305,6 +292,7 @@ class TestFilePermissions:
 # INTEGRIDADE DO AUDIT LOG
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.security
 class TestAuditLog:
     """
@@ -312,9 +300,7 @@ class TestAuditLog:
     e não expõe dados sensíveis.
     """
 
-    def test_audit_log_records_add_action(
-        self, isolated_store, monkeypatch
-    ):
+    def test_audit_log_records_add_action(self, isolated_store, monkeypatch):
         """add regista entrada no audit log."""
         monkeypatch.chdir(isolated_store)
         pdf = _make_pdf(isolated_store)
@@ -327,9 +313,7 @@ class TestAuditLog:
             actions = [json.loads(l).get("action", "") for l in lines if l.strip()]
             assert any("add" in a.lower() or "index" in a.lower() for a in actions)
 
-    def test_audit_log_valid_jsonl(
-        self, isolated_store, monkeypatch
-    ):
+    def test_audit_log_valid_jsonl(self, isolated_store, monkeypatch):
         """Cada linha do audit log é JSON válido."""
         monkeypatch.chdir(isolated_store)
         pdf = _make_pdf(isolated_store)
@@ -346,18 +330,14 @@ class TestAuditLog:
                     obj = json.loads(line)
                     assert "timestamp" in obj or "action" in obj
                 except json.JSONDecodeError:
-                    pytest.fail(f"Linha {i+1} do audit log não é JSON válido: {line!r}")
+                    pytest.fail(f"Linha {i + 1} do audit log não é JSON válido: {line!r}")
 
-    def test_audit_log_no_raw_passwords(
-        self, isolated_store, monkeypatch
-    ):
+    def test_audit_log_no_raw_passwords(self, isolated_store, monkeypatch):
         """Audit log não armazena senhas em texto claro."""
         monkeypatch.chdir(isolated_store)
         pdf = _make_pdf(isolated_store)
         runner = _make_runner()
-        runner.invoke(
-            main, ["add", str(pdf), "--workers", "1", "--password", "senha_secreta_123"]
-        )
+        runner.invoke(main, ["add", str(pdf), "--workers", "1", "--password", "senha_secreta_123"])
         audit = isolated_store / ".pdfsearchable" / "audit.jsonl"
         if audit.exists():
             content = audit.read_text(encoding="utf-8")
@@ -368,6 +348,7 @@ class TestAuditLog:
 # THREAD SAFETY (OWASP A04 — Insecure Design)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.security
 class TestThreadSafety:
     """
@@ -375,9 +356,7 @@ class TestThreadSafety:
     corrupção de dados (race conditions).
     """
 
-    def test_concurrent_load_index_no_corruption(
-        self, isolated_store, monkeypatch
-    ):
+    def test_concurrent_load_index_no_corruption(self, isolated_store, monkeypatch):
         """Múltiplas threads a carregar o índice não causam corrupção."""
         monkeypatch.chdir(isolated_store)
         pdf = _make_pdf(isolated_store)
@@ -407,9 +386,7 @@ class TestThreadSafety:
         # Todos devem ver 1 documento
         assert all(len(r.get("files", [])) == 1 for r in results)
 
-    def test_concurrent_fts_search_no_crash(
-        self, isolated_store, monkeypatch
-    ):
+    def test_concurrent_fts_search_no_crash(self, isolated_store, monkeypatch):
         """Buscas FTS concorrentes não causam crash ou corrupção."""
         monkeypatch.chdir(isolated_store)
         pdf = _make_pdf(isolated_store)
@@ -439,6 +416,7 @@ class TestThreadSafety:
 # VALIDAÇÃO DE INPUT (OWASP A03 / A05)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.security
 class TestInputValidation:
     """
@@ -446,29 +424,27 @@ class TestInputValidation:
     inválidas, malformadas, ou extremamente grandes.
     """
 
-    def test_add_nonexistent_file_fails_gracefully(
-        self, isolated_store, monkeypatch
-    ):
+    def test_add_nonexistent_file_fails_gracefully(self, isolated_store, monkeypatch):
         """add com ficheiro inexistente falha graciosamente sem stack trace."""
         monkeypatch.chdir(isolated_store)
         runner = _make_runner()
         result = runner.invoke(main, ["add", "/tmp/nao_existe_xyz_abc.pdf"])
-        assert result.exit_code != 0 or "erro" in result.output.lower() or result.output.strip() != ""
+        assert (
+            result.exit_code != 0 or "erro" in result.output.lower() or result.output.strip() != ""
+        )
 
-    def test_add_non_pdf_file_fails_gracefully(
-        self, isolated_store, monkeypatch, tmp_path
-    ):
+    def test_add_non_pdf_file_fails_gracefully(self, isolated_store, monkeypatch, tmp_path):
         """add de ficheiro não-PDF falha graciosamente."""
         monkeypatch.chdir(isolated_store)
         fake = tmp_path / "doc.txt"
         fake.write_text("Não sou um PDF.", encoding="utf-8")
         runner = _make_runner()
         result = runner.invoke(main, ["add", str(fake)])
-        assert result.exit_code != 0 or "pdf" in result.output.lower() or result.output.strip() != ""
+        assert (
+            result.exit_code != 0 or "pdf" in result.output.lower() or result.output.strip() != ""
+        )
 
-    def test_add_empty_pdf_does_not_crash(
-        self, isolated_store, monkeypatch
-    ):
+    def test_add_empty_pdf_does_not_crash(self, isolated_store, monkeypatch):
         """PDF com 1 página sem texto (quasi-vazio) não causa crash."""
         monkeypatch.chdir(isolated_store)
         empty = isolated_store / "quasivazio.pdf"
@@ -483,18 +459,14 @@ class TestInputValidation:
         # Deve terminar com saída clara (não stack trace)
         assert "Traceback" not in result.output
 
-    def test_search_empty_query_handled(
-        self, isolated_store, monkeypatch
-    ):
+    def test_search_empty_query_handled(self, isolated_store, monkeypatch):
         """Busca com string vazia não causa crash."""
         monkeypatch.chdir(isolated_store)
         runner = _make_runner()
         result = runner.invoke(main, ["search", ""])
         assert "Traceback" not in result.output
 
-    def test_pdf_with_unicode_filename(
-        self, isolated_store, monkeypatch
-    ):
+    def test_pdf_with_unicode_filename(self, isolated_store, monkeypatch):
         """PDF com nome de ficheiro Unicode é indexado sem crash."""
         monkeypatch.chdir(isolated_store)
         unicode_name = "contrató_ação_déjà.pdf"

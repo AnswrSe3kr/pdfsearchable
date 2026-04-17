@@ -36,14 +36,14 @@ _start_time = time.time()
 def record_ollama_request(result: str = "ok") -> None:
     """result: ok|error|timeout|unreachable"""
     with _lock:
-        _counters[f"pdfsearchable_ollama_requests_total{{result=\"{result}\"}}"] += 1
+        _counters[f'pdfsearchable_ollama_requests_total{{result="{result}"}}'] += 1
 
 
 def record_cache_hit(cache: str, hit: bool = True) -> None:
     """cache: dashboard|ocr|ollama"""
     kind = "hit" if hit else "miss"
     with _lock:
-        _counters[f"pdfsearchable_cache_hits_total{{cache=\"{cache}\",kind=\"{kind}\"}}"] += 1
+        _counters[f'pdfsearchable_cache_hits_total{{cache="{cache}",kind="{kind}"}}'] += 1
 
 
 def record_http(endpoint: str, status: int) -> None:
@@ -90,6 +90,7 @@ def render_metrics() -> str:
     # Doc/page counts via store
     try:
         from pdfsearchable.store import load_index
+
         idx = load_index() or {}
         files = idx.get("files", {}) if isinstance(idx, dict) else {}
         total_docs = len(files)
@@ -144,6 +145,7 @@ def health_status() -> dict[str, Any]:
     # Store (índice)
     try:
         from pdfsearchable.store import META_FILE
+
         checks["store"] = {"ok": META_FILE.exists() or True}
     except Exception as e:
         checks["store"] = {"ok": False, "error": str(e)}
@@ -152,6 +154,7 @@ def health_status() -> dict[str, Any]:
     # FTS
     try:
         from pdfsearchable.store import fts_ensure_healthy
+
         checks["fts"] = {"ok": bool(fts_ensure_healthy())}
         if not checks["fts"]["ok"]:
             overall = "degraded"
@@ -162,7 +165,11 @@ def health_status() -> dict[str, Any]:
     # PyMuPDF
     try:
         import fitz
-        checks["pymupdf"] = {"ok": True, "version": fitz.__doc__.split()[1] if fitz.__doc__ else None}
+
+        checks["pymupdf"] = {
+            "ok": True,
+            "version": fitz.__doc__.split()[1] if fitz.__doc__ else None,
+        }
     except Exception as e:
         checks["pymupdf"] = {"ok": False, "error": str(e)}
         overall = "down"
@@ -171,8 +178,9 @@ def health_status() -> dict[str, Any]:
     try:
         import shutil
         from pathlib import Path
+
         usage = shutil.disk_usage(Path.cwd())
-        free_gb = usage.free / (1024 ** 3)
+        free_gb = usage.free / (1024**3)
         checks["disk"] = {"ok": free_gb > 0.5, "free_gb": round(free_gb, 2)}
         if not checks["disk"]["ok"]:
             overall = "degraded"

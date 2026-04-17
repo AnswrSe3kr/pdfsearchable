@@ -49,11 +49,7 @@ _RE_ENV = re.compile(
 )
 
 # Símbolos Unicode matemáticos: blocos principais + alguns operadores comuns.
-_UNICODE_MATH_CHARS = (
-    "∫∮∯∑∏∐√∂∇∞±×÷≤≥≠≈≡≅∼∝∈∉∋⊂⊃⊆⊇∪∩∧∨¬→←↔⇒⇐⇔"
-    "αβγδεζηθικλμνξοπρστυφχψωΓΔΘΛΞΠΣΦΨΩ"
-    "°′″"
-)
+_UNICODE_MATH_CHARS = "∫∮∯∑∏∐√∂∇∞±×÷≤≥≠≈≡≅∼∝∈∉∋⊂⊃⊆⊇∪∩∧∨¬→←↔⇒⇐⇔αβγδεζηθικλμνξοπρστυφχψωΓΔΘΛΞΠΣΦΨΩ°′″"
 _RE_UNICODE_CHUNK = re.compile(
     r"(?:[A-Za-z0-9_(),.\s=+\-*/^]*[" + re.escape(_UNICODE_MATH_CHARS) + r"]"
     r"[A-Za-z0-9_(),.\s=+\-*/^" + re.escape(_UNICODE_MATH_CHARS) + r"]{0,120})"
@@ -98,29 +94,84 @@ class FormulaReport:
 
 _UNICODE_TO_LATEX: dict[str, str] = {
     # Operadores
-    "∫": r"\int ", "∮": r"\oint ", "∯": r"\oiint ",
-    "∑": r"\sum ", "∏": r"\prod ", "∐": r"\coprod ",
-    "√": r"\sqrt ", "∂": r"\partial ", "∇": r"\nabla ",
-    "∞": r"\infty ", "±": r"\pm ", "×": r"\times ", "÷": r"\div ",
-    "≤": r"\le ", "≥": r"\ge ", "≠": r"\ne ", "≈": r"\approx ",
-    "≡": r"\equiv ", "≅": r"\cong ", "∼": r"\sim ", "∝": r"\propto ",
-    "∈": r"\in ", "∉": r"\notin ", "∋": r"\ni ",
-    "⊂": r"\subset ", "⊃": r"\supset ", "⊆": r"\subseteq ", "⊇": r"\supseteq ",
-    "∪": r"\cup ", "∩": r"\cap ", "∧": r"\wedge ", "∨": r"\vee ", "¬": r"\neg ",
-    "→": r"\to ", "←": r"\gets ", "↔": r"\leftrightarrow ",
-    "⇒": r"\Rightarrow ", "⇐": r"\Leftarrow ", "⇔": r"\Leftrightarrow ",
-    "°": r"^{\circ}", "′": r"'", "″": r"''",
+    "∫": r"\int ",
+    "∮": r"\oint ",
+    "∯": r"\oiint ",
+    "∑": r"\sum ",
+    "∏": r"\prod ",
+    "∐": r"\coprod ",
+    "√": r"\sqrt ",
+    "∂": r"\partial ",
+    "∇": r"\nabla ",
+    "∞": r"\infty ",
+    "±": r"\pm ",
+    "×": r"\times ",
+    "÷": r"\div ",
+    "≤": r"\le ",
+    "≥": r"\ge ",
+    "≠": r"\ne ",
+    "≈": r"\approx ",
+    "≡": r"\equiv ",
+    "≅": r"\cong ",
+    "∼": r"\sim ",
+    "∝": r"\propto ",
+    "∈": r"\in ",
+    "∉": r"\notin ",
+    "∋": r"\ni ",
+    "⊂": r"\subset ",
+    "⊃": r"\supset ",
+    "⊆": r"\subseteq ",
+    "⊇": r"\supseteq ",
+    "∪": r"\cup ",
+    "∩": r"\cap ",
+    "∧": r"\wedge ",
+    "∨": r"\vee ",
+    "¬": r"\neg ",
+    "→": r"\to ",
+    "←": r"\gets ",
+    "↔": r"\leftrightarrow ",
+    "⇒": r"\Rightarrow ",
+    "⇐": r"\Leftarrow ",
+    "⇔": r"\Leftrightarrow ",
+    "°": r"^{\circ}",
+    "′": r"'",
+    "″": r"''",
     # Letras gregas minúsculas
-    "α": r"\alpha ", "β": r"\beta ", "γ": r"\gamma ", "δ": r"\delta ",
-    "ε": r"\varepsilon ", "ζ": r"\zeta ", "η": r"\eta ", "θ": r"\theta ",
-    "ι": r"\iota ", "κ": r"\kappa ", "λ": r"\lambda ", "μ": r"\mu ",
-    "ν": r"\nu ", "ξ": r"\xi ", "ο": "o", "π": r"\pi ", "ρ": r"\rho ",
-    "σ": r"\sigma ", "τ": r"\tau ", "υ": r"\upsilon ", "φ": r"\varphi ",
-    "χ": r"\chi ", "ψ": r"\psi ", "ω": r"\omega ",
+    "α": r"\alpha ",
+    "β": r"\beta ",
+    "γ": r"\gamma ",
+    "δ": r"\delta ",
+    "ε": r"\varepsilon ",
+    "ζ": r"\zeta ",
+    "η": r"\eta ",
+    "θ": r"\theta ",
+    "ι": r"\iota ",
+    "κ": r"\kappa ",
+    "λ": r"\lambda ",
+    "μ": r"\mu ",
+    "ν": r"\nu ",
+    "ξ": r"\xi ",
+    "ο": "o",
+    "π": r"\pi ",
+    "ρ": r"\rho ",
+    "σ": r"\sigma ",
+    "τ": r"\tau ",
+    "υ": r"\upsilon ",
+    "φ": r"\varphi ",
+    "χ": r"\chi ",
+    "ψ": r"\psi ",
+    "ω": r"\omega ",
     # Letras gregas maiúsculas
-    "Γ": r"\Gamma ", "Δ": r"\Delta ", "Θ": r"\Theta ", "Λ": r"\Lambda ",
-    "Ξ": r"\Xi ", "Π": r"\Pi ", "Σ": r"\Sigma ", "Φ": r"\Phi ",
-    "Ψ": r"\Psi ", "Ω": r"\Omega ",
+    "Γ": r"\Gamma ",
+    "Δ": r"\Delta ",
+    "Θ": r"\Theta ",
+    "Λ": r"\Lambda ",
+    "Ξ": r"\Xi ",
+    "Π": r"\Pi ",
+    "Σ": r"\Sigma ",
+    "Φ": r"\Phi ",
+    "Ψ": r"\Psi ",
+    "Ω": r"\Omega ",
 }
 
 
@@ -170,9 +221,9 @@ def _iter_latex_hits(page_num: int, text: str) -> Iterable[FormulaHit]:
             continue
         # Rejeita prosa: se tem >= 3 espaços (4+ palavras) sem qualquer indicador math,
         # é quase certamente texto entre dois cifrões de preços/moeda.
-        has_math_indicator = bool(
-            re.search(r"[=^_\\+\-*/]|\d[a-zA-Z]|[a-zA-Z]\d", body)
-        ) or any(c in body for c in _UNICODE_MATH_CHARS)
+        has_math_indicator = bool(re.search(r"[=^_\\+\-*/]|\d[a-zA-Z]|[a-zA-Z]\d", body)) or any(
+            c in body for c in _UNICODE_MATH_CHARS
+        )
         if body.count(" ") >= 3 and not has_math_indicator:
             continue
         yield FormulaHit(page=page_num, raw=m.group(0), kind="inline", latex=body)
@@ -256,9 +307,7 @@ def render_markdown_section(report: FormulaReport, *, limit: int = 50) -> str:
         return ""
     lines = ["## Fórmulas detectadas", ""]
     lines.append(f"Total: **{report.total}** (")
-    lines.append(
-        ", ".join(f"{k}: {v}" for k, v in sorted(report.by_kind.items()))
-    )
+    lines.append(", ".join(f"{k}: {v}" for k, v in sorted(report.by_kind.items())))
     lines.append(")")
     lines.append("")
     for hit in report.hits[:limit]:

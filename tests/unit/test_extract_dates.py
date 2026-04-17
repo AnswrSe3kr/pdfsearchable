@@ -10,6 +10,7 @@ from pdfsearchable.content_extractors import extract_dates
 
 # ── DD/MM/AAAA e variantes ──────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 def test_date_dmy_slash() -> None:
     result = extract_dates("Contrato assinado em 20/03/2024.")
@@ -36,6 +37,7 @@ def test_date_dmy_single_digit_day_month() -> None:
 
 # ── ISO 8601 ────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 def test_date_iso() -> None:
     result = extract_dates("Data limite: 1999-12-31.")
@@ -50,6 +52,7 @@ def test_date_iso_mixed_with_dmy() -> None:
 
 
 # ── Extenso PT ──────────────────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 def test_date_extenso_pt_de() -> None:
@@ -66,10 +69,18 @@ def test_date_extenso_pt_sem_de() -> None:
 @pytest.mark.unit
 def test_date_extenso_pt_todos_meses() -> None:
     meses = [
-        ("janeiro", "01"), ("fevereiro", "02"), ("março", "03"),
-        ("abril", "04"), ("maio", "05"), ("junho", "06"),
-        ("julho", "07"), ("agosto", "08"), ("setembro", "09"),
-        ("outubro", "10"), ("novembro", "11"), ("dezembro", "12"),
+        ("janeiro", "01"),
+        ("fevereiro", "02"),
+        ("março", "03"),
+        ("abril", "04"),
+        ("maio", "05"),
+        ("junho", "06"),
+        ("julho", "07"),
+        ("agosto", "08"),
+        ("setembro", "09"),
+        ("outubro", "10"),
+        ("novembro", "11"),
+        ("dezembro", "12"),
     ]
     for nome, num in meses:
         result = extract_dates(f"10 de {nome} de 2020")
@@ -77,6 +88,7 @@ def test_date_extenso_pt_todos_meses() -> None:
 
 
 # ── Extenso EN ──────────────────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 def test_date_extenso_en() -> None:
@@ -91,6 +103,7 @@ def test_date_extenso_en_march() -> None:
 
 
 # ── Deduplicação e limites ───────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 def test_deduplicacao() -> None:
@@ -116,6 +129,7 @@ def test_empty_text_returns_empty() -> None:
 
 # ── Validação de datas absurdas ──────────────────────────────────────────────
 
+
 @pytest.mark.unit
 def test_rejects_impossible_month() -> None:
     """Mês 13 não deve ser aceite."""
@@ -138,6 +152,7 @@ def test_rejects_impossible_day() -> None:
 
 
 # ── Output normalizado ────────────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 def test_output_normalized_format() -> None:

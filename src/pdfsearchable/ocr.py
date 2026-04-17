@@ -348,7 +348,7 @@ def _binarize_sauvola(image, window_size: int = 25, k: float = 0.2, R: float = 1
         integral = np.zeros((h + 1, w + 1), dtype=np.float64)
         integral_sq = np.zeros((h + 1, w + 1), dtype=np.float64)
         np.cumsum(np.cumsum(arr, axis=0), axis=1, out=integral[1:, 1:])
-        np.cumsum(np.cumsum(arr ** 2, axis=0), axis=1, out=integral_sq[1:, 1:])
+        np.cumsum(np.cumsum(arr**2, axis=0), axis=1, out=integral_sq[1:, 1:])
 
         # Coordenadas das janelas (clipped nas bordas)
         rows = np.arange(h)
@@ -371,7 +371,7 @@ def _binarize_sauvola(image, window_size: int = 25, k: float = 0.2, R: float = 1
         sq = integral_sq[Y2, X2] - integral_sq[Y1, X2] - integral_sq[Y2, X1] + integral_sq[Y1, X1]
 
         mean = s / area
-        variance = np.maximum(sq / area - mean ** 2, 0)
+        variance = np.maximum(sq / area - mean**2, 0)
         std = np.sqrt(variance)
 
         # Limiar Sauvola: T(x,y) = mean * (1 + k * (std / R - 1))
@@ -463,10 +463,9 @@ def _clahe(image, clip_limit: float = 2.0, tile_size: int = 8):
         v01 = luts[IY0, IX1, vals].astype(np.float64)
         v10 = luts[IY1, IX0, vals].astype(np.float64)
         v11 = luts[IY1, IX1, vals].astype(np.float64)
-        result = (v00 * (1 - DY) * (1 - DX)
-                  + v01 * (1 - DY) * DX
-                  + v10 * DY * (1 - DX)
-                  + v11 * DY * DX).astype(np.uint8)
+        result = (
+            v00 * (1 - DY) * (1 - DX) + v01 * (1 - DY) * DX + v10 * DY * (1 - DX) + v11 * DY * DX
+        ).astype(np.uint8)
         return PILImage.fromarray(result, mode="L")
     except Exception as _e:
         _log.debug("_clahe falhou: %s", _e)
@@ -500,13 +499,15 @@ def _morphological_clean(image, kernel_size: int = 2):
             out = np.ones_like(img)
             for dy in range(k):
                 for dx in range(k):
-                    out &= img[dy:h - k + dy + 1, dx:w - k + dx + 1] if (
-                        h - k + dy + 1 > dy and w - k + dx + 1 > dx
-                    ) else img[:1, :1]
+                    out &= (
+                        img[dy : h - k + dy + 1, dx : w - k + dx + 1]
+                        if (h - k + dy + 1 > dy and w - k + dx + 1 > dx)
+                        else img[:1, :1]
+                    )
             result = np.ones_like(img)
             pad = k // 2
             if pad < h - pad and pad < w - pad:
-                result[pad:h - pad, pad:w - pad] = out[:h - 2 * pad, :w - 2 * pad]
+                result[pad : h - pad, pad : w - pad] = out[: h - 2 * pad, : w - 2 * pad]
             return result
 
         def _dilate(img, k):
@@ -522,12 +523,12 @@ def _morphological_clean(image, kernel_size: int = 2):
             result = np.zeros_like(img)
             pad = k // 2
             if pad < h - pad and pad < w - pad:
-                result[pad:h - pad, pad:w - pad] = out[pad:h - pad, pad:w - pad]
+                result[pad : h - pad, pad : w - pad] = out[pad : h - pad, pad : w - pad]
             # Preservar bordas
             result[:pad, :] = img[:pad, :]
-            result[h - pad:, :] = img[h - pad:, :]
+            result[h - pad :, :] = img[h - pad :, :]
             result[:, :pad] = img[:, :pad]
-            result[:, w - pad:] = img[:, w - pad:]
+            result[:, w - pad :] = img[:, w - pad :]
             return result
 
         # Opening: erosão → dilatação (remove ruído pequeno)
@@ -566,17 +567,19 @@ def _detect_historical_page(image) -> bool:
         margin_y = max(1, h // 10)
         margin_x = max(1, w // 10)
         # Amostrar 4 cantos
-        corners = np.concatenate([
-            arr[:margin_y, :margin_x].reshape(-1, 3),
-            arr[:margin_y, -margin_x:].reshape(-1, 3),
-            arr[-margin_y:, :margin_x].reshape(-1, 3),
-            arr[-margin_y:, -margin_x:].reshape(-1, 3),
-        ])
+        corners = np.concatenate(
+            [
+                arr[:margin_y, :margin_x].reshape(-1, 3),
+                arr[:margin_y, -margin_x:].reshape(-1, 3),
+                arr[-margin_y:, :margin_x].reshape(-1, 3),
+                arr[-margin_y:, -margin_x:].reshape(-1, 3),
+            ]
+        )
         mean_rgb = corners.mean(axis=0)
         r, g, b = mean_rgb[0], mean_rgb[1], mean_rgb[2]
 
         # Papel amarelado: R > 160, G > 140, B < R-30 e B < G-20
-        yellowed = (r > 160 and g > 140 and b < r - 30 and b < g - 20)
+        yellowed = r > 160 and g > 140 and b < r - 30 and b < g - 20
 
         # 2. Variância local alta (texto irregular, manchas)
         gray = np.array(image.convert("L"), dtype=np.float32)
@@ -585,7 +588,7 @@ def _detect_historical_page(image) -> bool:
         block_h = h // bs
         block_w = w // bs
         if block_h > 2 and block_w > 2:
-            blocks = gray[:block_h * bs, :block_w * bs].reshape(block_h, bs, block_w, bs)
+            blocks = gray[: block_h * bs, : block_w * bs].reshape(block_h, bs, block_w, bs)
             block_means = blocks.mean(axis=(1, 3))
             contrast_var = float(np.std(block_means))
             high_contrast_var = contrast_var > 40  # scans históricos > 40
@@ -604,7 +607,10 @@ def _detect_historical_page(image) -> bool:
             _log.debug(
                 "Documento histórico detectado (score=%d/3): amarelado=%s, "
                 "var_contraste=%s, ruído=%s",
-                score, yellowed, high_contrast_var, noisy,
+                score,
+                yellowed,
+                high_contrast_var,
+                noisy,
             )
         return is_hist
     except Exception as _e:
@@ -821,6 +827,7 @@ def _htr_cache_suffix() -> str:
     """Retorna o sufixo de cache para o backend HTR activo: '_htr', '_transkribus' ou '_escriptorium'."""
     try:
         from pdfsearchable.htr import get_htr_backend, HTR_BACKEND_TROCR
+
         backend = get_htr_backend()
         return "_htr" if backend == HTR_BACKEND_TROCR else f"_{backend}"
     except Exception:
@@ -1092,7 +1099,9 @@ def ocr_page_from_image_bytes(
                 _set_cache(cache_key, page_num, text, confidence=conf, use_htr=True)
             return text, conf
         except Exception as _htr_err:
-            _log.debug("HTR (use_htr_first) falhou na página %d: %s — a usar Tesseract", page_num, _htr_err)
+            _log.debug(
+                "HTR (use_htr_first) falhou na página %d: %s — a usar Tesseract", page_num, _htr_err
+            )
 
     if not ocr_available():
         return "", -1.0
@@ -1111,7 +1120,11 @@ def ocr_page_from_image_bytes(
                     _set_cache(cache_key, page_num, text, confidence=confidence, use_htr=True)
                 return text, confidence
         except Exception as _htr_err:
-            _log.debug("HTR fallback falhou na página %d: %s — a usar resultado Tesseract", page_num, _htr_err)
+            _log.debug(
+                "HTR fallback falhou na página %d: %s — a usar resultado Tesseract",
+                page_num,
+                _htr_err,
+            )
     if use_cache and text.strip():
         _set_cache(cache_key, page_num, text, confidence=confidence, use_htr=False)
     return text, confidence

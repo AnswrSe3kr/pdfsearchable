@@ -1,4 +1,5 @@
 """Testes unitários para mcp_server.py — tool definitions, tool handlers, protocol helpers."""
+
 import json
 import pytest
 from unittest.mock import patch, MagicMock
@@ -26,7 +27,13 @@ class TestToolDefinitions:
 
     def test_tool_names(self):
         names = {t["name"] for t in _TOOLS}
-        expected = {"list_documents", "search_documents", "get_document_text", "ask_document", "ask_all_documents"}
+        expected = {
+            "list_documents",
+            "search_documents",
+            "get_document_text",
+            "ask_document",
+            "ask_all_documents",
+        }
         assert expected.issubset(names)
 
     def test_search_has_query_param(self):
@@ -56,11 +63,22 @@ class TestToolListDocuments:
             assert "Nenhum" in result[0]["text"]
 
     def test_with_documents(self):
-        fake_index = {"files": [
-            {"id": "abc123", "name": "test.pdf", "num_pages": 5, "doc_type": "contrato",
-             "language": "pt-BR", "word_count": 1000, "indexed_at": "2024-01-01T00:00:00Z",
-             "tags": ["fiscal"], "summary": "Resumo do teste", "subject": "Teste"},
-        ]}
+        fake_index = {
+            "files": [
+                {
+                    "id": "abc123",
+                    "name": "test.pdf",
+                    "num_pages": 5,
+                    "doc_type": "contrato",
+                    "language": "pt-BR",
+                    "word_count": 1000,
+                    "indexed_at": "2024-01-01T00:00:00Z",
+                    "tags": ["fiscal"],
+                    "summary": "Resumo do teste",
+                    "subject": "Teste",
+                },
+            ]
+        }
         with patch("pdfsearchable.store.load_index", return_value=fake_index):
             result = _tool_list_documents({})
             text = result[0]["text"]

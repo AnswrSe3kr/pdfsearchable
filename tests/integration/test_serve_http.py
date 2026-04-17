@@ -19,6 +19,7 @@ Rotas testadas:
   Auth → 401 sem token / 200 com token correcto
   Path traversal → não serve ficheiros fora de .pdfsearchable/
 """
+
 from __future__ import annotations
 
 import json
@@ -37,6 +38,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Utilidades
 # ---------------------------------------------------------------------------
+
 
 def _free_port() -> int:
     """Encontra uma porta TCP livre."""
@@ -95,6 +97,7 @@ def _make_pdf(directory: Path, name: str = "doc.pdf") -> Path:
 # ---------------------------------------------------------------------------
 # Fixture: servidor ao vivo
 # ---------------------------------------------------------------------------
+
 
 def _pdfsearchable_bin() -> str:
     """Caminho para o executável pdfsearchable instalado no mesmo venv que pytest."""
@@ -173,9 +176,9 @@ def live_server(tmp_path_factory):
 # Testes de rotas
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.integration
 class TestServeRoutes:
-
     def test_root_redirects_to_app(self, live_server):
         """GET / redirige para /app.html (SPA)."""
         base_url, _, _ = live_server
@@ -304,6 +307,7 @@ class TestServeRoutes:
     def test_api_text_existing_document(self, live_server):
         """GET /api/text?id=<id real> devolve texto do documento."""
         import json as _json
+
         base_url, base_dir, _ = live_server
         index_file = base_dir / ".pdfsearchable" / "index.json"
         if not index_file.exists():

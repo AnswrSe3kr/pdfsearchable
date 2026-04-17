@@ -60,6 +60,7 @@ _session_col_id: int | None = None
 # Configuração
 # ---------------------------------------------------------------------------
 
+
 def _base_url() -> str:
     return (os.environ.get("PDFSEARCHABLE_TRANSKRIBUS_BASE_URL") or _DEFAULT_BASE_URL).rstrip("/")
 
@@ -88,6 +89,7 @@ def _cleanup_enabled() -> bool:
 # Verificação de disponibilidade
 # ---------------------------------------------------------------------------
 
+
 def available() -> bool:
     """True se credenciais Transkribus e modelo HTR estiverem configurados."""
     user = os.environ.get("PDFSEARCHABLE_TRANSKRIBUS_USER", "").strip()
@@ -98,6 +100,7 @@ def available() -> bool:
 # ---------------------------------------------------------------------------
 # HTTP helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_opener() -> urllib.request.OpenerDirector:
     """Cria opener urllib com gestão automática de cookies (sessão Transkribus)."""
@@ -153,6 +156,7 @@ def _build_multipart(boundary: str, files: dict[str, tuple[str, bytes, str]]) ->
 # Autenticação
 # ---------------------------------------------------------------------------
 
+
 def _login() -> urllib.request.OpenerDirector:
     """Login no Transkribus. Retorna opener com cookie JSESSIONID activo."""
     user = os.environ.get("PDFSEARCHABLE_TRANSKRIBUS_USER", "").strip()
@@ -192,6 +196,7 @@ def _login() -> urllib.request.OpenerDirector:
 # Colecção
 # ---------------------------------------------------------------------------
 
+
 def _ensure_collection(opener: urllib.request.OpenerDirector) -> int:
     """Garante colecção de trabalho; retorna colId."""
     global _session_col_id
@@ -200,12 +205,15 @@ def _ensure_collection(opener: urllib.request.OpenerDirector) -> int:
         try:
             return int(env_col)
         except ValueError:
-            _log.warning("PDFSEARCHABLE_TRANSKRIBUS_COL_ID inválido ('%s') — a criar colecção temp.", env_col)
+            _log.warning(
+                "PDFSEARCHABLE_TRANSKRIBUS_COL_ID inválido ('%s') — a criar colecção temp.", env_col
+            )
     if _session_col_id is not None:
         return _session_col_id
     base = _base_url()
     col_id = _api_json(
-        opener, "POST",
+        opener,
+        "POST",
         f"{base}/collections/createCollection?collName=pdfsearchable_htr_temp",
     )
     _session_col_id = int(col_id)
@@ -217,6 +225,7 @@ def _ensure_collection(opener: urllib.request.OpenerDirector) -> int:
 # Upload
 # ---------------------------------------------------------------------------
 
+
 def _upload_image(
     opener: urllib.request.OpenerDirector, col_id: int, image_bytes: bytes
 ) -> tuple[int, int]:
@@ -225,13 +234,18 @@ def _upload_image(
     doc_name = f"pdfsearchable_htr_{int(time.time())}_{uuid.uuid4().hex[:6]}"
 
     # 1. Init upload
-    init_body = json.dumps({
-        "md": {"docName": doc_name},
-        "pageList": {"pages": [{"fileName": "page.png", "pageNr": 1}]},
-    }).encode()
+    init_body = json.dumps(
+        {
+            "md": {"docName": doc_name},
+            "pageList": {"pages": [{"fileName": "page.png", "pageNr": 1}]},
+        }
+    ).encode()
     init_result = _api_json(
-        opener, "POST", f"{base}/uploads?collId={col_id}",
-        data=init_body, content_type="application/json",
+        opener,
+        "POST",
+        f"{base}/uploads?collId={col_id}",
+        data=init_body,
+        content_type="application/json",
     )
     upload_id = int(init_result["uploadId"])
 
@@ -265,18 +279,24 @@ def _upload_image(
 # Job HTR
 # ---------------------------------------------------------------------------
 
+
 def _submit_htr_job(
     opener: urllib.request.OpenerDirector, col_id: int, doc_id: int, model_id: int
 ) -> int:
     """Submete job HTR. Retorna jobId."""
     base = _base_url()
-    payload = json.dumps({
-        "docList": {"docs": [{"docId": doc_id, "pageList": {"pages": [{"pageNr": 1}]}}]},
-        "config": {"htrId": model_id},
-    }).encode()
+    payload = json.dumps(
+        {
+            "docList": {"docs": [{"docId": doc_id, "pageList": {"pages": [{"pageNr": 1}]}}]},
+            "config": {"htrId": model_id},
+        }
+    ).encode()
     result = _api_json(
-        opener, "POST", f"{base}/jobs/htrCia",
-        data=payload, content_type="application/json",
+        opener,
+        "POST",
+        f"{base}/jobs/htrCia",
+        data=payload,
+        content_type="application/json",
     )
     # jobId pode vir como int directo ou em lista
     if isinstance(result, int):
@@ -328,13 +348,13 @@ def _poll_job(opener: urllib.request.OpenerDirector, job_id: int) -> None:
 # Extracção do resultado
 # ---------------------------------------------------------------------------
 
-def _get_transcript_text(
-    opener: urllib.request.OpenerDirector, col_id: int, doc_id: int
-) -> str:
+
+def _get_transcript_text(opener: urllib.request.OpenerDirector, col_id: int, doc_id: int) -> str:
     """Obtém e processa o transcript mais recente (PAGE XML)."""
     base = _base_url()
     transcripts = _api_json(
-        opener, "GET",
+        opener,
+        "GET",
         f"{base}/collections/{col_id}/{doc_id}/pages/1/transcripts",
     )
     if not transcripts:
@@ -390,9 +410,8 @@ def _parse_page_xml(xml_bytes: bytes) -> str:
 # Limpeza
 # ---------------------------------------------------------------------------
 
-def _cleanup_doc(
-    opener: urllib.request.OpenerDirector, col_id: int, doc_id: int
-) -> None:
+
+def _cleanup_doc(opener: urllib.request.OpenerDirector, col_id: int, doc_id: int) -> None:
     """Remove documento temporário da colecção Transkribus (best-effort)."""
     if not _cleanup_enabled():
         return
@@ -407,6 +426,7 @@ def _cleanup_doc(
 # ---------------------------------------------------------------------------
 # Ponto de entrada público
 # ---------------------------------------------------------------------------
+
 
 def run(image_bytes: bytes) -> str:
     """

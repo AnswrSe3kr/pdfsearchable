@@ -19,7 +19,7 @@ def _make_pdf(path: Path, title: str, body: str, pages: int = 2) -> Path:
     for i in range(pages):
         page = doc.new_page()
         rect = fitz.Rect(72, 72, 540, 770)
-        page.insert_textbox(rect, f"{title} - página {i+1}\n\n" + body * 5, fontsize=11)
+        page.insert_textbox(rect, f"{title} - página {i + 1}\n\n" + body * 5, fontsize=11)
     doc.save(str(path))
     doc.close()
     return path
@@ -127,10 +127,18 @@ def test_e2e_dossier_generation(e2e_pdfs, tmp_path):
     from pdfsearchable.dossier import generate_dossier
 
     results = [
-        {"file_id": "abc1", "file_name": "relatorio_v1.pdf", "page": 1,
-         "snippet": "operações táticas em Bagdad"},
-        {"file_id": "abc2", "file_name": "contrato.pdf", "page": 1,
-         "snippet": "prestação de serviços"},
+        {
+            "file_id": "abc1",
+            "file_name": "relatorio_v1.pdf",
+            "page": 1,
+            "snippet": "operações táticas em Bagdad",
+        },
+        {
+            "file_id": "abc2",
+            "file_name": "contrato.pdf",
+            "page": 1,
+            "snippet": "prestação de serviços",
+        },
     ]
     out = tmp_path / "e2e_dossier.pdf"
     generate_dossier(results, out, title="E2E Dossier", query="teste")
@@ -168,6 +176,7 @@ def test_e2e_saved_search_alert(isolated_store):
     save_search("alerta-e2e", "Bagdad")
 
     calls = {"n": 0}
+
     def executor(q, opts):
         calls["n"] += 1
         if calls["n"] == 1:

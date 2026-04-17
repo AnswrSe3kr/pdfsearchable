@@ -44,7 +44,11 @@ from pdfsearchable.ocr import (
     ocr_page_from_image_bytes,
     render_page_to_image,
 )
-from pdfsearchable.pdf_extended import extract_extended_from_doc, extract_embedded_pdfs, is_pdf_portfolio
+from pdfsearchable.pdf_extended import (
+    extract_extended_from_doc,
+    extract_embedded_pdfs,
+    is_pdf_portfolio,
+)
 from pdfsearchable.pdf_processor import (
     ExtractMode,
     content_hash,
@@ -207,9 +211,7 @@ def _apply_optional_detections(
                 level="error",
             )
         except Exception as _e:
-            logger.warning(
-                "Detecção de redacções falhou para %s: %s", name_hint, _e
-            )
+            logger.warning("Detecção de redacções falhou para %s: %s", name_hint, _e)
             audit(
                 "redaction_error",
                 {"file_id": file_id, "name": name_hint, "error": str(_e)},
@@ -248,9 +250,7 @@ def _apply_optional_detections(
                         fr.risk_score,
                     )
         except ImportError as _ie:
-            logger.error(
-                "PDFSEARCHABLE_FORENSICS activo mas módulo indisponível: %s", _ie
-            )
+            logger.error("PDFSEARCHABLE_FORENSICS activo mas módulo indisponível: %s", _ie)
             audit(
                 "forensics_module_missing",
                 {"name": name_hint, "error": str(_ie)},
@@ -265,15 +265,14 @@ def _apply_optional_detections(
             )
 
     # ---- Extracção de datas de contrato --------------------------------
-    if _env_flag("PDFSEARCHABLE_CONTRACTS") and "contrato" in (
-        enriched.get("doc_type") or ""
-    ).lower():
+    if (
+        _env_flag("PDFSEARCHABLE_CONTRACTS")
+        and "contrato" in (enriched.get("doc_type") or "").lower()
+    ):
         try:
             from pdfsearchable.contracts import extract_contract_dates
 
-            cd = extract_contract_dates(
-                enriched.get("full_text") or "", filename=name_hint
-            )
+            cd = extract_contract_dates(enriched.get("full_text") or "", filename=name_hint)
             if cd.confidence > 0:
                 metadata["contract_data"] = {
                     "start_date": cd.start_date,
@@ -295,18 +294,14 @@ def _apply_optional_detections(
                     },
                 )
         except ImportError as _ie:
-            logger.error(
-                "PDFSEARCHABLE_CONTRACTS activo mas módulo indisponível: %s", _ie
-            )
+            logger.error("PDFSEARCHABLE_CONTRACTS activo mas módulo indisponível: %s", _ie)
             audit(
                 "contracts_module_missing",
                 {"name": name_hint, "error": str(_ie)},
                 level="error",
             )
         except Exception as _e:
-            logger.warning(
-                "Extracção de contrato falhou para %s: %s", name_hint, _e
-            )
+            logger.warning("Extracção de contrato falhou para %s: %s", name_hint, _e)
             audit(
                 "contracts_error",
                 {"file_id": file_id, "name": name_hint, "error": str(_e)},
@@ -352,9 +347,7 @@ def _apply_optional_detections(
                 level="error",
             )
         except Exception as _e:
-            logger.warning(
-                "Detecção de fórmulas falhou para %s: %s", name_hint, _e
-            )
+            logger.warning("Detecção de fórmulas falhou para %s: %s", name_hint, _e)
             audit(
                 "formulas_error",
                 {"file_id": file_id, "name": name_hint, "error": str(_e)},
@@ -513,8 +506,7 @@ def _enrich_document(
     if _enrichment_partial:
         _failed = locals().get("_ollama_failed_tasks") or []
         _ollama_warnings = (
-            f"Ollama indisponível para: {', '.join(_failed)}. "
-            "Enriquecimento com IA incompleto."
+            f"Ollama indisponível para: {', '.join(_failed)}. Enriquecimento com IA incompleto."
         )
         logger.warning("Enriquecimento parcial — tarefas Ollama falharam: %s", _failed)
 
@@ -576,7 +568,9 @@ def _worker_extract_and_classify(args: tuple) -> dict[str, Any]:
                             if failed:
                                 logger.warning(
                                     "Recuperação parcial: %d/%d página(s) com erro: %s",
-                                    len(failed), num_pages, failed[:10],
+                                    len(failed),
+                                    num_pages,
+                                    failed[:10],
                                 )
                             break  # Usa resultado parcial como dados do documento
                     except Exception as _partial_err:
@@ -602,7 +596,10 @@ def _worker_extract_and_classify(args: tuple) -> dict[str, Any]:
                 raise
             logger.warning(
                 "Tentativa %d/%d falhou para %s: %s — a tentar novamente",
-                attempt + 1, MAX_RETRIES, pdf_path.name, _retry_err,
+                attempt + 1,
+                MAX_RETRIES,
+                pdf_path.name,
+                _retry_err,
             )
             time.sleep(RETRY_BACKOFF * (2**attempt))
     enriched = _enrich_document(
@@ -729,11 +726,19 @@ def _extract_with_ocr(
         try:
             extended = extract_extended_from_doc(doc)
         except Exception as _ext_err:
-            logger.debug("extract_extended_from_doc falhou: %s — a prosseguir sem dados estendidos", _ext_err)
+            logger.debug(
+                "extract_extended_from_doc falhou: %s — a prosseguir sem dados estendidos", _ext_err
+            )
             extended = {
-                "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-                "outline": [], "hyperlinks": [], "page_dimensions": [],
-                "attached_files": [], "fonts": [],
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
             }
         # Assinaturas digitais (campos de assinatura no PDF)
         extended["signatures"] = detect_digital_signatures(doc)
@@ -748,7 +753,10 @@ def _extract_with_ocr(
             is_corrupt = _is_text_corrupt(native_text) if native_text.strip() else False
             low_entropy = _has_low_entropy(native_text) if native_text.strip() else False
             use_ocr_this_page = (
-                ocr_always or len(native_text.strip()) < MIN_CHARS_FOR_NATIVE or is_corrupt or low_entropy
+                ocr_always
+                or len(native_text.strip()) < MIN_CHARS_FOR_NATIVE
+                or is_corrupt
+                or low_entropy
             )
             img_bytes: bytes | None = None
             if use_ocr_this_page:
@@ -758,7 +766,8 @@ def _extract_with_ocr(
                 except Exception as _render_err:
                     logger.debug(
                         "render_page_to_image falhou na página %d: %s — OCR ignorado para esta página",
-                        i, _render_err,
+                        i,
+                        _render_err,
                     )
             items.append((i, i + 1, img_bytes, native_text, use_ocr_this_page, is_corrupt))
 
@@ -804,7 +813,10 @@ def _extract_with_ocr(
             _doc_timeout_default = max(300, _ocr_pages * 60)
             _doc_timeout = max(
                 _page_timeout,
-                int(os.environ.get("PDFSEARCHABLE_OCR_DOC_TIMEOUT", str(_doc_timeout_default)) or _doc_timeout_default),
+                int(
+                    os.environ.get("PDFSEARCHABLE_OCR_DOC_TIMEOUT", str(_doc_timeout_default))
+                    or _doc_timeout_default
+                ),
             )
             _doc_deadline = time.monotonic() + _doc_timeout
 
@@ -839,9 +851,7 @@ def _extract_with_ocr(
                     try:
                         i, text, conf, used_ocr, is_corrupt = fut.result(timeout=effective_timeout)
                     except Exception as _fut_err:
-                        logger.warning(
-                            "OCR falhou na página %d: %s", page_i, _fut_err
-                        )
+                        logger.warning("OCR falhou na página %d: %s", page_i, _fut_err)
                         results_by_i[page_i] = ("", -1.0)
                         continue
                     results_by_i[i] = (text, conf)
@@ -856,7 +866,9 @@ def _extract_with_ocr(
             )
 
             merged = []
-            for i, (_, _page_num, _, native_text, use_ocr_this_page, is_corrupt) in enumerate(items):
+            for i, (_, _page_num, _, native_text, use_ocr_this_page, is_corrupt) in enumerate(
+                items
+            ):
                 if not use_ocr_this_page:
                     merged.append(native_text)
                     continue
@@ -877,7 +889,9 @@ def _extract_with_ocr(
                         merged.append(ocr_text)
                     else:
                         merged.append(native_text)
-            full, merged, metadata = _merge_extended(merged, "\n\n".join(merged), metadata, extended)
+            full, merged, metadata = _merge_extended(
+                merged, "\n\n".join(merged), metadata, extended
+            )
             return full, num_pages, merged, metadata, ocr_per_page, page_confidences
 
         # Sequencial (PDFSEARCHABLE_OCR_WORKERS=1 ou sem páginas para OCR)
@@ -949,9 +963,7 @@ def index_pdf(
     if not ok:
         # PDF corrompido: tentar recuperação parcial página a página antes de desistir
         if pdf_path.exists() and "corrompido" in (err or "").lower():
-            logger.warning(
-                "PDF corrompido (%s) — tentando recuperação parcial.", pdf_path.name
-            )
+            logger.warning("PDF corrompido (%s) — tentando recuperação parcial.", pdf_path.name)
             try:
                 full_text, num_pages, page_texts, metadata, failed_pages = (
                     extract_text_from_pdf_partial(pdf_path, password=pwd, normalize=True)
@@ -959,13 +971,17 @@ def index_pdf(
                 if full_text.strip() or num_pages > 0:
                     logger.info(
                         "Recuperação parcial: %d página(s) extraídas, %d com erro.",
-                        num_pages - len(failed_pages), len(failed_pages),
+                        num_pages - len(failed_pages),
+                        len(failed_pages),
                     )
-                    audit("index_partial_recovery", {
-                        "path": str(pdf_path),
-                        "pages_ok": num_pages - len(failed_pages),
-                        "pages_failed": len(failed_pages),
-                    })
+                    audit(
+                        "index_partial_recovery",
+                        {
+                            "path": str(pdf_path),
+                            "pages_ok": num_pages - len(failed_pages),
+                            "pages_failed": len(failed_pages),
+                        },
+                    )
                     # Continuar indexação com texto parcial — saltar validate abaixo
                     c_hash = content_hash(pdf_path)
                     f_size = file_size(pdf_path)
@@ -974,10 +990,17 @@ def index_pdf(
                     ocr_per_page = [False] * len(page_texts)
                     page_confidences = [-1.0] * len(page_texts)
                     enriched = _enrich_document(
-                        full_text, pdf_path, metadata, doc_type,
-                        ocr_per_page, page_texts, page_confidences,
+                        full_text,
+                        pdf_path,
+                        metadata,
+                        doc_type,
+                        ocr_per_page,
+                        page_texts,
+                        page_confidences,
                     )
-                    metadata["text_chars"] = enriched.get("text_chars", len(full_text) if full_text else 0)
+                    metadata["text_chars"] = enriched.get(
+                        "text_chars", len(full_text) if full_text else 0
+                    )
                     now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                     is_large = f_size >= LARGE_FILE_THRESHOLD_BYTES
                     compress = compress or is_large
@@ -985,17 +1008,30 @@ def index_pdf(
                     save_file_text(file_id, full_text, compress=compress, page_texts=page_tuples)
                     copy_pdf_to_store(file_id, pdf_path)
                     add_file_meta(
-                        file_id=file_id, original_path=str(pdf_path),
-                        num_pages=num_pages, doc_type=enriched["doc_type"],
+                        file_id=file_id,
+                        original_path=str(pdf_path),
+                        num_pages=num_pages,
+                        doc_type=enriched["doc_type"],
                         word_count=enriched["word_count"],
                         classification_source=enriched["classification_source"],
                         classification_confidence=enriched["classification_confidence"],
-                        file_size=f_size, content_hash=c_hash, metadata=metadata,
-                        pages=[{"n": i+1, "char_count": len(pt), "has_ocr": False, "ocr_confidence": None}
-                               for i, pt in enumerate(page_texts)],
-                        indexed_at=now_iso, updated_at=now_iso,
+                        file_size=f_size,
+                        content_hash=c_hash,
+                        metadata=metadata,
+                        pages=[
+                            {
+                                "n": i + 1,
+                                "char_count": len(pt),
+                                "has_ocr": False,
+                                "ocr_confidence": None,
+                            }
+                            for i, pt in enumerate(page_texts)
+                        ],
+                        indexed_at=now_iso,
+                        updated_at=now_iso,
                         language=enriched["language"],
-                        ocr_percentage=0, summary=enriched["summary"],
+                        ocr_percentage=0,
+                        summary=enriched["summary"],
                         subject=enriched["subject"],
                         tags=enriched["tags"] or None,
                         identified_dates=enriched["identified_dates"] or None,
@@ -1030,6 +1066,7 @@ def index_pdf(
         embedded_pdfs = extract_embedded_pdfs(pdf_path, password=pwd)
         if embedded_pdfs:
             import tempfile
+
             for emb_name, emb_data in embedded_pdfs:
                 try:
                     with tempfile.NamedTemporaryFile(
@@ -1057,10 +1094,13 @@ def index_pdf(
                 except Exception as _emb_err:
                     logger.warning("Falha ao indexar PDF embutido %s: %s", emb_name, _emb_err)
             if embedded_results:
-                audit("portfolio_indexed", {
-                    "path": str(pdf_path),
-                    "embedded_count": len(embedded_results),
-                })
+                audit(
+                    "portfolio_indexed",
+                    {
+                        "path": str(pdf_path),
+                        "embedded_count": len(embedded_results),
+                    },
+                )
                 return {
                     "portfolio": True,
                     "source": pdf_path.name,
@@ -1170,7 +1210,9 @@ def index_pdf(
         identified_ips=enriched["entities"].get("ips") or None,
         identified_addresses=enriched["entities"].get("addresses") or None,
         identified_phones=enriched["entities"].get("phones") or None,
-        identified_locations=enriched["identified_locations"] if enriched["identified_locations"] else None,
+        identified_locations=enriched["identified_locations"]
+        if enriched["identified_locations"]
+        else None,
         identified_dates=enriched["identified_dates"] if enriched.get("identified_dates") else None,
         confidentiality=enriched.get("confidentiality"),
         identified_urls=enriched["entities"].get("urls") or None,
@@ -1250,6 +1292,7 @@ def index_pdf(
     if os.environ.get("PDFSEARCHABLE_CLASSIFIER_FEEDBACK", "").strip() in ("1", "true", "yes"):
         try:
             from pdfsearchable.classifier_feedback import record_correction
+
             if enriched.get("classification_source") == "heuristics" and enriched.get("doc_type"):
                 record_correction(
                     file_id,

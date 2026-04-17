@@ -103,9 +103,7 @@ def _extract_annotations_from_page(page: "fitz.Page") -> list[dict[str, Any]]:
 
                 # Autor e datas (campo info do PDF)
                 if hasattr(annot, "info") and isinstance(annot.info, dict):
-                    author = (
-                        annot.info.get("title") or annot.info.get("author") or ""
-                    ).strip()
+                    author = (annot.info.get("title") or annot.info.get("author") or "").strip()
                     if author:
                         ann_dict["author"] = author[:100]
                     for date_key in ("creationDate", "modDate"):
@@ -121,8 +119,10 @@ def _extract_annotations_from_page(page: "fitz.Page") -> list[dict[str, Any]]:
                     try:
                         r = annot.rect
                         ann_dict["rect"] = [
-                            round(r.x0, 1), round(r.y0, 1),
-                            round(r.x1, 1), round(r.y1, 1),
+                            round(r.x0, 1),
+                            round(r.y0, 1),
+                            round(r.x1, 1),
+                            round(r.y1, 1),
                         ]
                     except Exception as _e:
                         _log.debug("Falha ao extrair rect de anotação: %s", _e)
@@ -185,9 +185,11 @@ def _extract_xmp_metadata(doc: "fitz.Document") -> dict[str, Any]:
                 xmp["has_xmp"] = True
                 # Parse XMP (best-effort, sem dependências externas)
                 import re as _re
+
                 def _first(pattern: str) -> str | None:
                     m = _re.search(pattern, xml_str, _re.IGNORECASE | _re.DOTALL)
                     return m.group(1).strip() if m else None
+
                 for key, pat in (
                     ("dc_title", r"<dc:title>.*?<rdf:li[^>]*>(.*?)</rdf:li>"),
                     ("dc_creator", r"<dc:creator>.*?<rdf:li[^>]*>(.*?)</rdf:li>"),
@@ -272,7 +274,9 @@ def _extract_hyperlinks_from_page(page: "fitz.Page") -> list[dict[str, Any]]:
     return links
 
 
-def _extract_page_dimensions(doc: "fitz.Document", *, max_pages: int = 2000) -> list[dict[str, Any]]:
+def _extract_page_dimensions(
+    doc: "fitz.Document", *, max_pages: int = 2000
+) -> list[dict[str, Any]]:
     """Extrai dimensões (width, height, rotation) de cada página em pontos PDF.
 
     Útil para detecção de orientação mista, documentos grandes (A0/A1) ou
@@ -309,7 +313,9 @@ def _extract_attached_files(doc: "fitz.Document") -> list[dict[str, Any]]:
                         {
                             "name": str(info.get("filename", ""))[:300],
                             "size": int(info.get("size", 0)),
-                            "description": str(info.get("desc", ""))[:300] if info.get("desc") else "",
+                            "description": str(info.get("desc", ""))[:300]
+                            if info.get("desc")
+                            else "",
                             "creation_date": str(info.get("creationDate", ""))[:40],
                             "mod_date": str(info.get("modDate", ""))[:40],
                         }
@@ -494,7 +500,9 @@ def extract_extended_from_doc(
                         image_tables = _extract_tables_from_image_page(img_bytes, i + 1)
                         result["tables"].extend(image_tables)
                     except Exception as _e:
-                        _log.debug("Falha ao extrair tabelas via imagem na página %d: %s", i + 1, _e)
+                        _log.debug(
+                            "Falha ao extrair tabelas via imagem na página %d: %s", i + 1, _e
+                        )
         if include_forms:
             result["form_fields"].extend(_extract_form_fields_from_page(page))
         if include_annotations and len(result["annotations"]) < max_annotations:
@@ -555,11 +563,7 @@ def extract_embedded_pdfs(
             for i in range(count):
                 try:
                     info = doc.embfile_info(i)
-                    name = (
-                        info.get("filename")
-                        or info.get("ufilename")
-                        or f"embedded_{i + 1}.pdf"
-                    )
+                    name = info.get("filename") or info.get("ufilename") or f"embedded_{i + 1}.pdf"
                     data = doc.embfile_get(i)
                     if not data:
                         continue
@@ -570,9 +574,7 @@ def extract_embedded_pdfs(
                     if not str(name).lower().endswith(".pdf"):
                         name = f"{name}.pdf"
                     results.append((str(name), data))
-                    _log.debug(
-                        "PDF embutido extraído: %s (%d bytes)", name, len(data)
-                    )
+                    _log.debug("PDF embutido extraído: %s (%d bytes)", name, len(data))
                 except Exception as _e:
                     _log.debug("Falha ao extrair embedded file %d: %s", i, _e)
         finally:

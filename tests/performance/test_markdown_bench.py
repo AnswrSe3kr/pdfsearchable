@@ -67,9 +67,7 @@ def test_benchmark_markdown_speedup(tmp_path, monkeypatch):
     rec = index_pdf(pdf_path)
     file_id = rec["id"]
 
-    result = benchmark_markdown(
-        pdf_path=pdf_path, file_id=file_id, iterations=3
-    )
+    result = benchmark_markdown(pdf_path=pdf_path, file_id=file_id, iterations=3)
 
     # Ambas devem produzir tempos positivos
     assert result.baseline_avg_s > 0

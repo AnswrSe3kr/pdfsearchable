@@ -188,7 +188,7 @@ _TOOLS: list[dict] = [
                 "doc_type": {
                     "type": "string",
                     "description": "Tipo de documento opcional (ex.: contrato, relatório). "
-                                   "Se omitido, o tipo é detectado automaticamente.",
+                    "Se omitido, o tipo é detectado automaticamente.",
                 },
             },
             "required": ["path"],
@@ -246,7 +246,10 @@ def _tool_list_documents(_args: dict) -> list[dict]:
                 "subject": f.get("subject") or "",
             }
         )
-    return _text(f"{len(rows)} documento(s) indexado(s):\n\n" + json.dumps(rows, ensure_ascii=False, indent=2))
+    return _text(
+        f"{len(rows)} documento(s) indexado(s):\n\n"
+        + json.dumps(rows, ensure_ascii=False, indent=2)
+    )
 
 
 def _tool_search_documents(args: dict) -> list[dict]:
@@ -373,7 +376,9 @@ def _tool_ask_all_documents(args: dict) -> list[dict]:
         text = load_file_text(fid)
         if text and text.strip():
             snippet = text[:chars_per_doc]
-            context_parts.append(f"=== {m.get('name', fid)} ({m.get('doc_type', '—')}) ===\n{snippet}")
+            context_parts.append(
+                f"=== {m.get('name', fid)} ({m.get('doc_type', '—')}) ===\n{snippet}"
+            )
 
     if not context_parts:
         return _text("Documentos seleccionados não têm texto extraído.")
@@ -444,6 +449,7 @@ def _tool_index_document(args: dict) -> list[dict]:
 def _find_doc(needle: str) -> dict | None:
     """Encontra um doc por ID exacto ou nome parcial (case-insensitive)."""
     from pdfsearchable.store import load_index
+
     idx = load_index()
     files = idx.get("files", [])
     n = (needle or "").strip().lower()
@@ -485,7 +491,8 @@ def _tool_get_forensics_summary(args: dict) -> list[dict]:
             "Indexe com PDFSEARCHABLE_FORENSICS=1 para activar."
         )
     return _text(
-        f"Análise forense de '{match.get('name')}':\n\n" + json.dumps(fr, ensure_ascii=False, indent=2)
+        f"Análise forense de '{match.get('name')}':\n\n"
+        + json.dumps(fr, ensure_ascii=False, indent=2)
     )
 
 

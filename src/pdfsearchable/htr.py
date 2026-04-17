@@ -139,11 +139,40 @@ _HISTORICAL_MODEL_REGISTRY: dict[str, tuple[str, str]] = {
 
 # Idiomas que usam script latino — usam o modelo inglês (melhor generalista disponível)
 # No modo histórico, estes idiomas usam _HISTORICAL_MODEL_REGISTRY ou LARGE_HTR_MODEL
-_LATIN_SCRIPT_LANGS = frozenset({
-    "pt", "pt-br", "es", "it", "nl", "pl", "ro", "ca", "gl", "hr",
-    "cs", "sk", "hu", "fi", "da", "no", "nb", "nn", "et", "lt", "lv",
-    "sl", "tr", "vi", "sw", "id", "ms", "tl", "af", "la",
-})
+_LATIN_SCRIPT_LANGS = frozenset(
+    {
+        "pt",
+        "pt-br",
+        "es",
+        "it",
+        "nl",
+        "pl",
+        "ro",
+        "ca",
+        "gl",
+        "hr",
+        "cs",
+        "sk",
+        "hu",
+        "fi",
+        "da",
+        "no",
+        "nb",
+        "nn",
+        "et",
+        "lt",
+        "lv",
+        "sl",
+        "tr",
+        "vi",
+        "sw",
+        "id",
+        "ms",
+        "tl",
+        "af",
+        "la",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +180,7 @@ _LATIN_SCRIPT_LANGS = frozenset({
 # ---------------------------------------------------------------------------
 
 _model_cache: dict[str, tuple] = {}  # model_id → (processor, model)
-_model_cache_order: list[str] = []   # LRU order
+_model_cache_order: list[str] = []  # LRU order
 _model_cache_lock = threading.Lock()
 
 _HTR_AVAILABLE: bool | None = None
@@ -182,6 +211,7 @@ def _manual_model_override() -> str | None:
 # ---------------------------------------------------------------------------
 # Seleção do modelo por idioma
 # ---------------------------------------------------------------------------
+
 
 def _historical_htr_enabled() -> bool:
     """True se o modo histórico HTR está ativo (usa modelos maiores/especializados)."""
@@ -262,6 +292,7 @@ def list_supported_languages() -> dict[str, str]:
 # Gestão de backend
 # ---------------------------------------------------------------------------
 
+
 def get_htr_backend() -> str:
     """
     Retorna o backend HTR activo (PDFSEARCHABLE_HTR_BACKEND).
@@ -285,13 +316,16 @@ def htr_available() -> bool:
     try:
         if backend == HTR_BACKEND_TRANSKRIBUS:
             from pdfsearchable.htr_transkribus import available as _avail
+
             _HTR_AVAILABLE = _avail()
         elif backend == HTR_BACKEND_ESCRIPTORIUM:
             from pdfsearchable.htr_escriptorium import available as _avail
+
             _HTR_AVAILABLE = _avail()
         else:
             import torch  # noqa: F401
             from transformers import TrOCRProcessor, VisionEncoderDecoderModel  # noqa: F401
+
             _HTR_AVAILABLE = True
     except Exception:
         _HTR_AVAILABLE = False
@@ -301,6 +335,7 @@ def htr_available() -> bool:
 # ---------------------------------------------------------------------------
 # Carregamento de modelo com cache LRU
 # ---------------------------------------------------------------------------
+
 
 def _load_model(model_id: str) -> tuple:
     """
@@ -346,6 +381,7 @@ def _load_model(model_id: str) -> tuple:
 # ---------------------------------------------------------------------------
 # Segmentação de linhas
 # ---------------------------------------------------------------------------
+
 
 def _split_lines(image, historical: bool = False) -> list:
     """
@@ -412,6 +448,7 @@ def _split_lines(image, historical: bool = False) -> list:
 # Detecção rápida de script (sem dependência de langdetect)
 # ---------------------------------------------------------------------------
 
+
 def _detect_script_from_image(image) -> str:
     """
     Heurística rápida para detectar o script predominante numa imagem.
@@ -420,6 +457,7 @@ def _detect_script_from_image(image) -> str:
     """
     try:
         import pytesseract
+
         osd = pytesseract.image_to_osd(image)
         for line in osd.splitlines():
             if line.startswith("Script:"):
@@ -433,7 +471,7 @@ def _detect_script_from_image(image) -> str:
 def _script_to_lang_hint(script: str) -> str | None:
     """Converte nome de script Tesseract para código de idioma hint."""
     mapping = {
-        "Latin": None,          # ambíguo — usar detecção de idioma
+        "Latin": None,  # ambíguo — usar detecção de idioma
         "Cyrillic": "ru",
         "Arabic": "ar",
         "Hebrew": "he",
@@ -451,6 +489,7 @@ def _script_to_lang_hint(script: str) -> str | None:
 # ---------------------------------------------------------------------------
 # Inferência TrOCR
 # ---------------------------------------------------------------------------
+
 
 def _run_trocr(image_bytes: bytes, lang: str | None = None) -> str:
     """
@@ -476,8 +515,13 @@ def _run_trocr(image_bytes: bytes, lang: str | None = None) -> str:
 
     historical = _historical_htr_enabled()
     model_id, desc = get_model_for_lang(effective_lang, historical=historical)
-    _log.debug("HTR: lang=%s, historical=%s → modelo=%s (%s)",
-               effective_lang or "auto", historical, model_id, desc)
+    _log.debug(
+        "HTR: lang=%s, historical=%s → modelo=%s (%s)",
+        effective_lang or "auto",
+        historical,
+        model_id,
+        desc,
+    )
 
     processor, model = _load_model(model_id)
 
@@ -502,6 +546,7 @@ def _run_trocr(image_bytes: bytes, lang: str | None = None) -> str:
 # Ponto de entrada público
 # ---------------------------------------------------------------------------
 
+
 def run_htr_on_image(image_bytes: bytes, lang: str | None = None) -> str:
     """
     Reconhece texto manuscrito/cursivo em imagem (PNG/JPEG).
@@ -520,10 +565,12 @@ def run_htr_on_image(image_bytes: bytes, lang: str | None = None) -> str:
 
     if backend == HTR_BACKEND_TRANSKRIBUS:
         from pdfsearchable.htr_transkribus import run as _run
+
         return _run(image_bytes)
 
     if backend == HTR_BACKEND_ESCRIPTORIUM:
         from pdfsearchable.htr_escriptorium import run as _run
+
         return _run(image_bytes)
 
     # Backend padrão: TrOCR local multilíngue

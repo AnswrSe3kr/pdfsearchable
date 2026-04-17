@@ -1,4 +1,5 @@
 """Testes unitários para pré-processamento OCR — incluindo pipeline histórico."""
+
 import os
 import pytest
 from unittest.mock import patch
@@ -30,7 +31,7 @@ def _make_text_image(w=200, h=100):
     arr = np.full((h, w), 240, dtype=np.uint8)  # fundo claro
     # Simular 3 linhas de texto
     for y_start in [20, 45, 70]:
-        arr[y_start:y_start + 8, 30:170] = 30  # texto escuro
+        arr[y_start : y_start + 8, 30:170] = 30  # texto escuro
     return Image.fromarray(arr, mode="L")
 
 
@@ -49,7 +50,7 @@ def _make_historical_image(w=200, h=200):
     # Texto desbotado (muitas linhas, contraste variável)
     for y_start in range(20, 180, 15):
         intensity = rng.randint(60, 120)
-        arr[y_start:y_start + 8, 15:185, :] = [intensity, intensity - 10, intensity - 20]
+        arr[y_start : y_start + 8, 15:185, :] = [intensity, intensity - 10, intensity - 20]
     # Manchas de tinta (bleed-through)
     for _ in range(30):
         y, x = rng.randint(0, h), rng.randint(0, w)
@@ -65,7 +66,7 @@ def _make_modern_image(w=200, h=200):
     arr = np.full((h, w, 3), 250, dtype=np.uint8)  # papel branco
     # Texto preto nítido
     for y_start in [30, 70, 110]:
-        arr[y_start:y_start + 8, 20:180, :] = [10, 10, 10]
+        arr[y_start : y_start + 8, 20:180, :] = [10, 10, 10]
     return Image.fromarray(arr, mode="RGB")
 
 
@@ -191,7 +192,9 @@ class TestMorphologicalClean:
         result = _morphological_clean(img)
         result_arr = np.array(result)
         # Texto principal deve ser preservado
-        assert np.sum(result_arr[40:50, 20:80] == 0) > 0 or np.sum(result_arr[40:50, 20:80] < 128) > 0
+        assert (
+            np.sum(result_arr[40:50, 20:80] == 0) > 0 or np.sum(result_arr[40:50, 20:80] < 128) > 0
+        )
 
     def test_handles_blank_image(self):
         img = _make_gray_image(fill=255)

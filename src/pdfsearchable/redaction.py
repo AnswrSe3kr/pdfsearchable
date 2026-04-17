@@ -98,7 +98,9 @@ def _detect_black_rects(page: fitz.Page) -> int:
     try:
         drawings = page.get_drawings()
     except Exception as exc:
-        _log.debug("_detect_black_rects: get_drawings falhou na página %d: %s", page.number + 1, exc)
+        _log.debug(
+            "_detect_black_rects: get_drawings falhou na página %d: %s", page.number + 1, exc
+        )
         return 0
 
     for item in drawings:

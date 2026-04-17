@@ -132,9 +132,8 @@ def load_config() -> dict[str, Any]:
         if isinstance(v, (str, int, float, bool)) and v is not None:
             _loaded[key_upper] = "1" if v is True else "0" if v is False else str(v)
         elif (
-            (key_upper == "PDFSEARCHABLE_SEARCH_SYNONYMS" or key_upper == "SEARCH_SYNONYMS")
-            and isinstance(v, dict)
-        ):
+            key_upper == "PDFSEARCHABLE_SEARCH_SYNONYMS" or key_upper == "SEARCH_SYNONYMS"
+        ) and isinstance(v, dict):
             _loaded["PDFSEARCHABLE_SEARCH_SYNONYMS" if prefix else "SEARCH_SYNONYMS"] = {
                 str(a).strip().lower(): str(b).strip() for a, b in v.items() if a and b
             }

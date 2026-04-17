@@ -114,6 +114,7 @@ class TestContracts:
 class TestAnnotationStore:
     def _store(self, tmp_path: Path):
         from pdfsearchable.annotations import AnnotationStore
+
         return AnnotationStore(tmp_path)
 
     def test_get_vazio(self, tmp_path: Path) -> None:
@@ -177,6 +178,7 @@ class TestAnnotationStore:
     def test_persistencia(self, tmp_path: Path) -> None:
         """Anotação persiste após recriar o store."""
         from pdfsearchable.annotations import AnnotationStore
+
         fid = "abcdef1234567890"
         s1 = AnnotationStore(tmp_path)
         s1.add(fid, {"type": "note", "page": 1, "text": "Persistente"})
@@ -203,6 +205,7 @@ class TestAnnotationStore:
 class TestClassifierFeedback:
     def test_record_e_get(self, tmp_path: Path, monkeypatch) -> None:
         import pdfsearchable.classifier_feedback as fb
+
         monkeypatch.setattr(
             "pdfsearchable.classifier_feedback._feedback_file",
             lambda: tmp_path / "examples.json",
@@ -216,6 +219,7 @@ class TestClassifierFeedback:
 
     def test_idempotente_mesmo_file_id(self, tmp_path: Path, monkeypatch) -> None:
         import pdfsearchable.classifier_feedback as fb
+
         monkeypatch.setattr(
             "pdfsearchable.classifier_feedback._feedback_file",
             lambda: tmp_path / "examples.json",
@@ -230,6 +234,7 @@ class TestClassifierFeedback:
 
     def test_janela_deslizante(self, tmp_path: Path, monkeypatch) -> None:
         import pdfsearchable.classifier_feedback as fb
+
         monkeypatch.setattr(
             "pdfsearchable.classifier_feedback._feedback_file",
             lambda: tmp_path / "examples.json",
@@ -243,6 +248,7 @@ class TestClassifierFeedback:
 
     def test_clear(self, tmp_path: Path, monkeypatch) -> None:
         import pdfsearchable.classifier_feedback as fb
+
         monkeypatch.setattr(
             "pdfsearchable.classifier_feedback._feedback_file",
             lambda: tmp_path / "examples.json",
@@ -253,6 +259,7 @@ class TestClassifierFeedback:
 
     def test_max_n_respeitado(self, tmp_path: Path, monkeypatch) -> None:
         import pdfsearchable.classifier_feedback as fb
+
         monkeypatch.setattr(
             "pdfsearchable.classifier_feedback._feedback_file",
             lambda: tmp_path / "examples.json",

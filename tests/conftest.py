@@ -71,12 +71,14 @@ def mock_ollama_up(monkeypatch):
 
     def fake_request(prompt, max_tokens=150, cache_key=None, timeout=None, json_mode=False):
         if json_mode or "JSON" in prompt or "json" in prompt:
-            return json.dumps({
-                "summary": "Documento de teste sobre operações.",
-                "subject": "Teste de operação",
-                "entities": ["João Silva"],
-                "themes": ["operações"],
-            })
+            return json.dumps(
+                {
+                    "summary": "Documento de teste sobre operações.",
+                    "subject": "Teste de operação",
+                    "entities": ["João Silva"],
+                    "themes": ["operações"],
+                }
+            )
         return "Resumo mock do documento."
 
     monkeypatch.setattr(ce, "_ollama_request", fake_request)
@@ -104,6 +106,7 @@ def mock_htr_stub(monkeypatch):
     """
     try:
         import pdfsearchable.htr as htr_mod
+
         monkeypatch.setattr(
             htr_mod,
             "htr_transcribe",
@@ -113,6 +116,7 @@ def mock_htr_stub(monkeypatch):
         pass
     try:
         import pdfsearchable.htr_transkribus as tk_mod
+
         monkeypatch.setattr(
             tk_mod,
             "transkribus_htr",
@@ -122,6 +126,7 @@ def mock_htr_stub(monkeypatch):
         pass
     try:
         import pdfsearchable.htr_escriptorium as es_mod
+
         monkeypatch.setattr(
             es_mod,
             "escriptorium_htr",

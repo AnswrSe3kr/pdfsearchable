@@ -32,6 +32,7 @@ _log = _get_logger("pdfsearchable.content_extractors")
 # Validação de dígitos verificadores (CPF/CNPJ)
 # ---------------------------------------------------------------------------
 
+
 def _validate_cpf(cpf: str) -> bool:
     """
     Valida dígitos verificadores do CPF (algoritmo oficial Receita Federal).
@@ -85,6 +86,7 @@ def _validate_cnpj(cnpj: str) -> bool:
     d2 = 0 if r < 2 else 11 - r
     return int(digits[13]) == d2
 
+
 # Padrões para valores monetários (ID8)
 # Exige pelo menos um dígito imediatamente após o símbolo (evitar "R$ " sem valor).
 # \b evita casar "XEUR" ou "LR$"; BRL/EUR/USD aceitam espaços e símbolos opcionais.
@@ -115,15 +117,15 @@ _RE_NUM = re.compile(r"[\d.,]+")
 _RE_PHONE_BR = re.compile(
     r"(?<!\d)"
     r"(?:"
-        # Forma 1: com +55 obrigatório e DDD (com ou sem parênteses)
-        r"\+55[\s.-]?\(?[1-9]\d\)?[\s.-]?9?\d{4}[-.\s]\d{4}"
-        r"|"
-        # Forma 2: (XX) ... — parênteses no DDD obrigatórios
-        r"\([1-9]\d\)[\s.-]?9?\d{4}[-.\s]\d{4}"
-        r"|"
-        # Forma 3: sem parênteses — exige separador entre DDD e número, e
-        # hífen/ponto obrigatório entre prefixo e sufixo (rejeita "62 19631965")
-        r"[1-9]\d[\s.-]9?\d{4}[-.]\d{4}"
+    # Forma 1: com +55 obrigatório e DDD (com ou sem parênteses)
+    r"\+55[\s.-]?\(?[1-9]\d\)?[\s.-]?9?\d{4}[-.\s]\d{4}"
+    r"|"
+    # Forma 2: (XX) ... — parênteses no DDD obrigatórios
+    r"\([1-9]\d\)[\s.-]?9?\d{4}[-.\s]\d{4}"
+    r"|"
+    # Forma 3: sem parênteses — exige separador entre DDD e número, e
+    # hífen/ponto obrigatório entre prefixo e sufixo (rejeita "62 19631965")
+    r"[1-9]\d[\s.-]9?\d{4}[-.]\d{4}"
     r")"
     r"(?!\d)"
 )
@@ -139,25 +141,112 @@ _OCR_WWW_NOISE = re.compile(r"[a-z]?v?w{2,3}", re.IGNORECASE)
 # Palavras curtas comuns (pt/en/es/de/fr) que geram falsos positivos quando
 # aparecem antes de um TLD curto (ex.: "in my", "co uk", "de ja"). Usadas para
 # rejeitar domínios onde o label raiz é uma stop-word.
-_DOMAIN_STOP_LABELS = frozenset({
-    # inglês
-    "in", "on", "at", "is", "it", "me", "my", "or", "as", "to", "do", "go",
-    "so", "be", "of", "if", "no", "we", "he", "us", "an", "by", "up", "the",
-    "and", "for", "but", "you", "are", "not", "all", "any", "can", "had",
-    "her", "his", "how", "one", "our", "out", "see", "two", "who", "use",
-    # português
-    "de", "da", "do", "em", "no", "na", "os", "as", "se", "um", "uma", "que",
-    "por", "com", "sem", "mas", "mio",
-    # espanhol / alemão comuns
-    "el", "la", "en", "es", "lo", "ya", "su", "yo", "ver", "ser",
-})
+_DOMAIN_STOP_LABELS = frozenset(
+    {
+        # inglês
+        "in",
+        "on",
+        "at",
+        "is",
+        "it",
+        "me",
+        "my",
+        "or",
+        "as",
+        "to",
+        "do",
+        "go",
+        "so",
+        "be",
+        "of",
+        "if",
+        "no",
+        "we",
+        "he",
+        "us",
+        "an",
+        "by",
+        "up",
+        "the",
+        "and",
+        "for",
+        "but",
+        "you",
+        "are",
+        "not",
+        "all",
+        "any",
+        "can",
+        "had",
+        "her",
+        "his",
+        "how",
+        "one",
+        "our",
+        "out",
+        "see",
+        "two",
+        "who",
+        "use",
+        # português
+        "de",
+        "da",
+        "do",
+        "em",
+        "no",
+        "na",
+        "os",
+        "as",
+        "se",
+        "um",
+        "uma",
+        "que",
+        "por",
+        "com",
+        "sem",
+        "mas",
+        "mio",
+        # espanhol / alemão comuns
+        "el",
+        "la",
+        "en",
+        "es",
+        "lo",
+        "ya",
+        "su",
+        "yo",
+        "ver",
+        "ser",
+    }
+)
 
 # TLDs frequentes; se o TLD estiver aqui, exige label raiz com pelo menos 3
 # chars. Para TLDs menos comuns (ex.: .my, .io) exige raiz mais longa (>=4).
-_COMMON_TLDS = frozenset({
-    "com", "org", "net", "gov", "edu", "mil", "int", "info", "biz", "br",
-    "pt", "es", "fr", "uk", "us", "ca", "au", "jp", "cn", "kr", "it",
-})
+_COMMON_TLDS = frozenset(
+    {
+        "com",
+        "org",
+        "net",
+        "gov",
+        "edu",
+        "mil",
+        "int",
+        "info",
+        "biz",
+        "br",
+        "pt",
+        "es",
+        "fr",
+        "uk",
+        "us",
+        "ca",
+        "au",
+        "jp",
+        "cn",
+        "kr",
+        "it",
+    }
+)
 
 
 def _is_valid_domain(domain: str) -> bool:
@@ -202,12 +291,15 @@ def _is_valid_domain(domain: str) -> bool:
             return False
     return True
 
+
 # Número de processo judicial (CNJ): NNNNNNN-DD.AAAA.J.TR.OOOO
 _RE_PROCESSO_CNJ = re.compile(r"\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b")
 
 # Placa de veículo: ABC-1234 (antiga) ou ABC1D23 (Mercosul)
 # Exclui meses abreviados (JAN, FEB, MAR, etc.) seguidos de ano
-_RE_PLACA = re.compile(r"\b(?!JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[A-Z]{3}-?\d[A-Z0-9]\d{2}\b")
+_RE_PLACA = re.compile(
+    r"\b(?!JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[A-Z]{3}-?\d[A-Z0-9]\d{2}\b"
+)
 
 # RG: "RG nº 12.345.678-X" ou "RG: 12345678" (contextual)
 _RE_RG = re.compile(
@@ -230,9 +322,7 @@ _RE_PROTOCOLO = re.compile(
 _RE_HASH = re.compile(r"\b[a-f0-9]{32}(?:[a-f0-9]{8}(?:[a-f0-9]{24})?)?\b", re.IGNORECASE)
 
 # Coordenadas GPS: pares lat/lon com 4+ decimais (ex: -23.5505, -46.6333)
-_RE_COORD = re.compile(
-    r"(-?\d{1,3}\.\d{4,8})\s*[,;\s]\s*(-?\d{1,3}\.\d{4,8})"
-)
+_RE_COORD = re.compile(r"(-?\d{1,3}\.\d{4,8})\s*[,;\s]\s*(-?\d{1,3}\.\d{4,8})")
 
 # Timestamps ISO 8601 com hora: 2024-03-15T14:30:00, 2024-03-15 14:30
 _RE_TIMESTAMP = re.compile(
@@ -356,7 +446,9 @@ def _ollama_request(
                 data = json.loads(cache_file.read_text(encoding="utf-8"))
                 return data.get("content", "")
             except Exception as _e:
-                _log.debug("Falha ao ler cache Ollama %s: %s — a fazer nova chamada", cache_file, _e)
+                _log.debug(
+                    "Falha ao ler cache Ollama %s: %s — a fazer nova chamada", cache_file, _e
+                )
 
     payload: dict[str, Any] = {
         "model": model,
@@ -392,7 +484,9 @@ def _ollama_request(
             json.JSONDecodeError,
             KeyError,
         ) as _req_err:
-            _log.debug("Ollama request falhou (tentativa %d/%d): %s", attempt + 1, retries + 1, _req_err)
+            _log.debug(
+                "Ollama request falhou (tentativa %d/%d): %s", attempt + 1, retries + 1, _req_err
+            )
             if attempt < retries:
                 time.sleep(1 * (2**attempt))
             else:
@@ -657,9 +751,22 @@ def extract_entities(text: str) -> dict[str, list[str]]:
     """
     text = text or ""
     keys = [
-        "emails", "cpfs", "cnpjs", "ips", "urls", "domains", "phones",
-        "ceps", "processos", "placas", "rgs", "protocolos", "hashes",
-        "coordenadas", "timestamps", "leis",
+        "emails",
+        "cpfs",
+        "cnpjs",
+        "ips",
+        "urls",
+        "domains",
+        "phones",
+        "ceps",
+        "processos",
+        "placas",
+        "rgs",
+        "protocolos",
+        "hashes",
+        "coordenadas",
+        "timestamps",
+        "leis",
     ]
     out: dict[str, list[str]] = {k: [] for k in keys}
     seen: dict[str, set[str]] = {k: set() for k in keys}
@@ -827,10 +934,26 @@ JSON:"""
             parsed = json.loads(json_out)
             if isinstance(parsed, dict):
                 _allowed = {
-                    "cpfs", "cnpjs", "emails", "ips", "addresses", "phones",
-                    "monetary_values", "parties", "dates", "urls", "domains",
-                    "ceps", "processos", "placas", "rgs", "protocolos",
-                    "hashes", "coordenadas", "timestamps", "leis",
+                    "cpfs",
+                    "cnpjs",
+                    "emails",
+                    "ips",
+                    "addresses",
+                    "phones",
+                    "monetary_values",
+                    "parties",
+                    "dates",
+                    "urls",
+                    "domains",
+                    "ceps",
+                    "processos",
+                    "placas",
+                    "rgs",
+                    "protocolos",
+                    "hashes",
+                    "coordenadas",
+                    "timestamps",
+                    "leis",
                 }
                 cleaned: dict[str, Any] = {}
                 for k, v in parsed.items():
@@ -944,9 +1067,22 @@ def merge_entities_with_ollama(
     """
     # Todas as chaves que podem existir em entities (regex) ou ollama_meta
     _all_keys = [
-        "emails", "cpfs", "cnpjs", "ips", "urls", "domains", "phones",
-        "ceps", "processos", "placas", "rgs", "protocolos", "hashes",
-        "coordenadas", "timestamps", "leis",
+        "emails",
+        "cpfs",
+        "cnpjs",
+        "ips",
+        "urls",
+        "domains",
+        "phones",
+        "ceps",
+        "processos",
+        "placas",
+        "rgs",
+        "protocolos",
+        "hashes",
+        "coordenadas",
+        "timestamps",
+        "leis",
     ]
     out: dict[str, list[str]] = {}
     seen: dict[str, set[str]] = {}
@@ -1009,7 +1145,9 @@ Locais (um por linha):"""
     return locations[:max_locations]
 
 
-def ask_document_ollama(text: str, question: str, max_tokens: int = 300, timeout: int | None = None) -> str | None:
+def ask_document_ollama(
+    text: str, question: str, max_tokens: int = 300, timeout: int | None = None
+) -> str | None:
     """
     Responde uma pergunta sobre o documento usando o texto como contexto (RAG).
     Retorna a resposta ou None se Ollama indisponível.
@@ -1096,25 +1234,39 @@ Termos adicionais para busca (um por linha):"""
 
 # Meses em português e inglês para o formato "20 de março de 2024" / "20 March 2024"
 _PT_MONTHS = {
-    "janeiro": "01", "fevereiro": "02", "março": "03", "marco": "03",
-    "abril": "04", "maio": "05", "junho": "06", "julho": "07",
-    "agosto": "08", "setembro": "09", "outubro": "10", "novembro": "11",
+    "janeiro": "01",
+    "fevereiro": "02",
+    "março": "03",
+    "marco": "03",
+    "abril": "04",
+    "maio": "05",
+    "junho": "06",
+    "julho": "07",
+    "agosto": "08",
+    "setembro": "09",
+    "outubro": "10",
+    "novembro": "11",
     "dezembro": "12",
 }
 _EN_MONTHS = {
-    "january": "01", "february": "02", "march": "03", "april": "04",
-    "may": "05", "june": "06", "july": "07", "august": "08",
-    "september": "09", "october": "10", "november": "11", "december": "12",
+    "january": "01",
+    "february": "02",
+    "march": "03",
+    "april": "04",
+    "may": "05",
+    "june": "06",
+    "july": "07",
+    "august": "08",
+    "september": "09",
+    "october": "10",
+    "november": "11",
+    "december": "12",
 }
 
 # DD/MM/AAAA  DD-MM-AAAA  DD.MM.AAAA  (aceita 1 ou 2 dígitos no dia/mês)
-_RE_DATE_DMY = re.compile(
-    r"\b(0?[1-9]|[12]\d|3[01])[-/.](0?[1-9]|1[0-2])[-/.](\d{4})\b"
-)
+_RE_DATE_DMY = re.compile(r"\b(0?[1-9]|[12]\d|3[01])[-/.](0?[1-9]|1[0-2])[-/.](\d{4})\b")
 # AAAA-MM-DD  (ISO 8601)
-_RE_DATE_ISO = re.compile(
-    r"\b(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b"
-)
+_RE_DATE_ISO = re.compile(r"\b(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b")
 # "20 de março de 2024" / "20 março 2024" / "20 March 2024"
 _RE_DATE_TEXT = re.compile(
     r"\b(0?[1-9]|[12]\d|3[01])\s+(?:de\s+)?([a-záéíóúàâêôãõç]+)\s+(?:de\s+)?(\d{4})\b",
@@ -1195,37 +1347,58 @@ _CONFIDENTIALITY_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     #   es: altísimo secreto / secreto / confidencial
     #   de: streng geheim / geheim / vertraulich
     #   it: segretissimo / segreto / riservato
-    ("ULTRASSECRETO", re.compile(
-        r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*|N[ií]vel\s+de\s+sigilo\s*[:\-]\s*)"
-        r"(?:ULTRA[- ]?SECRETO|TOP\s*SECRET|TR[EÈ]S\s+SECRET|STRENG\s+GEHEIM|"
-        r"SEGRETISSIMO|ALT[IÍ]SIMO\s+SECRETO|СОВЕРШЕННО\s+СЕКРЕТНО|绝密|極秘|극비|سري\s+للغاية)\b"
-    )),
-    ("SECRETO", re.compile(
-        r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*|N[ií]vel\s+de\s+sigilo\s*[:\-]\s*)"
-        r"(?:SECRETO|SECRET|GEHEIM|SEGRETO|СЕКРЕТНО|机密|秘密|機密|비밀|سري)\b"
-    )),
-    ("CONFIDENCIAL", re.compile(
-        r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*|N[ií]vel\s+de\s+sigilo\s*[:\-]\s*)"
-        r"(?:CONFIDENCIAL|CONFIDENTIAL|CONFIDENTIEL|VERTRAULICH|CONFIDENZIALE|"
-        r"КОНФИДЕНЦИАЛЬНО|机密文件|محرم)\b"
-    )),
-    ("RESERVADO", re.compile(
-        r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*|N[ií]vel\s+de\s+sigilo\s*[:\-]\s*)"
-        r"(?:RESERVADO|RESTRICTED|DIFFUSION\s+RESTREINTE|RESERVIERT|"
-        r"RISERVATO|ДЛЯ\s+СЛУЖЕБНОГО\s+ПОЛЬЗОВАНИЯ|内部使用)\b"
-    )),
-    ("SIGILOSO", re.compile(
-        r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*|N[ií]vel\s+de\s+sigilo\s*[:\-]\s*)"
-        r"(?:SIGILOSO|CLASSIFIED|CLASSIFI[EÉ])\b"
-    )),
-    ("USO INTERNO", re.compile(
-        r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*)"
-        r"(?:USO\s+INTERNO|INTERNAL\s+USE(?:\s+ONLY)?)\b"
-    )),
-    ("PÚBLICO", re.compile(
-        r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*)"
-        r"(?:P[ÚU]BLICO|PUBLIC\s+DOCUMENT)\b"
-    )),
+    (
+        "ULTRASSECRETO",
+        re.compile(
+            r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*|N[ií]vel\s+de\s+sigilo\s*[:\-]\s*)"
+            r"(?:ULTRA[- ]?SECRETO|TOP\s*SECRET|TR[EÈ]S\s+SECRET|STRENG\s+GEHEIM|"
+            r"SEGRETISSIMO|ALT[IÍ]SIMO\s+SECRETO|СОВЕРШЕННО\s+СЕКРЕТНО|绝密|極秘|극비|سري\s+للغاية)\b"
+        ),
+    ),
+    (
+        "SECRETO",
+        re.compile(
+            r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*|N[ií]vel\s+de\s+sigilo\s*[:\-]\s*)"
+            r"(?:SECRETO|SECRET|GEHEIM|SEGRETO|СЕКРЕТНО|机密|秘密|機密|비밀|سري)\b"
+        ),
+    ),
+    (
+        "CONFIDENCIAL",
+        re.compile(
+            r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*|N[ií]vel\s+de\s+sigilo\s*[:\-]\s*)"
+            r"(?:CONFIDENCIAL|CONFIDENTIAL|CONFIDENTIEL|VERTRAULICH|CONFIDENZIALE|"
+            r"КОНФИДЕНЦИАЛЬНО|机密文件|محرم)\b"
+        ),
+    ),
+    (
+        "RESERVADO",
+        re.compile(
+            r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*|N[ií]vel\s+de\s+sigilo\s*[:\-]\s*)"
+            r"(?:RESERVADO|RESTRICTED|DIFFUSION\s+RESTREINTE|RESERVIERT|"
+            r"RISERVATO|ДЛЯ\s+СЛУЖЕБНОГО\s+ПОЛЬЗОВАНИЯ|内部使用)\b"
+        ),
+    ),
+    (
+        "SIGILOSO",
+        re.compile(
+            r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*|N[ií]vel\s+de\s+sigilo\s*[:\-]\s*)"
+            r"(?:SIGILOSO|CLASSIFIED|CLASSIFI[EÉ])\b"
+        ),
+    ),
+    (
+        "USO INTERNO",
+        re.compile(
+            r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*)"
+            r"(?:USO\s+INTERNO|INTERNAL\s+USE(?:\s+ONLY)?)\b"
+        ),
+    ),
+    (
+        "PÚBLICO",
+        re.compile(
+            r"(?im)(?:^[\t ]*|Classifica[cç][aã]o\s*[:\-]\s*)"
+            r"(?:P[ÚU]BLICO|PUBLIC\s+DOCUMENT)\b"
+        ),
+    ),
 ]
 
 # Sinais que indicam que o documento é uma desclassificação/arquivo histórico,

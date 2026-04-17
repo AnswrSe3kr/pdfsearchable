@@ -109,13 +109,15 @@ def diff_documents(file_id_a: str, file_id_b: str) -> dict[str, Any]:
         modified_pages += 1
         total_add += d["additions"]
         total_del += d["deletions"]
-        page_diffs.append({
-            "page": p,
-            "additions": d["additions"],
-            "deletions": d["deletions"],
-            "unified": d["unified"][:200],  # limita payload
-            "truncated": len(d["unified"]) > 200,
-        })
+        page_diffs.append(
+            {
+                "page": p,
+                "additions": d["additions"],
+                "deletions": d["deletions"],
+                "unified": d["unified"][:200],  # limita payload
+                "truncated": len(d["unified"]) > 200,
+            }
+        )
 
     return {
         "file_a": file_id_a,
@@ -131,7 +133,10 @@ def diff_documents(file_id_a: str, file_id_b: str) -> dict[str, Any]:
             "modified_pages": modified_pages,
             "identical_pages": identical_pages,
             "change_ratio": round(
-                (total_add + total_del) / max(1, len((meta_a.get("content_hash") or "") + (meta_b.get("content_hash") or ""))),
+                (total_add + total_del)
+                / max(
+                    1, len((meta_a.get("content_hash") or "") + (meta_b.get("content_hash") or ""))
+                ),
                 3,
             ),
         },

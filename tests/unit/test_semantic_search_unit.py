@@ -85,7 +85,9 @@ def test_db_init_idempotent(tmp_path):
 
 def test_get_embedding_unreachable():
     """Ollama em URL inválida → retorna None."""
-    result = ss.get_embedding("texto de teste", model="nomic-embed-text", ollama_url="http://127.0.0.1:1")
+    result = ss.get_embedding(
+        "texto de teste", model="nomic-embed-text", ollama_url="http://127.0.0.1:1"
+    )
     assert result is None
 
 

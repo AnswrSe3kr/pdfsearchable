@@ -3,6 +3,7 @@ Testes de sistema E2E com PDF real.
 Exercem o ciclo completo: add → operação → assert.
 Não requerem Ollama nem rede externa.
 """
+
 from __future__ import annotations
 
 import tarfile
@@ -86,6 +87,7 @@ def test_add_twice_skips_duplicate(runner, rich_pdf, isolated_store, monkeypatch
     _add(runner, rich_pdf, monkeypatch)
 
     from pdfsearchable.store import load_index
+
     idx = load_index()
     assert len(idx.get("files", [])) == 1
 
@@ -132,6 +134,7 @@ def test_remove_deletes_document(runner, rich_pdf, isolated_store, monkeypatch):
     _add(runner, rich_pdf, monkeypatch)
 
     from pdfsearchable.store import load_index
+
     idx = load_index()
     doc_id = idx["files"][0]["id"]
 
@@ -150,6 +153,7 @@ def test_multiple_pdfs_listed(runner, rich_pdf, second_pdf, isolated_store, monk
     _add(runner, second_pdf, monkeypatch)
 
     from pdfsearchable.store import load_index
+
     idx = load_index()
     names = [f.get("name", "") for f in idx.get("files", [])]
     assert any("contrato_teste" in n for n in names)

@@ -4,6 +4,7 @@ Gestão de contratos e prazos.
 Detecta automaticamente datas de validade, vigência e renovação em documentos
 do tipo "contrato", e gera alertas por e-mail quando prazos se aproximam.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,12 +23,30 @@ _log = logging.getLogger("pdfsearchable.contracts")
 # ---------------------------------------------------------------------------
 
 _MONTH_PT: dict[str, int] = {
-    "janeiro": 1, "fevereiro": 2, "março": 3, "abril": 4,
-    "maio": 5, "junho": 6, "julho": 7, "agosto": 8,
-    "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12,
-    "jan": 1, "fev": 2, "mar": 3, "abr": 4,
-    "mai": 5, "jun": 6, "jul": 7, "ago": 8,
-    "set": 9, "out": 10, "nov": 11, "dez": 12,
+    "janeiro": 1,
+    "fevereiro": 2,
+    "março": 3,
+    "abril": 4,
+    "maio": 5,
+    "junho": 6,
+    "julho": 7,
+    "agosto": 8,
+    "setembro": 9,
+    "outubro": 10,
+    "novembro": 11,
+    "dezembro": 12,
+    "jan": 1,
+    "fev": 2,
+    "mar": 3,
+    "abr": 4,
+    "mai": 5,
+    "jun": 6,
+    "jul": 7,
+    "ago": 8,
+    "set": 9,
+    "out": 10,
+    "nov": 11,
+    "dez": 12,
 }
 
 _RE_VIGENCIA = re.compile(
@@ -71,10 +90,12 @@ _RE_BR_DATE = re.compile(r"(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{2,4})")
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ContractDates:
     """Datas extraídas de um contrato."""
-    start_date: str | None = None      # ISO 8601: "YYYY-MM-DD"
+
+    start_date: str | None = None  # ISO 8601: "YYYY-MM-DD"
     end_date: str | None = None
     renewal_date: str | None = None
     duration_months: int | None = None
@@ -85,18 +106,20 @@ class ContractDates:
 @dataclass
 class ContractAlert:
     """Alerta de contrato próximo do vencimento."""
+
     file_id: str
     name: str
     end_date: str
     days_until_expiry: int
     auto_renewal: bool
-    severity: str   # "critical" (<=7d), "warning" (<=30d), "notice" (<=90d), "expired" (<0d)
+    severity: str  # "critical" (<=7d), "warning" (<=30d), "notice" (<=90d), "expired" (<0d)
     doc_type: str = "contrato"
 
 
 # ---------------------------------------------------------------------------
 # Parsing de datas
 # ---------------------------------------------------------------------------
+
 
 def _parse_date(raw: str) -> str | None:
     """
@@ -149,6 +172,7 @@ def _duration_to_months(qty: int, unit: str) -> int:
 # ---------------------------------------------------------------------------
 # Extracção de datas de contrato
 # ---------------------------------------------------------------------------
+
 
 def extract_contract_dates(text: str, filename: str = "") -> ContractDates:
     """
@@ -217,6 +241,7 @@ def extract_contract_dates(text: str, filename: str = "") -> ContractDates:
 # Verificação de contratos a expirar
 # ---------------------------------------------------------------------------
 
+
 def check_expiring_contracts(
     days_ahead: int = 30,
     *,
@@ -255,7 +280,7 @@ def check_expiring_contracts(
 
         # Tentar datas identificadas como fallback
         if not end_date_str:
-            for raw in (f.get("identified_dates") or []):
+            for raw in f.get("identified_dates") or []:
                 parsed = _parse_date(str(raw))
                 if parsed:
                     try:
@@ -292,15 +317,17 @@ def check_expiring_contracts(
         else:
             severity = "notice"
 
-        alerts.append(ContractAlert(
-            file_id=f.get("id", ""),
-            name=f.get("name", ""),
-            end_date=end_date_str,
-            days_until_expiry=days_left,
-            auto_renewal=auto_renewal,
-            severity=severity,
-            doc_type=doc_type,
-        ))
+        alerts.append(
+            ContractAlert(
+                file_id=f.get("id", ""),
+                name=f.get("name", ""),
+                end_date=end_date_str,
+                days_until_expiry=days_left,
+                auto_renewal=auto_renewal,
+                severity=severity,
+                doc_type=doc_type,
+            )
+        )
 
     alerts.sort(key=lambda a: a.days_until_expiry)
     return alerts
@@ -358,6 +385,7 @@ def get_contracts_summary() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Envio de alertas por e-mail
 # ---------------------------------------------------------------------------
+
 
 def send_expiry_alerts(
     alerts: list[ContractAlert],
@@ -447,6 +475,7 @@ def send_expiry_alerts(
     try:
         if smtp_port == 465:
             import ssl
+
             ctx = ssl.create_default_context()
             server: smtplib.SMTP = smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx)
         else:

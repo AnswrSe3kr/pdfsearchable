@@ -135,7 +135,9 @@ def profile_pdf(path: str | Path, *, sample_pages: int = 5) -> dict[str, Any]:
             "creator": (md.get("creator") or "").strip() or None,
             "creation_date": (md.get("creationDate") or "").strip() or None,
             "mod_date": (md.get("modDate") or "").strip() or None,
-            "pdf_version": getattr(doc, "pdf_version", lambda: None)() if callable(getattr(doc, "pdf_version", None)) else None,
+            "pdf_version": getattr(doc, "pdf_version", lambda: None)()
+            if callable(getattr(doc, "pdf_version", None))
+            else None,
         }
 
         # --- Document-level features ---
@@ -175,7 +177,9 @@ def profile_pdf(path: str | Path, *, sample_pages: int = 5) -> dict[str, Any]:
             root = doc.pdf_catalog() if hasattr(doc, "pdf_catalog") else 0
             if root:
                 xfa_xref = doc.xref_get_key(root, "AcroForm/XFA")
-                profile["features"]["has_xfa"] = bool(xfa_xref and xfa_xref[0] not in ("null", "xref"))
+                profile["features"]["has_xfa"] = bool(
+                    xfa_xref and xfa_xref[0] not in ("null", "xref")
+                )
         except Exception:
             pass
 
@@ -280,15 +284,17 @@ def profile_pdf(path: str | Path, *, sample_pages: int = 5) -> dict[str, Any]:
             except Exception:
                 pass
 
-            profile["pages_profile"].append({
-                "index": idx,
-                "text_chars": text_len,
-                "images": len(images),
-                "drawings": len(drawings) if 'drawings' in locals() else 0,
-                "img_coverage": round(img_area / page_area, 3),
-                "width": round(rect.width, 1),
-                "height": round(rect.height, 1),
-            })
+            profile["pages_profile"].append(
+                {
+                    "index": idx,
+                    "text_chars": text_len,
+                    "images": len(images),
+                    "drawings": len(drawings) if "drawings" in locals() else 0,
+                    "img_coverage": round(img_area / page_area, 3),
+                    "width": round(rect.width, 1),
+                    "height": round(rect.height, 1),
+                }
+            )
 
         sampled = max(1, len(profile["pages_profile"]))
         avg_text_chars = total_text_chars / sampled
@@ -326,6 +332,7 @@ def profile_pdf(path: str | Path, *, sample_pages: int = 5) -> dict[str, Any]:
                     if len(sample_text) > 2000:
                         break
                 from pdfsearchable.language import detect_language  # type: ignore
+
                 profile["dominant_lang"] = detect_language(sample_text[:4000])
         except Exception:
             pass

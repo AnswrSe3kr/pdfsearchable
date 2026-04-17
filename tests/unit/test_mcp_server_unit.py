@@ -56,10 +56,12 @@ def test_get_document_text_unknown_id(isolated_store):
     result = mcp._tool_get_document_text({"file_id": "deadbeef12345678"})
     assert isinstance(result, list)
     # Deve retornar erro graciosamente
-    assert any("erro" in str(c.get("text", "")).lower() or
-               "não" in str(c.get("text", "")).lower() or
-               "not" in str(c.get("text", "")).lower()
-               for c in result)
+    assert any(
+        "erro" in str(c.get("text", "")).lower()
+        or "não" in str(c.get("text", "")).lower()
+        or "not" in str(c.get("text", "")).lower()
+        for c in result
+    )
 
 
 # ---------- _tool_index_document com path inexistente ----------

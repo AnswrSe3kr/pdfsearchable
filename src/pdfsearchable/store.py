@@ -31,6 +31,7 @@ def fts_last_error() -> str:
     """Retorna a última mensagem de erro do índice FTS, ou string vazia se tudo OK."""
     return _fts_last_error
 
+
 # file_id é sempre 16 caracteres hex (sha256[:16]); aceita maiúsculas/minúsculas
 _FILE_ID_RE = re.compile(r"^[a-fA-F0-9]{16}$")
 
@@ -46,9 +47,9 @@ _index_lock = threading.RLock()
 # TTL é invalidado imediatamente para evitar devolver dados de um índice diferente.
 _index_cache: dict[str, Any] | None = None
 _index_cache_mtime: float = -1.0
-_index_cache_checked: float = 0.0   # monotonic timestamp da última verificação de mtime
+_index_cache_checked: float = 0.0  # monotonic timestamp da última verificação de mtime
 _index_cache_path: "Path | None" = None  # META_FILE aquando do último cache
-_INDEX_CACHE_TTL: float = 5.0       # segundos; 0 para desactivar (sempre verifica mtime)
+_INDEX_CACHE_TTL: float = 5.0  # segundos; 0 para desactivar (sempre verifica mtime)
 
 PROJECT_DIR = Path.cwd()
 STORE_DIR = PROJECT_DIR / ".pdfsearchable"
@@ -204,7 +205,7 @@ def load_index() -> dict[str, Any]:
                 {"path": str(META_FILE), "error": str(e)},
             ) from e
         data = _migrate_index(data)
-        _index_cache = copy.deepcopy(data)   # cópia profunda apenas ao carregar do disco
+        _index_cache = copy.deepcopy(data)  # cópia profunda apenas ao carregar do disco
         _index_cache_path = META_FILE
         try:
             _index_cache_mtime = META_FILE.stat().st_mtime
@@ -223,7 +224,10 @@ def _maybe_snapshot_index() -> None:
     Útil para recuperar de escritas incorrectas mesmo sem git.
     """
     if (os.environ.get("PDFSEARCHABLE_AUTO_SNAPSHOT") or "").strip().lower() not in (
-        "1", "true", "yes", "on"
+        "1",
+        "true",
+        "yes",
+        "on",
     ):
         return
     if not META_FILE.exists():
@@ -235,6 +239,7 @@ def _maybe_snapshot_index() -> None:
         dest = snap_dir / f"index_{ts}.json"
         # Copy-through-temp para evitar ficheiros parciais em caso de crash
         import shutil as _shutil
+
         _shutil.copy2(META_FILE, dest)
         # Rotação: manter apenas os N mais recentes
         try:
@@ -777,7 +782,7 @@ def fts_index_file(file_id: str, page_texts: list[tuple[int, str]]) -> None:
 
 
 _FTS5_OPERATORS = frozenset({"AND", "OR", "NOT", "NEAR"})
-_FTS5_SPECIAL_RE = re.compile(r'[.\-/:@#$%^&*()+={}\[\]|\\<>,;!?~`]')
+_FTS5_SPECIAL_RE = re.compile(r"[.\-/:@#$%^&*()+={}\[\]|\\<>,;!?~`]")
 
 
 def _fts_sanitize_query(query: str) -> str:
@@ -797,7 +802,7 @@ def _fts_sanitize_query(query: str) -> str:
         elif token.startswith('"') and token.endswith('"'):
             result.append(token)
         elif _FTS5_SPECIAL_RE.search(token):
-            safe = token.replace('"', '')
+            safe = token.replace('"', "")
             result.append(f'"{safe}"')
         else:
             result.append(token)
@@ -926,7 +931,9 @@ def fts_index_new_files() -> int:
             rows = conn.execute("SELECT DISTINCT file_id FROM fts_idx").fetchall()
             already_indexed: set[str] = {r[0] for r in rows}
         except sqlite3.DatabaseError as _db_err:
-            _store_logger.warning("FTS: falha ao ler file_ids indexados: %s — reindexação completa", _db_err)
+            _store_logger.warning(
+                "FTS: falha ao ler file_ids indexados: %s — reindexação completa", _db_err
+            )
             already_indexed = set()
         for f in files:
             fid = f.get("id")
@@ -987,6 +994,7 @@ def get_semantic_duplicate_groups(threshold: float = 0.92) -> list[list[dict]]:
         return []
     try:
         from pdfsearchable.semantic_search import find_semantic_duplicate_groups
+
         groups_ids = find_semantic_duplicate_groups(threshold)
         if not groups_ids:
             return []
@@ -1115,13 +1123,26 @@ def compute_dashboard_stats() -> dict[str, Any]:
 
     # Entity totals
     entity_fields = [
-        "identified_emails", "identified_cpfs", "identified_cnpjs",
-        "identified_ips", "identified_addresses", "identified_phones",
-        "identified_locations", "identified_dates", "identified_urls",
-        "identified_domains", "identified_ceps", "identified_processos",
-        "identified_placas", "identified_rgs", "identified_protocolos",
-        "identified_hashes", "identified_coordenadas", "identified_timestamps",
-        "identified_leis", "parties",
+        "identified_emails",
+        "identified_cpfs",
+        "identified_cnpjs",
+        "identified_ips",
+        "identified_addresses",
+        "identified_phones",
+        "identified_locations",
+        "identified_dates",
+        "identified_urls",
+        "identified_domains",
+        "identified_ceps",
+        "identified_processos",
+        "identified_placas",
+        "identified_rgs",
+        "identified_protocolos",
+        "identified_hashes",
+        "identified_coordenadas",
+        "identified_timestamps",
+        "identified_leis",
+        "parties",
     ]
     entity_totals: dict[str, int] = {k: 0 for k in entity_fields}
     top_parties: dict[str, int] = {}
@@ -1185,11 +1206,13 @@ def compute_dashboard_stats() -> dict[str, Any]:
                 cf = float(ocr_conf)
                 ocr_confs.append(cf)
                 if cf < 70 and cf >= 0:
-                    alerts_low_ocr.append({
-                        "id": f.get("id", ""),
-                        "name": f.get("name", ""),
-                        "confidence": round(cf, 1),
-                    })
+                    alerts_low_ocr.append(
+                        {
+                            "id": f.get("id", ""),
+                            "name": f.get("name", ""),
+                            "confidence": round(cf, 1),
+                        }
+                    )
             except (TypeError, ValueError):
                 pass
 
@@ -1210,21 +1233,25 @@ def compute_dashboard_stats() -> dict[str, Any]:
         except (TypeError, ValueError):
             text_chars = 0
         if wc == 0 and np_ > 0 and text_chars < 200:
-            alerts_empty_text.append({
-                "id": f.get("id", ""),
-                "name": f.get("name", ""),
-                "pages": np_,
-                "text_chars": text_chars,
-            })
+            alerts_empty_text.append(
+                {
+                    "id": f.get("id", ""),
+                    "name": f.get("name", ""),
+                    "pages": np_,
+                    "text_chars": text_chars,
+                }
+            )
 
         # Confidentiality
         conf_level = (f.get("confidentiality") or "").lower()
         if conf_level in ("alta", "high", "confidencial", "secreto", "ultrassecreto"):
-            alerts_high_confidentiality.append({
-                "id": f.get("id", ""),
-                "name": f.get("name", ""),
-                "level": conf_level,
-            })
+            alerts_high_confidentiality.append(
+                {
+                    "id": f.get("id", ""),
+                    "name": f.get("name", ""),
+                    "level": conf_level,
+                }
+            )
 
         # Entities
         for ef in entity_fields:
@@ -1271,7 +1298,7 @@ def compute_dashboard_stats() -> dict[str, Any]:
             if ct:
                 key = str(ct)[:60]
                 creator_tools[key] = creator_tools.get(key, 0) + 1
-            for fnt in (ext.get("fonts") or []):
+            for fnt in ext.get("fonts") or []:
                 bf = fnt.get("basefont") if isinstance(fnt, dict) else None
                 if bf:
                     unique_fonts.add(str(bf)[:80])
@@ -1279,10 +1306,12 @@ def compute_dashboard_stats() -> dict[str, Any]:
         # Encrypted detection (from metadata)
         mraw = f.get("metadata") or {}
         if mraw.get("is_encrypted"):
-            alerts_encrypted.append({
-                "id": f.get("id", ""),
-                "name": f.get("name", ""),
-            })
+            alerts_encrypted.append(
+                {
+                    "id": f.get("id", ""),
+                    "name": f.get("name", ""),
+                }
+            )
 
         # Time series
         iat = (f.get("indexed_at") or "")[:10]  # YYYY-MM-DD
@@ -1342,62 +1371,63 @@ def compute_dashboard_stats() -> dict[str, Any]:
     except sqlite3.Error as _e:
         _store_logger.debug("compute_dashboard_stats: falha ao contar embeddings: %s", _e)
 
-    stats.update({
-        "total_pages": total_pages,
-        "total_size": total_size,
-        "total_words": total_words,
-        "avg_size": avg_size,
-        "median_size": median_size,
-        "avg_pages": round(total_pages / n, 1) if n else 0,
-        "doc_types": _topn(doc_types, 50),
-        "languages": _topn(languages, 20),
-        "latest_indexed": latest_indexed,
-        "ocr": {
-            "weighted_pct": round(weighted_ocr_pct, 1),
-            "avg_confidence": round(avg_ocr_conf, 1) if avg_ocr_conf is not None else None,
-            "min_confidence": round(min_ocr_conf, 1) if min_ocr_conf is not None else None,
-            "docs_with_ocr": sum(1 for p in ocr_pcts if p > 0),
-        },
-        "entities": {
-            "totals": entity_totals,
-            "sum": sum(entity_totals.values()),
-            "top_parties": _topn(top_parties, 10),
-            "top_locations": _topn(top_locations, 10),
-            "top_domains": _topn(top_domains, 10),
-        },
-        "extended": {
-            "docs_with_outline": docs_with_outline,
-            "docs_with_hyperlinks": docs_with_hyperlinks,
-            "docs_with_attached": docs_with_attached,
-            "docs_with_signatures": docs_with_signatures,
-            "docs_with_forms": docs_with_forms,
-            "docs_with_annotations": docs_with_annotations,
-            "total_outline_entries": total_outline_entries,
-            "total_hyperlinks": total_hyperlinks,
-            "total_attached": total_attached,
-            "unique_fonts": len(unique_fonts),
-            "top_creators": _topn(creator_tools, 10),
-        },
-        "size_histogram": [{"bucket": k, "count": v} for k, v in size_buckets.items()],
-        "indexing_timeline": [
-            {"date": k, "count": v}
-            for k, v in sorted(by_day.items())
-        ][-90:],
-        "alerts": {
-            "low_ocr_confidence": alerts_low_ocr[:20],
-            "empty_text": alerts_empty_text[:20],
-            "encrypted": alerts_encrypted[:20],
-            "high_confidentiality": alerts_high_confidentiality[:20],
-            "total": (
-                len(alerts_low_ocr) + len(alerts_empty_text)
-                + len(alerts_encrypted) + len(alerts_high_confidentiality)
-            ),
-        },
-        "semantic": {
-            "doc_embeddings": embeddings_count,
-            "page_chunks": chunks_count,
-        },
-    })
+    stats.update(
+        {
+            "total_pages": total_pages,
+            "total_size": total_size,
+            "total_words": total_words,
+            "avg_size": avg_size,
+            "median_size": median_size,
+            "avg_pages": round(total_pages / n, 1) if n else 0,
+            "doc_types": _topn(doc_types, 50),
+            "languages": _topn(languages, 20),
+            "latest_indexed": latest_indexed,
+            "ocr": {
+                "weighted_pct": round(weighted_ocr_pct, 1),
+                "avg_confidence": round(avg_ocr_conf, 1) if avg_ocr_conf is not None else None,
+                "min_confidence": round(min_ocr_conf, 1) if min_ocr_conf is not None else None,
+                "docs_with_ocr": sum(1 for p in ocr_pcts if p > 0),
+            },
+            "entities": {
+                "totals": entity_totals,
+                "sum": sum(entity_totals.values()),
+                "top_parties": _topn(top_parties, 10),
+                "top_locations": _topn(top_locations, 10),
+                "top_domains": _topn(top_domains, 10),
+            },
+            "extended": {
+                "docs_with_outline": docs_with_outline,
+                "docs_with_hyperlinks": docs_with_hyperlinks,
+                "docs_with_attached": docs_with_attached,
+                "docs_with_signatures": docs_with_signatures,
+                "docs_with_forms": docs_with_forms,
+                "docs_with_annotations": docs_with_annotations,
+                "total_outline_entries": total_outline_entries,
+                "total_hyperlinks": total_hyperlinks,
+                "total_attached": total_attached,
+                "unique_fonts": len(unique_fonts),
+                "top_creators": _topn(creator_tools, 10),
+            },
+            "size_histogram": [{"bucket": k, "count": v} for k, v in size_buckets.items()],
+            "indexing_timeline": [{"date": k, "count": v} for k, v in sorted(by_day.items())][-90:],
+            "alerts": {
+                "low_ocr_confidence": alerts_low_ocr[:20],
+                "empty_text": alerts_empty_text[:20],
+                "encrypted": alerts_encrypted[:20],
+                "high_confidentiality": alerts_high_confidentiality[:20],
+                "total": (
+                    len(alerts_low_ocr)
+                    + len(alerts_empty_text)
+                    + len(alerts_encrypted)
+                    + len(alerts_high_confidentiality)
+                ),
+            },
+            "semantic": {
+                "doc_embeddings": embeddings_count,
+                "page_chunks": chunks_count,
+            },
+        }
+    )
 
     # Memoizar resultado para próximas chamadas dentro do TTL
     with _dash_stats_lock:

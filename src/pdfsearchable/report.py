@@ -981,8 +981,7 @@ def generate_report(title: str = "Report — pdfsearchable", force: bool = False
             }
             timeline_map.setdefault(y, []).append(entry)
     timeline_entries = [
-        {"year": y, "docs": timeline_map[y]}
-        for y in sorted(timeline_map.keys(), reverse=True)
+        {"year": y, "docs": timeline_map[y]} for y in sorted(timeline_map.keys(), reverse=True)
     ]
 
     # --- Dashboard de qualidade ---
@@ -1003,11 +1002,13 @@ def generate_report(title: str = "Report — pdfsearchable", force: bool = False
         # OCR com baixa confiança (< 60 %)
         conf = f.get("ocr_avg_confidence")
         if conf is not None and float(conf) > 0 and float(conf) < 0.60:
-            quality_low_ocr.append({
-                "id": fid,
-                "name": fname,
-                "confidence": round(float(conf) * 100),
-            })
+            quality_low_ocr.append(
+                {
+                    "id": fid,
+                    "name": fname,
+                    "confidence": round(float(conf) * 100),
+                }
+            )
         # Documentos sem classificação IA (tipo = "documento" e sem source)
         src = f.get("classification_source")
         if ftype == "documento" and src not in ("openai", "ollama"):
@@ -1163,10 +1164,12 @@ def generate_report(title: str = "Report — pdfsearchable", force: bool = False
     if _app_src.exists():
         try:
             import shutil as _shutil
+
             _shutil.copy2(_app_src, APP_PATH)
         except OSError as e:
             # Non-fatal: log and continue — report.html is the primary output
             import logging as _logging
+
             _logging.getLogger(__name__).warning("Não foi possível copiar app.html: %s", e)
 
     return REPORT_PATH

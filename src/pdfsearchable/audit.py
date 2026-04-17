@@ -33,6 +33,7 @@ def _audit_dir() -> Path:
             return _IMPORT_CWD / ".pdfsearchable"
         # último recurso: temp dir do sistema
         import tempfile
+
         return Path(tempfile.gettempdir()) / "pdfsearchable-fallback"
 
 
@@ -81,6 +82,7 @@ def _reset_audit_path_for_tests() -> None:
     global _audit_fixed_file
     with _audit_fixed_lock:
         _audit_fixed_file = None
+
 
 # Rotação do audit: se AUDIT_MAX_BYTES > 0 e o arquivo ultrapassar, mantém as últimas AUDIT_MAX_LINES
 AUDIT_MAX_BYTES = int(os.environ.get("PDFSEARCHABLE_AUDIT_MAX_BYTES", "0"))
@@ -163,6 +165,7 @@ def _maybe_rotate_audit(af: Path) -> None:
         # Rotação falhou: o arquivo vai crescer além do limite mas os dados estão intactos.
         # Registar no stderr para que o utilizador possa investigar.
         import sys as _sys
+
         _sys.stderr.write(
             f"[pdfsearchable] Aviso: não foi possível rodar o arquivo de auditoria "
             f"'{af}': {_rot_err}. "

@@ -28,6 +28,7 @@ _feedback_lock = threading.RLock()
 def _feedback_file() -> Path:
     """Retorna o caminho para o arquivo de exemplos (calculado em runtime)."""
     from pdfsearchable.store import STORE_DIR
+
     return STORE_DIR / FEEDBACK_FILE_NAME
 
 
@@ -52,7 +53,8 @@ def _load_raw() -> dict[str, Any]:
     except Exception as exc:
         _log.warning(
             "Arquivo de exemplos %s corrompido ou inválido (%s) — a partir de zero.",
-            path, exc,
+            path,
+            exc,
         )
         return {"version": 1, "examples": []}
 
@@ -63,6 +65,7 @@ def _save_raw(data: dict[str, Any]) -> None:
     Deve ser chamado com _feedback_lock já adquirido.
     """
     from pdfsearchable.store import STORE_DIR
+
     STORE_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
     path = _feedback_file()
     tmp = path.with_suffix(".json.tmp")
@@ -128,7 +131,10 @@ def record_correction(
         _save_raw(data)
         _log.debug(
             "Exemplo gravado: file_id=%s type=%s source=%s (total=%d)",
-            file_id, correct_type, source, len(examples),
+            file_id,
+            correct_type,
+            source,
+            len(examples),
         )
 
 

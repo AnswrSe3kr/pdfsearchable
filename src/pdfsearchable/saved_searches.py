@@ -127,6 +127,7 @@ def run_saved_search(name: str, *, executor=None) -> dict[str, Any]:
 
         if executor is None:
             from pdfsearchable.hybrid_search import hybrid_search as _hs
+
             results = _hs(
                 query,
                 top_k=options.get("top_k", 50),

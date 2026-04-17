@@ -15,38 +15,45 @@ import pytest
 class TestDedup:
     def test_shingles(self):
         from pdfsearchable.dedup import shingles
+
         s = shingles("hello world", k=3)
         assert isinstance(s, set)
         assert len(s) > 0
 
     def test_shingles_short_text(self):
         from pdfsearchable.dedup import shingles
+
         s = shingles("hi", k=5)
         assert isinstance(s, set)
 
     def test_shingles_empty(self):
         from pdfsearchable.dedup import shingles
+
         assert shingles("") == set()
 
     def test_minhash_deterministic(self):
         from pdfsearchable.dedup import minhash
+
         a = minhash("texto de teste" * 10)
         b = minhash("texto de teste" * 10)
         assert a == b
 
     def test_minhash_length(self):
         from pdfsearchable.dedup import DEFAULT_NUM_PERM, minhash
+
         sig = minhash("some sample text for hashing")
         assert len(sig) == DEFAULT_NUM_PERM
 
     def test_jaccard_identical(self):
         from pdfsearchable.dedup import jaccard_similarity, minhash
+
         a = minhash("documento de teste para similaridade")
         b = minhash("documento de teste para similaridade")
         assert jaccard_similarity(a, b) == 1.0
 
     def test_jaccard_different(self):
         from pdfsearchable.dedup import jaccard_similarity, minhash
+
         a = minhash("primeiro documento completamente diferente")
         b = minhash("segundo texto totalmente distinto xyz abc")
         sim = jaccard_similarity(a, b)
@@ -55,6 +62,7 @@ class TestDedup:
     def test_jaccard_similar(self):
         """Duas versões de um texto com pequenas alterações devem ter sim alta."""
         from pdfsearchable.dedup import jaccard_similarity, minhash
+
         base = "Este é um documento extenso sobre operações táticas " * 20
         modified = base + " e adicionalmente nova frase pequena."
         a = minhash(base)
@@ -64,6 +72,7 @@ class TestDedup:
 
     def test_find_near_duplicates(self):
         from pdfsearchable.dedup import find_near_duplicates, minhash
+
         base = "texto de referência " * 20
         sigs = {
             "a": minhash(base),
@@ -76,6 +85,7 @@ class TestDedup:
 
     def test_lsh_buckets(self):
         from pdfsearchable.dedup import build_lsh_bands, minhash
+
         sigs = {"a": minhash("x" * 100), "b": minhash("y" * 100)}
         buckets = build_lsh_bands(sigs, bands=8)
         assert isinstance(buckets, dict)
@@ -87,6 +97,7 @@ class TestDedup:
 class TestDocDiff:
     def test_diff_identical(self):
         from pdfsearchable.doc_diff import diff_texts
+
         d = diff_texts("linha 1\nlinha 2", "linha 1\nlinha 2")
         assert d["identical"] is True
         assert d["additions"] == 0
@@ -94,22 +105,26 @@ class TestDocDiff:
 
     def test_diff_additions(self):
         from pdfsearchable.doc_diff import diff_texts
+
         d = diff_texts("a\nb", "a\nb\nc")
         assert d["additions"] >= 1
         assert d["identical"] is False
 
     def test_diff_deletions(self):
         from pdfsearchable.doc_diff import diff_texts
+
         d = diff_texts("a\nb\nc", "a\nc")
         assert d["deletions"] >= 1
 
     def test_diff_empty(self):
         from pdfsearchable.doc_diff import diff_texts
+
         d = diff_texts("", "")
         assert d["identical"] is True
 
     def test_diff_documents_missing(self, isolated_store):
         from pdfsearchable.doc_diff import diff_documents
+
         r = diff_documents("unknown_a", "unknown_b")
         assert "error" in r
 
@@ -120,18 +135,26 @@ class TestDocDiff:
 class TestDossier:
     def test_generate_empty_dossier(self, tmp_path):
         from pdfsearchable.dossier import generate_dossier
+
         out = tmp_path / "dossier.pdf"
         path = generate_dossier([], out, title="Teste Vazio", query="nada")
         assert path.exists()
         import fitz
+
         doc = fitz.open(str(path))
         assert doc.page_count >= 2  # capa + toc
         doc.close()
 
     def test_generate_with_results(self, tmp_path):
         from pdfsearchable.dossier import generate_dossier
+
         results = [
-            {"file_id": "x1", "file_name": "doc1.pdf", "page": 1, "snippet": "trecho relevante do doc 1"},
+            {
+                "file_id": "x1",
+                "file_name": "doc1.pdf",
+                "page": 1,
+                "snippet": "trecho relevante do doc 1",
+            },
             {"file_id": "x2", "file_name": "doc2.pdf", "page": 3, "snippet": "outro snippet aqui"},
         ]
         out = tmp_path / "dossier2.pdf"
@@ -142,6 +165,7 @@ class TestDossier:
     def test_generate_toc_overflow(self, tmp_path):
         """Muitos resultados forcam nova pagina de TOC (lines 79-81)."""
         from pdfsearchable.dossier import generate_dossier
+
         results = [
             {"file_id": f"f{i}", "file_name": f"doc_{i:03d}.pdf", "page": i, "snippet": f"s{i}"}
             for i in range(60)
@@ -150,6 +174,7 @@ class TestDossier:
         path = generate_dossier(results, out, title="Overflow", query="t")
         assert path.exists()
         import fitz
+
         doc = fitz.open(str(path))
         assert doc.page_count > 3
         doc.close()
@@ -157,6 +182,7 @@ class TestDossier:
     def test_generate_result_name_field(self, tmp_path):
         """Resultado com campo name em vez de file_name (lines 75, 89)."""
         from pdfsearchable.dossier import generate_dossier
+
         results = [{"file_id": "y1", "name": "alt.pdf", "page": 2, "snippet": "txt"}]
         out = tmp_path / "dos_nm.pdf"
         assert generate_dossier(results, out).exists()
@@ -164,6 +190,7 @@ class TestDossier:
     def test_generate_result_file_id_as_name(self, tmp_path):
         """Resultado sem file_name nem name usa file_id (lines 75, 89)."""
         from pdfsearchable.dossier import generate_dossier
+
         results = [{"file_id": "abc123", "page": 1, "snippet": "c"}]
         out = tmp_path / "dos_fid.pdf"
         assert generate_dossier(results, out).exists()
@@ -171,14 +198,22 @@ class TestDossier:
     def test_generate_snippet_html_marks(self, tmp_path):
         """Snippet com tags mark sao removidas (line 101-104)."""
         from pdfsearchable.dossier import generate_dossier
-        results = [{"file_id": "z1", "file_name": "d.pdf", "page": 1,
-                    "snippet": "texto <mark>kw</mark> aqui"}]
+
+        results = [
+            {
+                "file_id": "z1",
+                "file_name": "d.pdf",
+                "page": 1,
+                "snippet": "texto <mark>kw</mark> aqui",
+            }
+        ]
         out = tmp_path / "dos_mk.pdf"
         assert generate_dossier(results, out).exists()
 
     def test_generate_result_without_snippet(self, tmp_path):
         """Resultado sem snippet nao lanca erro (line 102 branch)."""
         from pdfsearchable.dossier import generate_dossier
+
         results = [{"file_id": "z2", "file_name": "d.pdf", "page": 1}]
         out = tmp_path / "dos_ns.pdf"
         assert generate_dossier(results, out).exists()
@@ -189,6 +224,7 @@ class TestDossier:
         import unittest.mock as mock
         from pdfsearchable import dossier as dm
         from pdfsearchable.dossier import generate_dossier
+
         src = tmp_path / "src.pdf"
         d = fitz.open()
         for _ in range(2):
@@ -196,8 +232,10 @@ class TestDossier:
             pg.insert_text((50, 50), "pg content")
         d.save(str(src))
         d.close()
+
         def fake_open(file_id):
             return fitz.open(str(src))
+
         out = tmp_path / "dos_real.pdf"
         with mock.patch.object(dm, "_open_source_pdf", fake_open):
             path = generate_dossier(
@@ -220,6 +258,7 @@ class TestDossier:
         d.close()
 
         cnt = {"n": 0}
+
         def fake_open(fid):
             cnt["n"] += 1
             return fitz.open(str(src_pdf))
@@ -239,8 +278,10 @@ class TestDossier:
         import unittest.mock as mock
         from pdfsearchable import dossier as dm
         from pdfsearchable.dossier import generate_dossier
+
         def fake_open(fid):
             raise RuntimeError("fail")
+
         out = tmp_path / "dos_ex.pdf"
         with mock.patch.object(dm, "_open_source_pdf", fake_open):
             path = generate_dossier(
@@ -252,6 +293,7 @@ class TestDossier:
         """_open_source_pdf file_id nao encontrado retorna None (lines 131-132)."""
         import unittest.mock as mock
         from pdfsearchable.dossier import _open_source_pdf
+
         with mock.patch("pdfsearchable.store.load_index", return_value={"files": {}}):
             assert _open_source_pdf("nope") is None
 
@@ -260,14 +302,19 @@ class TestDossier:
         import fitz
         import unittest.mock as mock
         from pdfsearchable.dossier import _open_source_pdf
+
         cand = tmp_path / "myfile.pdf"
         d = fitz.open()
         d.new_page()
         d.save(str(cand))
         d.close()
-        with mock.patch("pdfsearchable.store.FILES_DIR", tmp_path), \
-             mock.patch("pdfsearchable.store.load_index",
-                        return_value={"files": {"myfile": {"path": str(cand)}}}):
+        with (
+            mock.patch("pdfsearchable.store.FILES_DIR", tmp_path),
+            mock.patch(
+                "pdfsearchable.store.load_index",
+                return_value={"files": {"myfile": {"path": str(cand)}}},
+            ),
+        ):
             r = _open_source_pdf("myfile")
         if r is not None:
             r.close()
@@ -277,6 +324,7 @@ class TestDossier:
         import fitz
         import unittest.mock as mock
         from pdfsearchable.dossier import _open_source_pdf
+
         orig = tmp_path / "orig.pdf"
         d = fitz.open()
         d.new_page()
@@ -284,8 +332,10 @@ class TestDossier:
         d.close()
         idx = {"files": {"fid": {"path": str(orig)}}}
         nodir = tmp_path / "nodir"
-        with mock.patch("pdfsearchable.store.FILES_DIR", nodir), \
-             mock.patch("pdfsearchable.store.load_index", return_value=idx):
+        with (
+            mock.patch("pdfsearchable.store.FILES_DIR", nodir),
+            mock.patch("pdfsearchable.store.load_index", return_value=idx),
+        ):
             r = _open_source_pdf("fid")
         if r is not None:
             r.close()
@@ -294,10 +344,13 @@ class TestDossier:
         """_open_source_pdf meta sem path retorna None (line 138-140 else)."""
         import unittest.mock as mock
         from pdfsearchable.dossier import _open_source_pdf
+
         idx = {"files": {"fid2": {}}}
         nodir = tmp_path / "nodir"
-        with mock.patch("pdfsearchable.store.FILES_DIR", nodir), \
-             mock.patch("pdfsearchable.store.load_index", return_value=idx):
+        with (
+            mock.patch("pdfsearchable.store.FILES_DIR", nodir),
+            mock.patch("pdfsearchable.store.load_index", return_value=idx),
+        ):
             r = _open_source_pdf("fid2")
         assert r is None
 
@@ -305,10 +358,13 @@ class TestDossier:
         """_open_source_pdf orig path nao existe retorna None."""
         import unittest.mock as mock
         from pdfsearchable.dossier import _open_source_pdf
+
         idx = {"files": {"fid3": {"path": str(tmp_path / "ghost.pdf")}}}
         nodir = tmp_path / "nodir"
-        with mock.patch("pdfsearchable.store.FILES_DIR", nodir), \
-             mock.patch("pdfsearchable.store.load_index", return_value=idx):
+        with (
+            mock.patch("pdfsearchable.store.FILES_DIR", nodir),
+            mock.patch("pdfsearchable.store.load_index", return_value=idx),
+        ):
             r = _open_source_pdf("fid3")
         assert r is None
 
@@ -316,16 +372,17 @@ class TestDossier:
         """_open_source_pdf excecao interna retorna None (line 141-142)."""
         import unittest.mock as mock
         from pdfsearchable.dossier import _open_source_pdf
+
         with mock.patch("pdfsearchable.store.load_index", side_effect=Exception("crash")):
             assert _open_source_pdf("any") is None
 
     def test_generate_no_query_string(self, tmp_path):
         """generate_dossier com query vazio nao exibe linha Consulta (line 59)."""
         from pdfsearchable.dossier import generate_dossier
+
         out = tmp_path / "dos_nq.pdf"
         path = generate_dossier(
-            [{"file_id": "q1", "file_name": "d.pdf", "page": 1, "snippet": "x"}],
-            out, query=""
+            [{"file_id": "q1", "file_name": "d.pdf", "page": 1, "snippet": "x"}], out, query=""
         )
         assert path.exists()
 
@@ -339,6 +396,7 @@ class TestSavedSearches:
             get_saved_search,
             save_search,
         )
+
         entry = save_search("minha_busca", "hamas networks")
         assert entry["name"] == "minha_busca"
         retrieved = get_saved_search("minha_busca")
@@ -346,6 +404,7 @@ class TestSavedSearches:
 
     def test_list(self, isolated_store):
         from pdfsearchable.saved_searches import list_saved_searches, save_search
+
         save_search("s1", "q1")
         save_search("s2", "q2")
         items = list_saved_searches()
@@ -354,17 +413,20 @@ class TestSavedSearches:
 
     def test_delete(self, isolated_store):
         from pdfsearchable.saved_searches import delete_saved_search, save_search
+
         save_search("to_delete", "q")
         assert delete_saved_search("to_delete") is True
         assert delete_saved_search("nonexistent") is False
 
     def test_run_unknown(self, isolated_store):
         from pdfsearchable.saved_searches import run_saved_search
+
         r = run_saved_search("doesnotexist")
         assert "error" in r
 
     def test_run_new_results_tracking(self, isolated_store):
         from pdfsearchable.saved_searches import run_saved_search, save_search
+
         save_search("track", "qq")
 
         # Executor fake
@@ -388,6 +450,7 @@ class TestSavedSearches:
     def test_load_corrupt_json(self, isolated_store):
         """_load() returns default when JSON is corrupt (lines 37-38)."""
         from pdfsearchable import saved_searches
+
         p = Path.cwd() / ".pdfsearchable" / "saved_searches.json"
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text("INVALID JSON", encoding="utf-8")
@@ -398,6 +461,7 @@ class TestSavedSearches:
     def test_save_search_no_overwrite(self, isolated_store):
         """save_search raises ValueError when overwrite=False and name exists (line 60)."""
         from pdfsearchable.saved_searches import save_search
+
         save_search("exists", "q1")
         with pytest.raises(ValueError, match="já existe"):
             save_search("exists", "q2", overwrite=False)
@@ -406,6 +470,7 @@ class TestSavedSearches:
     def test_run_saved_search_unknown(self, isolated_store):
         """run_saved_search returns error dict for unknown search (lines 129-130)."""
         from pdfsearchable.saved_searches import run_saved_search
+
         r = run_saved_search("nonexistent_search_xyz")
         assert "error" in r
 
@@ -417,6 +482,7 @@ class TestSavedSearches:
             run_saved_search,
             save_search,
         )
+
         save_search("alert1", "q1")
         save_search("alert2", "q2")
 
@@ -427,6 +493,7 @@ class TestSavedSearches:
         }
 
         import pdfsearchable.saved_searches as ss_mod
+
         original_run = ss_mod.run_saved_search
 
         def fake_run(name, **kwargs):
@@ -445,6 +512,7 @@ class TestSavedSearches:
     def test_run_all_for_alerts_exception_swallowed(self, isolated_store):
         """run_all_for_alerts swallows exceptions per-search (lines 172-173)."""
         from pdfsearchable.saved_searches import run_all_for_alerts, save_search
+
         save_search("boom", "q")
 
         import pdfsearchable.saved_searches as ss_mod
@@ -457,6 +525,7 @@ class TestSavedSearches:
             alerts = run_all_for_alerts()
         finally:
             import importlib
+
             importlib.reload(ss_mod)
         # Should not raise; returns empty list
         assert alerts == []
@@ -468,6 +537,7 @@ class TestSavedSearches:
 class TestMetrics:
     def test_record_and_render(self):
         from pdfsearchable import metrics
+
         metrics.reset_metrics()
         metrics.record_ollama_request("ok")
         metrics.record_ollama_request("error")
@@ -482,6 +552,7 @@ class TestMetrics:
 
     def test_health_status_shape(self):
         from pdfsearchable import metrics
+
         h = metrics.health_status()
         assert "status" in h
         assert h["status"] in ("ok", "degraded", "down")
@@ -491,6 +562,7 @@ class TestMetrics:
     def test_record_search_duration_rolling_trim(self):
         """Rolling trim kicks in when > 1000 samples (line 61-63)."""
         from pdfsearchable import metrics
+
         metrics.reset_metrics()
         for i in range(1005):
             metrics.record_search_duration(float(i) * 0.001)
@@ -501,6 +573,7 @@ class TestMetrics:
     def test_histogram_stats_empty(self):
         """_histogram_stats returns zeros for empty list (line 68)."""
         from pdfsearchable.metrics import _histogram_stats
+
         result = _histogram_stats([])
         assert result == {"count": 0, "sum": 0.0, "p50": 0.0, "p95": 0.0, "p99": 0.0}
 
@@ -508,6 +581,7 @@ class TestMetrics:
     def test_render_metrics_with_store(self, monkeypatch):
         """render_metrics loads doc/page counts from store (lines 97-102)."""
         from pdfsearchable import metrics
+
         metrics.reset_metrics()
         fake_idx = {
             "files": {
@@ -524,6 +598,7 @@ class TestMetrics:
     def test_render_metrics_counters(self):
         """Counter block only appears when _counters is non-empty (lines 108-111)."""
         from pdfsearchable import metrics
+
         metrics.reset_metrics()
         out_empty = metrics.render_metrics()
         assert "pdfsearchable_counters" not in out_empty
@@ -536,6 +611,7 @@ class TestMetrics:
     def test_render_metrics_store_exception(self, monkeypatch):
         """render_metrics continues if store import/load fails (lines 103-104)."""
         from pdfsearchable import metrics
+
         metrics.reset_metrics()
 
         def bad_load():
@@ -551,6 +627,7 @@ class TestMetrics:
         """health_status marks store degraded on exception (lines 148-150)."""
         from pdfsearchable import metrics
         import pdfsearchable.store as store_mod
+
         real_meta = store_mod.META_FILE
 
         def bad_attr():
@@ -561,6 +638,7 @@ class TestMetrics:
         original = store_mod.META_FILE
         # Make store import raise inside the try block
         import sys
+
         saved = sys.modules.get("pdfsearchable.store")
         # Easier: just run health_status normally and check it contains "store" key
         h = metrics.health_status()
@@ -571,6 +649,7 @@ class TestMetrics:
         """health_status marks fts degraded when fts_ensure_healthy returns False (lines 157-160)."""
         from pdfsearchable import metrics
         import pdfsearchable.store as store_mod
+
         monkeypatch.setattr(store_mod, "fts_ensure_healthy", lambda: False, raising=False)
         h = metrics.health_status()
         assert h["checks"]["fts"]["ok"] is False
@@ -594,7 +673,10 @@ class TestMetrics:
         """health_status handles disk_usage exception (lines 178-180)."""
         from pdfsearchable import metrics
         import shutil
-        monkeypatch.setattr(shutil, "disk_usage", lambda p: (_ for _ in ()).throw(OSError("no disk")))
+
+        monkeypatch.setattr(
+            shutil, "disk_usage", lambda p: (_ for _ in ()).throw(OSError("no disk"))
+        )
         h = metrics.health_status()
         assert "disk" in h["checks"]
         assert h["checks"]["disk"]["ok"] is False
@@ -603,6 +685,7 @@ class TestMetrics:
     def test_record_cache_miss(self):
         """record_cache_hit records miss correctly."""
         from pdfsearchable import metrics
+
         metrics.reset_metrics()
         metrics.record_cache_hit("ocr", hit=False)
         out = metrics.render_metrics()
@@ -617,6 +700,7 @@ class TestCrypto:
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", raising=False)
         from pdfsearchable import crypto_store
+
         assert crypto_store.is_encryption_enabled() is False
         data = b"hello"
         assert crypto_store.encrypt_bytes(data) == data
@@ -626,6 +710,7 @@ class TestCrypto:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", "secret-passphrase-1234")
         from pdfsearchable import crypto_store
+
         assert crypto_store.is_encryption_enabled() is True
         original = b"dados confidenciais de teste " * 10
         encrypted = crypto_store.encrypt_bytes(original)
@@ -637,6 +722,7 @@ class TestCrypto:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", "primeira-pass")
         from pdfsearchable import crypto_store
+
         encrypted = crypto_store.encrypt_bytes(b"secret data")
         monkeypatch.setenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", "segunda-pass-different")
         with pytest.raises((ValueError, Exception)):
@@ -651,6 +737,7 @@ class TestCrypto:
         salt_file.parent.mkdir(parents=True, exist_ok=True)
         salt_file.write_text("NOT_VALID_HEX")
         from pdfsearchable import crypto_store
+
         salt = crypto_store._get_salt()
         assert isinstance(salt, bytes)
         assert len(salt) == 16
@@ -661,6 +748,7 @@ class TestCrypto:
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", raising=False)
         import pdfsearchable.crypto_store as cs
+
         monkeypatch.setattr(os, "chmod", lambda *a, **kw: (_ for _ in ()).throw(OSError("no perm")))
         # Should succeed without raising
         salt = cs._get_salt()
@@ -672,6 +760,7 @@ class TestCrypto:
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", raising=False)
         import pdfsearchable.crypto_store as cs
+
         assert cs._get_fernet() is None
 
     # --- lines 71-72: _get_fernet() ImportError fallback ---
@@ -680,13 +769,17 @@ class TestCrypto:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", "test-pass")
         import sys
+
         # Remove cryptography from sys.modules to simulate ImportError
         saved = sys.modules.pop("cryptography", None)
         saved_fernet = sys.modules.pop("cryptography.fernet", None)
         try:
             import pdfsearchable.crypto_store as cs
+
             # Reload-free: patch builtins.__import__
-            real_import = __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
+            real_import = (
+                __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
+            )
 
             def fake_import(name, *args, **kwargs):
                 if name == "cryptography.fernet" or name == "cryptography":
@@ -694,6 +787,7 @@ class TestCrypto:
                 return real_import(name, *args, **kwargs)
 
             import builtins
+
             monkeypatch.setattr(builtins, "__import__", fake_import)
             result = cs._get_fernet()
             # May be None or a Fernet; just should not raise
@@ -709,6 +803,7 @@ class TestCrypto:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", "test-pass")
         import pdfsearchable.crypto_store as cs
+
         assert cs.encrypt_bytes(b"") == b""
 
     # --- line 89: encrypt_bytes returns data when encryption disabled ---
@@ -717,6 +812,7 @@ class TestCrypto:
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", raising=False)
         import pdfsearchable.crypto_store as cs
+
         data = b"plaintext"
         assert cs.encrypt_bytes(data) == data
 
@@ -726,6 +822,7 @@ class TestCrypto:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", "pass-xor")
         import pdfsearchable.crypto_store as cs
+
         # Force _get_fernet to return None
         monkeypatch.setattr(cs, "_get_fernet", lambda: None)
         original = b"data for xor fallback test"
@@ -740,6 +837,7 @@ class TestCrypto:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", "test-pass")
         import pdfsearchable.crypto_store as cs
+
         assert cs.decrypt_bytes(b"") == b""
 
     # --- lines 113-116: decrypt_bytes Fernet exception → ValueError ---
@@ -748,6 +846,7 @@ class TestCrypto:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", "pass-fernet-err")
         import pdfsearchable.crypto_store as cs
+
         fake_fernet = MagicMock()
         fake_fernet.decrypt.side_effect = Exception("bad token")
         monkeypatch.setattr(cs, "_get_fernet", lambda: fake_fernet)
@@ -760,6 +859,7 @@ class TestCrypto:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", "pass-xor-2")
         import pdfsearchable.crypto_store as cs
+
         monkeypatch.setattr(cs, "_get_fernet", lambda: None)
         with pytest.raises(ValueError, match="fallback XOR"):
             cs.decrypt_bytes(b"no-prefix-data")
@@ -770,6 +870,7 @@ class TestCrypto:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", "pass-xor-3")
         import pdfsearchable.crypto_store as cs
+
         monkeypatch.setattr(cs, "_get_fernet", lambda: None)
         # XHMAC1 prefix + less than 32 bytes
         with pytest.raises(ValueError, match="truncado"):
@@ -782,12 +883,14 @@ class TestCrypto:
 class TestACL:
     def test_default_allow_all(self, isolated_store):
         from pdfsearchable import acl
+
         acl.invalidate_cache()
         assert acl.can_read(None, "any_file_id") is True
         assert acl.can_read("alice", "any_file_id") is True
 
     def test_grant_and_revoke(self, isolated_store):
         from pdfsearchable import acl
+
         acl.invalidate_cache()
         acl.set_default_allow_all(False)
         assert acl.can_read("bob", "file1") is False
@@ -798,6 +901,7 @@ class TestACL:
 
     def test_wildcard(self, isolated_store):
         from pdfsearchable import acl
+
         acl.invalidate_cache()
         acl.set_default_allow_all(False)
         acl.grant("admin", "*")
@@ -805,6 +909,7 @@ class TestACL:
 
     def test_filter_readable(self, isolated_store):
         from pdfsearchable import acl
+
         acl.invalidate_cache()
         acl.set_default_allow_all(False)
         acl.grant("user1", "fa")
@@ -814,6 +919,7 @@ class TestACL:
 
     def test_audit_read(self, isolated_store):
         from pdfsearchable import acl
+
         acl.audit_read("alice", "doc1", ip="127.0.0.1", endpoint="/api/text", allowed=True)
         entries = acl.read_audit_log(limit=10)
         assert len(entries) >= 1
@@ -824,6 +930,7 @@ class TestACL:
     def test_load_corrupted_acl_file(self, isolated_store):
         """_load() falls back to default when acl.json is corrupt (lines 57-61)."""
         from pdfsearchable import acl
+
         acl.invalidate_cache()
         p = Path.cwd() / ".pdfsearchable" / "acl.json"
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -836,6 +943,7 @@ class TestACL:
     def test_can_read_empty_file_id(self, isolated_store):
         """can_read returns False for empty file_id (line 77)."""
         from pdfsearchable import acl
+
         acl.invalidate_cache()
         assert acl.can_read("alice", "") is False
         assert acl.can_read(None, "") is False
@@ -844,6 +952,7 @@ class TestACL:
     def test_grant_already_allowed_and_in_deny(self, isolated_store):
         """grant() is idempotent and removes from deny list (lines 105-108)."""
         from pdfsearchable import acl
+
         acl.invalidate_cache()
         acl.set_default_allow_all(False)
         # Put file in deny first via revoke
@@ -855,6 +964,7 @@ class TestACL:
         acl.grant("carol", "file2")
         acl.invalidate_cache()
         from pdfsearchable.acl import _load
+
         data = _load()
         assert data["users"]["carol"]["allowed"].count("file2") == 1
 
@@ -862,6 +972,7 @@ class TestACL:
     def test_revoke_removes_from_allowed(self, isolated_store):
         """revoke() removes from allowed and adds to deny (lines 117-121)."""
         from pdfsearchable import acl
+
         acl.invalidate_cache()
         acl.set_default_allow_all(True)
         acl.grant("dave", "file3")
@@ -871,11 +982,13 @@ class TestACL:
     def test_revoke_idempotent(self, isolated_store):
         """revoke() is safe when called twice (deny not duplicated, lines 119-120)."""
         from pdfsearchable import acl
+
         acl.invalidate_cache()
         acl.revoke("eve", "file4")
         acl.revoke("eve", "file4")  # second call: already in deny, skip
         acl.invalidate_cache()
         from pdfsearchable.acl import _load
+
         data = _load()
         assert data["users"]["eve"]["deny"].count("file4") == 1
 
@@ -883,6 +996,7 @@ class TestACL:
     def test_audit_read_exception_swallowed(self, isolated_store, monkeypatch):
         """audit_read swallows exceptions silently (lines 158-159)."""
         from pdfsearchable import acl
+
         # Path.open must raise — patch it on the Path class for audit paths
         real_path_open = Path.open
 
@@ -899,6 +1013,7 @@ class TestACL:
     def test_read_audit_log_no_file(self, isolated_store):
         """read_audit_log returns [] when audit file doesn't exist (line 166)."""
         from pdfsearchable import acl
+
         result = acl.read_audit_log(limit=5)
         assert result == []
 
@@ -906,6 +1021,7 @@ class TestACL:
     def test_read_audit_log_skips_bad_lines(self, isolated_store):
         """read_audit_log skips corrupted lines (lines 172-173)."""
         from pdfsearchable import acl
+
         p = Path.cwd() / ".pdfsearchable" / "read_audit.jsonl"
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text('{"user":"ok","file_id":"x"}\nNOT_JSON\n', encoding="utf-8")
@@ -917,6 +1033,7 @@ class TestACL:
     def test_audit_anonymous_user(self, isolated_store):
         """audit_read uses 'anonymous' when user is None."""
         from pdfsearchable import acl
+
         acl.audit_read(None, "docZ", ip="", endpoint="")
         entries = acl.read_audit_log(limit=5)
         assert entries[-1]["user"] == "anonymous"
@@ -928,6 +1045,7 @@ class TestACL:
 class TestTombstone:
     def test_add_and_restore(self, isolated_store):
         from pdfsearchable import tombstone
+
         tombstone.tombstone_add("f1", {"name": "test.pdf", "pages": 5})
         restored = tombstone.tombstone_restore("f1")
         assert restored is not None
@@ -937,6 +1055,7 @@ class TestTombstone:
 
     def test_list(self, isolated_store):
         from pdfsearchable import tombstone
+
         tombstone.tombstone_add("fa", {"a": 1})
         tombstone.tombstone_add("fb", {"b": 2})
         lst = tombstone.tombstone_list()
@@ -945,6 +1064,7 @@ class TestTombstone:
 
     def test_cleanup(self, isolated_store):
         from pdfsearchable import tombstone
+
         tombstone.tombstone_add("old", {"x": 1})
         # Force old timestamp
         p = Path.cwd() / ".pdfsearchable" / "tombstones" / "old.json"
@@ -958,6 +1078,7 @@ class TestTombstone:
     def test_restore_corrupt_json(self, isolated_store):
         """tombstone_restore returns None when tombstone file is corrupt (lines 55-56)."""
         from pdfsearchable import tombstone
+
         d = Path.cwd() / ".pdfsearchable" / "tombstones"
         d.mkdir(parents=True, exist_ok=True)
         bad_file = d / "corrupt.json"
@@ -969,6 +1090,7 @@ class TestTombstone:
     def test_restore_unlink_exception(self, isolated_store, monkeypatch):
         """tombstone_restore continues even if unlink fails (lines 60-61)."""
         from pdfsearchable import tombstone
+
         tombstone.tombstone_add("unlink_fail", {"k": "v"})
 
         real_unlink = Path.unlink
@@ -988,6 +1110,7 @@ class TestTombstone:
     def test_list_no_dir(self, isolated_store):
         """tombstone_list returns [] when tombstone dir doesn't exist (line 68)."""
         from pdfsearchable import tombstone
+
         result = tombstone.tombstone_list()
         assert result == []
 
@@ -995,6 +1118,7 @@ class TestTombstone:
     def test_list_skips_corrupt(self, isolated_store):
         """tombstone_list skips files with invalid JSON (lines 75-76)."""
         from pdfsearchable import tombstone
+
         tombstone.tombstone_add("good_one", {"data": "ok"})
         d = Path.cwd() / ".pdfsearchable" / "tombstones"
         bad_file = d / "bad_entry.json"
@@ -1008,6 +1132,7 @@ class TestTombstone:
     def test_cleanup_no_dir(self, isolated_store):
         """tombstone_cleanup returns 0 when tombstone dir doesn't exist (line 86)."""
         from pdfsearchable import tombstone
+
         removed = tombstone.tombstone_cleanup(ttl_hours=24)
         assert removed == 0
 
@@ -1016,6 +1141,7 @@ class TestTombstone:
         """tombstone_cleanup does not remove recent tombstones (lines 91-95)."""
         from pdfsearchable import tombstone
         import time
+
         tombstone.tombstone_add("recent_one", {"y": 2})
         removed = tombstone.tombstone_cleanup(ttl_hours=24)
         assert removed == 0
@@ -1024,12 +1150,14 @@ class TestTombstone:
     def test_tombstone_get_not_found(self, isolated_store):
         """tombstone_get returns None for nonexistent file_id (lines 100-101)."""
         from pdfsearchable import tombstone
+
         result = tombstone.tombstone_get("does_not_exist")
         assert result is None
 
     def test_tombstone_get_corrupt(self, isolated_store):
         """tombstone_get returns None for corrupt JSON (lines 104-106)."""
         from pdfsearchable import tombstone
+
         d = Path.cwd() / ".pdfsearchable" / "tombstones"
         d.mkdir(parents=True, exist_ok=True)
         bad = d / "corrupt2.json"
@@ -1040,6 +1168,7 @@ class TestTombstone:
     def test_tombstone_get_valid(self, isolated_store):
         """tombstone_get returns data for existing tombstone (lines 103-104)."""
         from pdfsearchable import tombstone
+
         tombstone.tombstone_add("get_test", {"z": 99})
         result = tombstone.tombstone_get("get_test")
         assert result is not None
@@ -1057,6 +1186,7 @@ class TestClassifierFeedback:
         """_load_raw falls back when 'examples' key is missing (line 47-48)."""
         import pdfsearchable.store as store_mod
         import pdfsearchable.classifier_feedback as cf
+
         store_mod.STORE_DIR.mkdir(parents=True, exist_ok=True)
         bad_data = {"version": 1}  # no "examples" key
         fb_file = store_mod.STORE_DIR / cf.FEEDBACK_FILE_NAME
@@ -1070,6 +1200,7 @@ class TestClassifierFeedback:
         """_load_raw falls back when 'examples' is not a list (line 49-50)."""
         import pdfsearchable.store as store_mod
         import pdfsearchable.classifier_feedback as cf
+
         store_mod.STORE_DIR.mkdir(parents=True, exist_ok=True)
         bad_data = {"version": 1, "examples": "not a list"}
         fb_file = store_mod.STORE_DIR / cf.FEEDBACK_FILE_NAME
@@ -1083,6 +1214,7 @@ class TestClassifierFeedback:
         """_load_raw falls back on corrupt JSON (lines 52-57)."""
         import pdfsearchable.store as store_mod
         import pdfsearchable.classifier_feedback as cf
+
         store_mod.STORE_DIR.mkdir(parents=True, exist_ok=True)
         fb_file = store_mod.STORE_DIR / cf.FEEDBACK_FILE_NAME
         fb_file.write_text("NOT VALID JSON", encoding="utf-8")
@@ -1106,6 +1238,7 @@ class TestClassifierFeedback:
             return real_open(path, mode, *args, **kwargs)
 
         import builtins
+
         monkeypatch.setattr(builtins, "open", bad_open)
 
         data = {"version": 1, "examples": []}
@@ -1117,6 +1250,7 @@ class TestClassifierFeedback:
     def test_record_and_get_few_shot(self, isolated_store):
         """record_correction saves example; get_few_shot_examples returns it."""
         import pdfsearchable.classifier_feedback as cf
+
         cf.record_correction("file_aa", "invoice", "Texto de fatura aqui")
         examples = cf.get_few_shot_examples(max_n=5)
         assert len(examples) == 1
@@ -1127,6 +1261,7 @@ class TestClassifierFeedback:
     def test_record_correction_snippet_truncation(self, isolated_store):
         """record_correction truncates text_snippet to 500 chars."""
         import pdfsearchable.classifier_feedback as cf
+
         long_text = "X" * 1000
         cf.record_correction("file_bb", "report", long_text)
         examples = cf.list_examples()
@@ -1136,6 +1271,7 @@ class TestClassifierFeedback:
     def test_record_correction_idempotency(self, isolated_store):
         """record_correction updates existing entry for same file_id."""
         import pdfsearchable.classifier_feedback as cf
+
         cf.record_correction("file_cc", "invoice", "first snippet")
         cf.record_correction("file_cc", "contract", "updated snippet")
         examples = cf.list_examples()
@@ -1146,6 +1282,7 @@ class TestClassifierFeedback:
     def test_sliding_window(self, isolated_store, monkeypatch):
         """record_correction drops oldest entry when MAX_EXAMPLES reached (lines 114-115)."""
         import pdfsearchable.classifier_feedback as cf
+
         monkeypatch.setattr(cf, "MAX_EXAMPLES", 3)
         cf.record_correction("f1", "t1", "s1")
         cf.record_correction("f2", "t2", "s2")
@@ -1161,6 +1298,7 @@ class TestClassifierFeedback:
     def test_list_examples(self, isolated_store):
         """list_examples returns complete metadata (lines 170-172)."""
         import pdfsearchable.classifier_feedback as cf
+
         cf.record_correction("f_list", "report", "snippet list", source="api")
         entries = cf.list_examples()
         assert len(entries) == 1
@@ -1173,6 +1311,7 @@ class TestClassifierFeedback:
     def test_clear_examples(self, isolated_store):
         """clear_examples removes all saved examples."""
         import pdfsearchable.classifier_feedback as cf
+
         cf.record_correction("f_clear", "x", "text")
         cf.clear_examples()
         assert cf.example_count() == 0
@@ -1181,6 +1320,7 @@ class TestClassifierFeedback:
     def test_get_few_shot_fewer_than_max(self, isolated_store):
         """get_few_shot_examples returns all when fewer than max_n."""
         import pdfsearchable.classifier_feedback as cf
+
         cf.record_correction("f_a", "t1", "s1")
         cf.record_correction("f_b", "t2", "s2")
         examples = cf.get_few_shot_examples(max_n=10)
@@ -1190,6 +1330,7 @@ class TestClassifierFeedback:
     def test_get_few_shot_more_than_max(self, isolated_store):
         """get_few_shot_examples returns last max_n examples."""
         import pdfsearchable.classifier_feedback as cf
+
         for i in range(10):
             cf.record_correction(f"f_{i}", f"type_{i}", f"snippet_{i}")
         examples = cf.get_few_shot_examples(max_n=3)
@@ -1200,12 +1341,14 @@ class TestClassifierFeedback:
 
 # ── Extra gap-filling tests ──────────────────────────────────────────────────
 
+
 class TestACLExtraGaps:
     """Covers acl.py lines 158-159 (audit_read Path.open exception)."""
 
     def test_audit_read_path_open_raises(self, isolated_store, monkeypatch):
         """audit_read swallows Path.open OSError (lines 158-159)."""
         from pdfsearchable import acl
+
         real_open = Path.open
 
         def bad_open(self, *args, **kwargs):
@@ -1272,6 +1415,7 @@ class TestCryptoExtraGaps:
                 saved[k] = sys.modules.pop(k)
         try:
             import builtins
+
             real_import = builtins.__import__
 
             def fake_import(name, *args, **kwargs):
@@ -1290,6 +1434,7 @@ class TestCryptoExtraGaps:
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv("PDFSEARCHABLE_ENCRYPTION_PASSPHRASE", raising=False)
         import pdfsearchable.crypto_store as cs
+
         data = b"plain data"
         assert cs.encrypt_bytes(data) is data
 
@@ -1320,6 +1465,7 @@ class TestMetricsExtraGaps:
         saved = sys.modules.pop("fitz", None)
         try:
             import builtins
+
             real_import = builtins.__import__
 
             def no_fitz(name, *args, **kwargs):
@@ -1359,10 +1505,13 @@ class TestSavedSearchesExtraGaps:
 
         save_search("hs_search", "test query")
 
-        monkeypatch.setattr(hs_mod, "hybrid_search",
-                            lambda q, top_k=50, enable_semantic=None: [
-                                {"file_id": "f1", "page": 1, "snippet": "s"}
-                            ])
+        monkeypatch.setattr(
+            hs_mod,
+            "hybrid_search",
+            lambda q, top_k=50, enable_semantic=None: [
+                {"file_id": "f1", "page": 1, "snippet": "s"}
+            ],
+        )
 
         r = run_saved_search("hs_search")
         assert r["total_results"] == 1

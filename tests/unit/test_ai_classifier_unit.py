@@ -227,9 +227,12 @@ def test_build_prompt_few_shot_exception(monkeypatch):
 def test_build_prompt_few_shot_module_missing(monkeypatch):
     """Módulo classifier_feedback ausente → ImportError capturado, sem crash (lines 277-288)."""
     import sys
+
     # Remove o módulo do cache se existir
     monkeypatch.delitem(sys.modules, "pdfsearchable.classifier_feedback", raising=False)
-    prompt = ac._build_classification_prompt("texto", "doc.pdf", {"title": "Test", "subject": "Legal", "keywords": ""})
+    prompt = ac._build_classification_prompt(
+        "texto", "doc.pdf", {"title": "Test", "subject": "Legal", "keywords": ""}
+    )
     assert "meta" in prompt.lower() or "Test" in prompt or isinstance(prompt, str)
 
 
@@ -346,6 +349,7 @@ def test_classify_with_ollama_empty_text():
 def test_classify_with_ollama_returns_label(monkeypatch):
     """_ollama_request retorna resposta válida → ClassificationResult(label, 'ollama', confidence=0.85)."""
     import pdfsearchable.content_extractors as ce
+
     monkeypatch.setattr(ce, "_ollama_request", lambda *a, **kw: "contrato")
 
     result = ac._classify_with_ollama("texto do contrato cláusula obrigações", path=None)
@@ -358,6 +362,7 @@ def test_classify_with_ollama_returns_label(monkeypatch):
 def test_classify_with_ollama_invalid_response(monkeypatch):
     """_ollama_request retorna resposta inválida → fallback heurísticas (line 356-357)."""
     import pdfsearchable.content_extractors as ce
+
     monkeypatch.setattr(ce, "_ollama_request", lambda *a, **kw: "")
 
     result = ac._classify_with_ollama("contrato de prestação cláusulas", path=None)
@@ -367,6 +372,7 @@ def test_classify_with_ollama_invalid_response(monkeypatch):
 def test_classify_with_ollama_none_response(monkeypatch):
     """_ollama_request retorna None → fallback heurísticas."""
     import pdfsearchable.content_extractors as ce
+
     monkeypatch.setattr(ce, "_ollama_request", lambda *a, **kw: None)
 
     result = ac._classify_with_ollama("relatório análise técnica", path=None)
@@ -379,6 +385,7 @@ def test_classify_with_ollama_none_response(monkeypatch):
 def test_classify_with_openai_import_error(monkeypatch):
     """openai não instalado → fallback heurísticas (lines 371-373)."""
     import sys
+
     monkeypatch.setitem(sys.modules, "openai", None)
     result = ac._classify_with_openai("contrato de prestação", path=None)
     assert result.source == "heuristics"
@@ -391,9 +398,13 @@ def test_classify_with_openai_no_api_key(monkeypatch):
     # Garante que openai está "disponível" (para não cair no ImportError primeiro)
     import sys
     import types
+
     fake_openai = types.ModuleType("openai")
+
     class FakeOpenAI:
-        def __init__(self, **kw): pass
+        def __init__(self, **kw):
+            pass
+
     fake_openai.OpenAI = FakeOpenAI
     monkeypatch.setitem(sys.modules, "openai", fake_openai)
 
@@ -407,9 +418,13 @@ def test_classify_with_openai_empty_text(monkeypatch):
 
     import sys
     import types
+
     fake_openai = types.ModuleType("openai")
+
     class FakeOpenAI:
-        def __init__(self, **kw): pass
+        def __init__(self, **kw):
+            pass
+
     fake_openai.OpenAI = FakeOpenAI
     monkeypatch.setitem(sys.modules, "openai", fake_openai)
 
@@ -526,6 +541,7 @@ def test_classify_with_openai_label_not_recognized(monkeypatch):
 def test_classify_document_by_name_edital():
     """Nome com 'edital' → ClassificationResult('edital', confidence=0.9)."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("edital_concurso_2024.pdf"))
     assert r.label == "edital"
     assert r.confidence == 0.9
@@ -534,6 +550,7 @@ def test_classify_document_by_name_edital():
 def test_classify_document_by_name_contrat():
     """Nome com 'contrat' → contrato."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("contrat_servicos.pdf"))
     assert r.label == "contrato"
 
@@ -541,6 +558,7 @@ def test_classify_document_by_name_contrat():
 def test_classify_document_by_name_contract():
     """Nome com 'contract' → contrato."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("contract_2024.pdf"))
     assert r.label == "contrato"
 
@@ -548,6 +566,7 @@ def test_classify_document_by_name_contract():
 def test_classify_document_by_name_nota_fiscal():
     """Nome com 'nota_fiscal' → nota_fiscal."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("nota_fiscal_001.pdf"))
     assert r.label == "nota_fiscal"
 
@@ -555,6 +574,7 @@ def test_classify_document_by_name_nota_fiscal():
 def test_classify_document_by_name_notafiscal():
     """Nome com 'notafiscal' → nota_fiscal."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("notafiscal_2024.pdf"))
     assert r.label == "nota_fiscal"
 
@@ -562,6 +582,7 @@ def test_classify_document_by_name_notafiscal():
 def test_classify_document_by_name_danfe():
     """Nome com 'danfe' → nota_fiscal."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("danfe_12345.pdf"))
     assert r.label == "nota_fiscal"
 
@@ -569,6 +590,7 @@ def test_classify_document_by_name_danfe():
 def test_classify_document_by_name_recibo():
     """Nome com 'recibo' → recibo."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("recibo_pagamento.pdf"))
     assert r.label == "recibo"
 
@@ -576,6 +598,7 @@ def test_classify_document_by_name_recibo():
 def test_classify_document_by_name_procuracao():
     """Nome com 'procuracao' → procuração."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("procuracao_especial.pdf"))
     assert r.label == "procuração"
 
@@ -583,6 +606,7 @@ def test_classify_document_by_name_procuracao():
 def test_classify_document_by_name_peticao():
     """Nome com 'peticao' → petição."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("peticao_inicial.pdf"))
     assert r.label == "petição"
 
@@ -590,6 +614,7 @@ def test_classify_document_by_name_peticao():
 def test_classify_document_by_name_politica():
     """Nome com 'politica' → política."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("politica_privacidade.pdf"))
     assert r.label == "política"
 
@@ -597,6 +622,7 @@ def test_classify_document_by_name_politica():
 def test_classify_document_by_name_privacidade():
     """Nome com 'privacidade' → política."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("privacidade_dados.pdf"))
     assert r.label == "política"
 
@@ -604,6 +630,7 @@ def test_classify_document_by_name_privacidade():
 def test_classify_document_by_name_relatorio():
     """Nome com 'relatorio' → relatório."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("relatorio_anual.pdf"))
     assert r.label == "relatório"
 
@@ -611,6 +638,7 @@ def test_classify_document_by_name_relatorio():
 def test_classify_document_by_name_report():
     """Nome com 'report' → relatório."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("annual_report.pdf"))
     assert r.label == "relatório"
 
@@ -618,6 +646,7 @@ def test_classify_document_by_name_report():
 def test_classify_document_by_name_registro():
     """Nome com 'registro' → registro."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("registro_imigrantes.pdf"))
     assert r.label == "registro"
 
@@ -625,6 +654,7 @@ def test_classify_document_by_name_registro():
 def test_classify_document_by_name_livro():
     """Nome com 'livro' → registro."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("livro_registro.pdf"))
     assert r.label == "registro"
 
@@ -632,6 +662,7 @@ def test_classify_document_by_name_livro():
 def test_classify_document_by_name_rjanrio():
     """Nome com 'rjanrio' → registro."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("rjanrio_colecao.pdf"))
     assert r.label == "registro"
 
@@ -639,6 +670,7 @@ def test_classify_document_by_name_rjanrio():
 def test_classify_document_by_name_hif():
     """Nome com 'hif' → registro."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("hif_historico.pdf"))
     assert r.label == "registro"
 
@@ -646,6 +678,7 @@ def test_classify_document_by_name_hif():
 def test_classify_document_by_name_ata_short():
     """Nome com 'ata' curto → ata."""
     from pathlib import Path
+
     r = ac.classify_document("", path=Path("ata_reuniao.pdf"))
     assert r.label == "ata"
 
@@ -653,6 +686,7 @@ def test_classify_document_by_name_ata_short():
 def test_classify_document_by_name_ata_long_not_matched():
     """Nome com 'ata' mas nome longo (≥30 chars) → não retorna ata por nome."""
     from pathlib import Path
+
     # Nome longo que contém 'ata' mas não deve ser matcheado
     long_name = "catalogo_de_dados_e_documentacao_ata.pdf"
     r = ac.classify_document("qualquer texto", path=Path(long_name))
@@ -674,11 +708,13 @@ def test_classify_document_openai_mode_with_key(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
 
     called = {}
+
     def fake_openai(text, path=None, metadata_hint=None):
         called["yes"] = True
         return ac.ClassificationResult("contrato", "openai")
 
     import unittest.mock as mock
+
     with mock.patch.object(ac, "_classify_with_openai", fake_openai):
         r = ac.classify_document("texto")
     assert called.get("yes")
@@ -695,6 +731,7 @@ def test_classify_document_auto_mode_openai_returns_heuristics(monkeypatch):
         return ac.ClassificationResult("documento", "heuristics", confidence=0.0)
 
     import unittest.mock as mock
+
     with mock.patch.object(ac, "_classify_with_openai", fake_openai):
         r = ac.classify_document("xyz abc random text 123")
     assert r.source == "heuristics"
@@ -716,11 +753,13 @@ def test_classify_with_ai_ollama_mode(monkeypatch):
     monkeypatch.setenv("PDFSEARCHABLE_AI", "ollama")
 
     called = {}
+
     def fake_ollama(text, path=None, metadata_hint=None):
         called["yes"] = True
         return ac.ClassificationResult("relatorio", "ollama")  # note: not normalized here
 
     import unittest.mock as mock
+
     with mock.patch.object(ac, "_classify_with_ollama", fake_ollama):
         r = ac.classify_with_ai("texto")
     assert called.get("yes")
@@ -732,11 +771,13 @@ def test_classify_with_ai_openai_key_present(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
 
     called = {}
+
     def fake_openai(text, path=None, metadata_hint=None):
         called["yes"] = True
         return ac.ClassificationResult("contrato", "openai")
 
     import unittest.mock as mock
+
     with mock.patch.object(ac, "_classify_with_openai", fake_openai):
         r = ac.classify_with_ai("texto")
     assert called.get("yes")
@@ -752,9 +793,11 @@ def test_classify_with_ai_no_ai_available(monkeypatch):
 
 # ── Gap-filling tests ──────────────────────────────────────────────────────
 
+
 def test_heuristics_very_low_confidence_returns_documento():
     """When best score gives conf < 0.10, return 'documento' (line 237)."""
     import pdfsearchable.ai_classifier as ac
+
     # Need a tiny score: only one keyword match in 'rest' (score=1 → conf=1/15≈0.067)
     # Use a keyword that only appears in 'rest' (not head) and only once
     text = "palavras aleatórias " * 200 + "contrato"  # 'contrato' far from head
@@ -768,6 +811,7 @@ def test_heuristics_very_low_confidence_returns_documento():
 def test_heuristics_email_regex_fallback():
     """'assunto' triggers email regex when no DOC_TYPE_KEYWORDS match (line 248-249)."""
     import pdfsearchable.ai_classifier as ac
+
     # 'assunto' matches _RE_EMAIL_HINT; no DOC_TYPE_KEYWORDS match -> regex fallback
     text = "assunto: xyz abc 123 blah blah blah"
     result_type, conf = ac._classify_by_heuristics(text, None, None)
@@ -778,6 +822,7 @@ def test_heuristics_email_regex_fallback():
 def test_heuristics_invoice_regex_fallback():
     """'valor total' triggers invoice regex with no keyword scoring hits (line 258)."""
     import pdfsearchable.ai_classifier as ac
+
     # 'valor total' matches _RE_INVOICE_HINT; no DOC_TYPE_KEYWORDS match
     text = "Documento X\nvalor total: R$ 1.250,00"
     result_type, conf = ac._classify_by_heuristics(text, None, None)
@@ -789,6 +834,7 @@ def test_build_prompt_with_few_shot_examples(isolated_store):
     """Prompt includes few-shot block when examples exist (lines 272-276)."""
     import pdfsearchable.ai_classifier as ac
     import pdfsearchable.classifier_feedback as cf
+
     cf.record_correction("ex1", "contrato", "texto de contrato exemplo", source="manual")
     prompt = ac._build_classification_prompt("sample text", "doc.pdf", None)
     assert isinstance(prompt, str)
@@ -800,6 +846,7 @@ def test_ollama_classify_empty_content_falls_back_to_heuristics(monkeypatch):
     """_classify_with_ollama falls back to heuristics when Ollama returns empty (line 354-356)."""
     import pdfsearchable.ai_classifier as ac
     import pdfsearchable.content_extractors as ce
+
     monkeypatch.setattr(ce, "_ollama_request", lambda *a, **kw: "")
     r = ac._classify_with_ollama("contrato de prestação de serviços cláusulas obrigações")
     assert r.source == "heuristics"
@@ -808,6 +855,7 @@ def test_ollama_classify_empty_content_falls_back_to_heuristics(monkeypatch):
 def test_classify_auto_openai_falls_back_to_heuristics(monkeypatch):
     """auto mode: OpenAI returns non-openai source → fall back to heuristics (line 460)."""
     import pdfsearchable.ai_classifier as ac
+
     monkeypatch.setenv("PDFSEARCHABLE_AI", "auto")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-fake")
 
@@ -815,6 +863,7 @@ def test_classify_auto_openai_falls_back_to_heuristics(monkeypatch):
         return ac.ClassificationResult("documento", "heuristics")  # not "openai"
 
     import unittest.mock as mock
+
     with mock.patch.object(ac, "_classify_with_openai", fake_openai):
         r = ac.classify_with_ai("contrato texto")
     assert r.source in ("heuristics", "ollama")

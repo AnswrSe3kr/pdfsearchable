@@ -82,12 +82,14 @@ def hybrid_search(
 
         fts_raw = fts_search(query, limit=fts_limit) or []
         for rank, (file_id, page_num, snippet) in enumerate(fts_raw, start=1):
-            fts_results.append({
-                "file_id": file_id,
-                "page": page_num,
-                "snippet": snippet,
-                "rank": rank,
-            })
+            fts_results.append(
+                {
+                    "file_id": file_id,
+                    "page": page_num,
+                    "snippet": snippet,
+                    "rank": rank,
+                }
+            )
     except Exception as e:
         logger.warning("hybrid_search: FTS falhou: %s", e)
 
@@ -102,17 +104,21 @@ def hybrid_search(
             from pdfsearchable.semantic_search import semantic_search as sem_search
 
             _model = model or os.environ.get("PDFSEARCHABLE_EMBED_MODEL", "nomic-embed-text")
-            _url = ollama_url or os.environ.get("PDFSEARCHABLE_OLLAMA_URL", "http://localhost:11434")
+            _url = ollama_url or os.environ.get(
+                "PDFSEARCHABLE_OLLAMA_URL", "http://localhost:11434"
+            )
             sem_raw = sem_search(query, model=_model, ollama_url=_url, top_k=semantic_limit) or []
             for rank, hit in enumerate(sem_raw, start=1):
                 # semantic_search retorna dicts com file_id + outros; adapta
-                semantic_results.append({
-                    "file_id": hit.get("file_id", ""),
-                    "page": hit.get("page", hit.get("page_num", 1)),
-                    "snippet": hit.get("snippet", hit.get("text", ""))[:200],
-                    "rank": rank,
-                    "similarity": hit.get("similarity", hit.get("score")),
-                })
+                semantic_results.append(
+                    {
+                        "file_id": hit.get("file_id", ""),
+                        "page": hit.get("page", hit.get("page_num", 1)),
+                        "snippet": hit.get("snippet", hit.get("text", ""))[:200],
+                        "rank": rank,
+                        "similarity": hit.get("similarity", hit.get("score")),
+                    }
+                )
         except Exception as e:
             logger.warning("hybrid_search: semântica falhou: %s", e)
 
@@ -121,30 +127,36 @@ def hybrid_search(
 
     for r in fts_results:
         key = (r["file_id"], int(r.get("page", 0)))
-        entry = fused.setdefault(key, {
-            "file_id": r["file_id"],
-            "page": key[1],
-            "score": 0.0,
-            "snippet": r.get("snippet", ""),
-            "sources": [],
-            "fts_rank": None,
-            "semantic_rank": None,
-        })
+        entry = fused.setdefault(
+            key,
+            {
+                "file_id": r["file_id"],
+                "page": key[1],
+                "score": 0.0,
+                "snippet": r.get("snippet", ""),
+                "sources": [],
+                "fts_rank": None,
+                "semantic_rank": None,
+            },
+        )
         entry["score"] += fts_weight * _rrf_score(r["rank"])
         entry["sources"].append("fts")
         entry["fts_rank"] = r["rank"]
 
     for r in semantic_results:
         key = (r["file_id"], int(r.get("page", 0)))
-        entry = fused.setdefault(key, {
-            "file_id": r["file_id"],
-            "page": key[1],
-            "score": 0.0,
-            "snippet": r.get("snippet", ""),
-            "sources": [],
-            "fts_rank": None,
-            "semantic_rank": None,
-        })
+        entry = fused.setdefault(
+            key,
+            {
+                "file_id": r["file_id"],
+                "page": key[1],
+                "score": 0.0,
+                "snippet": r.get("snippet", ""),
+                "sources": [],
+                "fts_rank": None,
+                "semantic_rank": None,
+            },
+        )
         entry["score"] += semantic_weight * _rrf_score(r["rank"])
         entry["sources"].append("semantic")
         entry["semantic_rank"] = r["rank"]
@@ -168,6 +180,7 @@ def _semantic_available() -> bool:
     """Checa se Ollama está acessível sem falhar duro."""
     try:
         from pdfsearchable.content_extractors import ollama_health_check
+
         return bool(ollama_health_check())
     except Exception:
         return False

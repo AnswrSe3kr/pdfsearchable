@@ -1,4 +1,5 @@
 """Testes unitários para geo_apis.py — ViaCEP, IP-API, extração de CEPs."""
+
 import os
 import json
 import pytest
@@ -64,7 +65,13 @@ class TestFetchIpApi:
         assert fetch_ip_api(None) is None
 
     def test_valid_ip_mock(self):
-        fake = {"status": "success", "country": "Brazil", "city": "São Paulo", "lat": -23.5, "lon": -46.6}
+        fake = {
+            "status": "success",
+            "country": "Brazil",
+            "city": "São Paulo",
+            "lat": -23.5,
+            "lon": -46.6,
+        }
         with patch("pdfsearchable.geo_apis._urlopen_json", return_value=fake):
             result = fetch_ip_api("8.8.8.8")
             assert result["country"] == "Brazil"

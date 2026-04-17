@@ -8,6 +8,7 @@ grafo interactivo D3.js para visualização.
 Dois nós partilham uma aresta quando co-ocorrem no mesmo documento.
 O peso da aresta = número de documentos onde ambos co-ocorrem.
 """
+
 from __future__ import annotations
 
 import json
@@ -36,27 +37,27 @@ NODE_TYPE_DATE = "date"
 # Cores por tipo de nó (CSS)
 _NODE_COLORS: dict[str, str] = {
     NODE_TYPE_DOCUMENT: "#4A90D9",
-    NODE_TYPE_PERSON:   "#E67E22",
-    NODE_TYPE_ORG:      "#27AE60",
-    NODE_TYPE_EMAIL:    "#8E44AD",
-    NODE_TYPE_CPF:      "#E74C3C",
-    NODE_TYPE_CNPJ:     "#C0392B",
+    NODE_TYPE_PERSON: "#E67E22",
+    NODE_TYPE_ORG: "#27AE60",
+    NODE_TYPE_EMAIL: "#8E44AD",
+    NODE_TYPE_CPF: "#E74C3C",
+    NODE_TYPE_CNPJ: "#C0392B",
     NODE_TYPE_MONETARY: "#F39C12",
     NODE_TYPE_LOCATION: "#16A085",
-    NODE_TYPE_DATE:     "#7F8C8D",
+    NODE_TYPE_DATE: "#7F8C8D",
 }
 
 # Raios dos nós por tipo (px)
 _NODE_RADII: dict[str, int] = {
     NODE_TYPE_DOCUMENT: 18,
-    NODE_TYPE_PERSON:   12,
-    NODE_TYPE_ORG:      14,
-    NODE_TYPE_EMAIL:    8,
-    NODE_TYPE_CPF:      8,
-    NODE_TYPE_CNPJ:     8,
+    NODE_TYPE_PERSON: 12,
+    NODE_TYPE_ORG: 14,
+    NODE_TYPE_EMAIL: 8,
+    NODE_TYPE_CPF: 8,
+    NODE_TYPE_CNPJ: 8,
     NODE_TYPE_MONETARY: 8,
     NODE_TYPE_LOCATION: 10,
-    NODE_TYPE_DATE:     8,
+    NODE_TYPE_DATE: 8,
 }
 
 # ---------------------------------------------------------------------------
@@ -120,21 +121,21 @@ def build_graph(files: list[dict[str, Any]]) -> dict[str, Any]:
                 edge_map[key]["doc_ids"].append(file_id)
 
         # E-mails
-        for email in (meta.get("identified_emails") or []):
+        for email in meta.get("identified_emails") or []:
             _add_entity(f"email:{email.lower()}", email.lower(), NODE_TYPE_EMAIL)
 
         # CPFs
-        for cpf in (meta.get("identified_cpfs") or []):
+        for cpf in meta.get("identified_cpfs") or []:
             clean = re.sub(r"\D", "", cpf)
             _add_entity(f"cpf:{clean}", cpf, NODE_TYPE_CPF)
 
         # CNPJs
-        for cnpj in (meta.get("identified_cnpjs") or []):
+        for cnpj in meta.get("identified_cnpjs") or []:
             clean = re.sub(r"\D", "", cnpj)
             _add_entity(f"cnpj:{clean}", cnpj, NODE_TYPE_CNPJ)
 
         # Partes / participantes
-        for party in (meta.get("parties") or []):
+        for party in meta.get("parties") or []:
             if not party or len(party) < 3:
                 continue
             ptype = _guess_party_type(party)
@@ -153,7 +154,7 @@ def build_graph(files: list[dict[str, Any]]) -> dict[str, Any]:
         # Arestas entre entidades do mesmo documento (co-ocorrência)
         unique_entities = list(dict.fromkeys(doc_entities))  # preservar ordem, sem duplicatas
         for i, ea in enumerate(unique_entities):
-            for eb in unique_entities[i + 1:]:
+            for eb in unique_entities[i + 1 :]:
                 key = tuple(sorted([ea, eb]))
                 edge_map[key]["weight"] += 1  # type: ignore[index]
                 if file_id not in edge_map[key]["doc_ids"]:  # type: ignore[index]
@@ -163,16 +164,18 @@ def build_graph(files: list[dict[str, Any]]) -> dict[str, Any]:
     node_list = []
     for n in nodes.values():
         ntype = n["type"]
-        node_list.append({
-            "id": n["id"],
-            "label": n["label"],
-            "type": ntype,
-            "color": _NODE_COLORS.get(ntype, "#95A5A6"),
-            "radius": _NODE_RADII.get(ntype, 8),
-            "doc_count": len(n.get("doc_ids", [])),
-            "doc_ids": n.get("doc_ids", []),
-            "doc_type": n.get("doc_type", ""),
-        })
+        node_list.append(
+            {
+                "id": n["id"],
+                "label": n["label"],
+                "type": ntype,
+                "color": _NODE_COLORS.get(ntype, "#95A5A6"),
+                "radius": _NODE_RADII.get(ntype, 8),
+                "doc_count": len(n.get("doc_ids", [])),
+                "doc_ids": n.get("doc_ids", []),
+                "doc_type": n.get("doc_type", ""),
+            }
+        )
 
     edge_list = [
         {
@@ -191,10 +194,32 @@ def build_graph(files: list[dict[str, Any]]) -> dict[str, Any]:
 def _guess_party_type(name: str) -> str:
     """Heurística simples para distinguir pessoa física de organização."""
     org_keywords = (
-        "ltda", "s.a.", "s/a", "sa ", "eireli", "epp", "me ", "inc.", "corp.",
-        "empresa", "companhia", "associação", "fundação", "instituto", "banco",
-        "município", "estado ", "união ", "federal", "ministério", "secretaria",
-        "prefeitura", "câmara", "tribunal", "universidade", "faculdade",
+        "ltda",
+        "s.a.",
+        "s/a",
+        "sa ",
+        "eireli",
+        "epp",
+        "me ",
+        "inc.",
+        "corp.",
+        "empresa",
+        "companhia",
+        "associação",
+        "fundação",
+        "instituto",
+        "banco",
+        "município",
+        "estado ",
+        "união ",
+        "federal",
+        "ministério",
+        "secretaria",
+        "prefeitura",
+        "câmara",
+        "tribunal",
+        "universidade",
+        "faculdade",
     )
     lower = name.lower()
     if any(kw in lower for kw in org_keywords):
@@ -442,7 +467,12 @@ def generate_graph_html(files: list[dict[str, Any]], output_path: Path) -> Path:
     tmp = output_path.with_suffix(".tmp.html")
     tmp.write_text(html, encoding="utf-8")
     tmp.replace(output_path)
-    _log.info("Grafo gerado: %s (%d nós, %d arestas)", output_path, len(graph_data["nodes"]), len(graph_data["edges"]))
+    _log.info(
+        "Grafo gerado: %s (%d nós, %d arestas)",
+        output_path,
+        len(graph_data["nodes"]),
+        len(graph_data["edges"]),
+    )
     return output_path
 
 

@@ -67,9 +67,7 @@ def test_save_index_resets_ttl(isolated_store, monkeypatch) -> None:
 
 
 @pytest.mark.unit
-def test_cache_invalidated_on_meta_file_path_change(
-    isolated_store, tmp_path, monkeypatch
-) -> None:
+def test_cache_invalidated_on_meta_file_path_change(isolated_store, tmp_path, monkeypatch) -> None:
     """
     Quando META_FILE muda de caminho (ex.: novo isolated_store),
     o TTL não deve ser aplicado — o cache deve ser invalidado.
@@ -108,6 +106,7 @@ def test_ttl_disabled_when_zero(isolated_store, monkeypatch) -> None:
     # Modificar o ficheiro directamente (sem save_index)
     raw = store_mod.META_FILE.read_text(encoding="utf-8")
     import json
+
     data = json.loads(raw)
     data["files"] = [{"id": "0" * 16, "name": "direto.pdf"}]
     store_mod.META_FILE.write_text(json.dumps(data), encoding="utf-8")

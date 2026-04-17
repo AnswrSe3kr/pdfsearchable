@@ -17,7 +17,10 @@ from pdfsearchable.exceptions import IndexingError, ValidationError
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _make_pdf(tmp_path: Path, text: str = "Sample text for indexing test.", name: str = "doc.pdf") -> Path:
+
+def _make_pdf(
+    tmp_path: Path, text: str = "Sample text for indexing test.", name: str = "doc.pdf"
+) -> Path:
     """Creates a minimal fitz PDF and returns its path."""
     p = tmp_path / name
     d = fitz.open()
@@ -64,6 +67,7 @@ def _fake_extract(*args, **kwargs):
 # _max_workers_auto
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_max_workers_auto_respects_env(monkeypatch):
     monkeypatch.setenv("PDFSEARCHABLE_MAX_WORKERS", "3")
     assert indexer._max_workers_auto() == 3
@@ -95,6 +99,7 @@ def test_max_workers_auto_no_env(monkeypatch):
 # ─────────────────────────────────────────────────────────────────────────────
 # _is_text_corrupt
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_is_text_corrupt_empty():
     assert indexer._is_text_corrupt("") is False
@@ -141,6 +146,7 @@ def test_is_text_corrupt_custom_threshold():
 # _has_low_entropy
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_low_entropy_uniform():
     assert indexer._has_low_entropy("a" * 100) is True
 
@@ -175,6 +181,7 @@ def test_low_entropy_custom_threshold():
 # _enrich_document
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestEnrichDocument:
     """Tests for _enrich_document with mocked external deps."""
 
@@ -207,8 +214,16 @@ class TestEnrichDocument:
             page_confidences=[100.0],
         )
         for key in (
-            "word_count", "text_chars", "doc_type", "language", "ocr_percentage",
-            "ocr_avg_confidence", "tags", "entities", "identified_dates", "enrichment_partial",
+            "word_count",
+            "text_chars",
+            "doc_type",
+            "language",
+            "ocr_percentage",
+            "ocr_avg_confidence",
+            "tags",
+            "entities",
+            "identified_dates",
+            "enrichment_partial",
         ):
             assert key in result, f"Missing key: {key}"
 
@@ -308,10 +323,20 @@ class TestEnrichDocument:
     def test_ollama_mode_parallel_tasks(self, monkeypatch):
         """When ai_mode=ollama, parallel Ollama tasks are launched."""
         monkeypatch.setattr(indexer, "_get_ai_mode", lambda: "ollama")
-        monkeypatch.setattr(indexer, "extract_summary_and_subject_ollama", lambda t: ("summary_text", "subject_text"))
+        monkeypatch.setattr(
+            indexer,
+            "extract_summary_and_subject_ollama",
+            lambda t: ("summary_text", "subject_text"),
+        )
         monkeypatch.setattr(indexer, "extract_tags_ollama", lambda t, max_tags=5: ["ia_tag"])
-        monkeypatch.setattr(indexer, "extract_parties_ollama", lambda t, max_parties=8: ["ia_party"])
-        monkeypatch.setattr(indexer, "extract_metadata_ollama", lambda t: {"dates": ["01/01/2024"], "monetary_values": [], "parties": []})
+        monkeypatch.setattr(
+            indexer, "extract_parties_ollama", lambda t, max_parties=8: ["ia_party"]
+        )
+        monkeypatch.setattr(
+            indexer,
+            "extract_metadata_ollama",
+            lambda t: {"dates": ["01/01/2024"], "monetary_values": [], "parties": []},
+        )
         monkeypatch.setattr(indexer, "merge_entities_with_ollama", lambda e, m: e)
 
         result = indexer._enrich_document(
@@ -332,10 +357,20 @@ class TestEnrichDocument:
     def test_ollama_task_failure_marks_partial(self, monkeypatch):
         """When Ollama task raises, enrichment_partial=True."""
         monkeypatch.setattr(indexer, "_get_ai_mode", lambda: "ollama")
-        monkeypatch.setattr(indexer, "extract_summary_and_subject_ollama", MagicMock(side_effect=Exception("Ollama down")))
-        monkeypatch.setattr(indexer, "extract_tags_ollama", MagicMock(side_effect=Exception("Ollama down")))
-        monkeypatch.setattr(indexer, "extract_parties_ollama", MagicMock(side_effect=Exception("Ollama down")))
-        monkeypatch.setattr(indexer, "extract_metadata_ollama", MagicMock(side_effect=Exception("Ollama down")))
+        monkeypatch.setattr(
+            indexer,
+            "extract_summary_and_subject_ollama",
+            MagicMock(side_effect=Exception("Ollama down")),
+        )
+        monkeypatch.setattr(
+            indexer, "extract_tags_ollama", MagicMock(side_effect=Exception("Ollama down"))
+        )
+        monkeypatch.setattr(
+            indexer, "extract_parties_ollama", MagicMock(side_effect=Exception("Ollama down"))
+        )
+        monkeypatch.setattr(
+            indexer, "extract_metadata_ollama", MagicMock(side_effect=Exception("Ollama down"))
+        )
 
         result = indexer._enrich_document(
             full_text="Texto suficiente para Ollama.",
@@ -355,7 +390,11 @@ class TestEnrichDocument:
         monkeypatch.setattr(indexer, "extract_summary_and_subject_ollama", lambda t: None)
         monkeypatch.setattr(indexer, "extract_tags_ollama", lambda t, max_tags=5: [])
         monkeypatch.setattr(indexer, "extract_parties_ollama", lambda t, max_parties=8: [])
-        monkeypatch.setattr(indexer, "extract_metadata_ollama", lambda t: {"dates": ["02/02/2024"], "monetary_values": [], "parties": []})
+        monkeypatch.setattr(
+            indexer,
+            "extract_metadata_ollama",
+            lambda t: {"dates": ["02/02/2024"], "monetary_values": [], "parties": []},
+        )
         monkeypatch.setattr(indexer, "merge_entities_with_ollama", lambda e, m: e)
 
         result = indexer._enrich_document(
@@ -377,9 +416,15 @@ class TestEnrichDocument:
         monkeypatch.setattr(indexer, "extract_summary_and_subject_ollama", lambda t: None)
         monkeypatch.setattr(indexer, "extract_tags_ollama", lambda t, max_tags=5: [])
         monkeypatch.setattr(indexer, "extract_parties_ollama", lambda t, max_parties=8: [])
-        monkeypatch.setattr(indexer, "extract_metadata_ollama", lambda t: {
-            "dates": [], "monetary_values": ["R$ 1.000,00"], "parties": ["ollama_party"]
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_metadata_ollama",
+            lambda t: {
+                "dates": [],
+                "monetary_values": ["R$ 1.000,00"],
+                "parties": ["ollama_party"],
+            },
+        )
         monkeypatch.setattr(indexer, "merge_entities_with_ollama", lambda e, m: e)
 
         result = indexer._enrich_document(
@@ -399,17 +444,21 @@ class TestEnrichDocument:
 # _extract_with_ocr (no-OCR path)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestExtractWithOcr:
     """All patches target indexer's own imported names (imported at module level)."""
 
     def test_no_ocr_returns_text(self, tmp_path, monkeypatch):
         """With OCR disabled (use_ocr=False), returns native text from PDF."""
         pdf_path = _make_pdf(tmp_path, "Hello from native text extraction.")
-        full, num_pages, page_texts, metadata, ocr_per_page, page_confs = (
-            indexer._extract_with_ocr(
-                pdf_path, mode="text", password=None, normalize=True,
-                use_ocr=False, file_id="abc123", content_hash="hash1",
-            )
+        full, num_pages, page_texts, metadata, ocr_per_page, page_confs = indexer._extract_with_ocr(
+            pdf_path,
+            mode="text",
+            password=None,
+            normalize=True,
+            use_ocr=False,
+            file_id="abc123",
+            content_hash="hash1",
         )
         assert isinstance(full, str)
         assert num_pages >= 1
@@ -420,19 +469,33 @@ class TestExtractWithOcr:
         """use_ocr=False always takes the early-return path."""
         monkeypatch.setattr(indexer, "ocr_available", lambda: True)
         pdf_path = _make_pdf(tmp_path, "Text that should be extracted natively.")
-        full, num_pages, page_texts, metadata, ocr_per_page, _ = (
-            indexer._extract_with_ocr(
-                pdf_path, "text", None, True, use_ocr=False, file_id="fid1", content_hash=None,
-            )
+        full, num_pages, page_texts, metadata, ocr_per_page, _ = indexer._extract_with_ocr(
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=False,
+            file_id="fid1",
+            content_hash=None,
         )
         assert all(v is False for v in ocr_per_page)
 
     def test_extract_extended_exception_continues(self, tmp_path, monkeypatch):
         """If extract_extended_from_doc raises, extraction still succeeds."""
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", MagicMock(side_effect=Exception("extended failed")))
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            MagicMock(side_effect=Exception("extended failed")),
+        )
         pdf_path = _make_pdf(tmp_path, "Text extracted despite extended failure.")
         full, num_pages, _, metadata, _, _ = indexer._extract_with_ocr(
-            pdf_path, "text", None, True, use_ocr=False, file_id="fid2", content_hash=None,
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=False,
+            file_id="fid2",
+            content_hash=None,
         )
         assert isinstance(full, str)
 
@@ -440,16 +503,24 @@ class TestExtractWithOcr:
         """Sequential OCR path (workers=1) processes pages one-by-one."""
         monkeypatch.setattr(indexer, "ocr_available", lambda: True)
         monkeypatch.setattr(indexer, "get_ocr_workers", lambda: 1)
-        monkeypatch.setattr(indexer, "ocr_page_from_image_bytes", lambda img, key, pn, use_cache=True, lang=None: ("ocr_text", 95.0))
+        monkeypatch.setattr(
+            indexer,
+            "ocr_page_from_image_bytes",
+            lambda img, key, pn, use_cache=True, lang=None: ("ocr_text", 95.0),
+        )
         monkeypatch.setattr(indexer, "render_page_to_image", lambda page: b"fake_image")
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "1")
 
         pdf_path = _make_pdf(tmp_path, "Text for sequential OCR test.")
-        full, num_pages, page_texts, metadata, ocr_per_page, page_confs = (
-            indexer._extract_with_ocr(
-                pdf_path, "text", None, True, use_ocr=True, file_id="fid3", content_hash=None,
-            )
+        full, num_pages, page_texts, metadata, ocr_per_page, page_confs = indexer._extract_with_ocr(
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=True,
+            file_id="fid3",
+            content_hash=None,
         )
         assert num_pages >= 1
 
@@ -457,16 +528,24 @@ class TestExtractWithOcr:
         """Parallel OCR path (workers>1) uses ThreadPoolExecutor."""
         monkeypatch.setattr(indexer, "ocr_available", lambda: True)
         monkeypatch.setattr(indexer, "get_ocr_workers", lambda: 2)
-        monkeypatch.setattr(indexer, "ocr_page_from_image_bytes", lambda img, key, pn, use_cache=True, lang=None: ("parallel_ocr_text", 88.0))
+        monkeypatch.setattr(
+            indexer,
+            "ocr_page_from_image_bytes",
+            lambda img, key, pn, use_cache=True, lang=None: ("parallel_ocr_text", 88.0),
+        )
         monkeypatch.setattr(indexer, "render_page_to_image", lambda page: b"fake_image")
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "1")
 
         pdf_path = _make_pdf(tmp_path, "Text for parallel OCR test.")
-        full, num_pages, page_texts, metadata, ocr_per_page, page_confs = (
-            indexer._extract_with_ocr(
-                pdf_path, "text", None, True, use_ocr=True, file_id="fid4", content_hash=None,
-            )
+        full, num_pages, page_texts, metadata, ocr_per_page, page_confs = indexer._extract_with_ocr(
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=True,
+            file_id="fid4",
+            content_hash=None,
         )
         assert num_pages >= 1
 
@@ -474,13 +553,21 @@ class TestExtractWithOcr:
         """render_page_to_image failure → OCR skipped for that page (img_bytes=None)."""
         monkeypatch.setattr(indexer, "ocr_available", lambda: True)
         monkeypatch.setattr(indexer, "get_ocr_workers", lambda: 1)
-        monkeypatch.setattr(indexer, "render_page_to_image", MagicMock(side_effect=Exception("render failed")))
+        monkeypatch.setattr(
+            indexer, "render_page_to_image", MagicMock(side_effect=Exception("render failed"))
+        )
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "1")
 
         pdf_path = _make_pdf(tmp_path, "Some native text here.")
         full, num_pages, _, metadata, ocr_per_page, _ = indexer._extract_with_ocr(
-            pdf_path, "text", None, True, use_ocr=True, file_id="fid5", content_hash=None,
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=True,
+            file_id="fid5",
+            content_hash=None,
         )
         assert num_pages >= 1
 
@@ -490,14 +577,26 @@ class TestExtractWithOcr:
         monkeypatch.setattr(indexer, "ocr_available", lambda: True)
         monkeypatch.setattr(indexer, "get_ocr_workers", lambda: 1)
         monkeypatch.setattr(indexer, "render_page_to_image", lambda page: b"fake_image")
-        monkeypatch.setattr(indexer, "ocr_page_from_image_bytes", lambda *a, **kw: ("clean text", 95.0))
+        monkeypatch.setattr(
+            indexer, "ocr_page_from_image_bytes", lambda *a, **kw: ("clean text", 95.0)
+        )
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
-        monkeypatch.setattr(indexer, "extract_text_from_doc", lambda doc, mode="text", normalize=True: (corrupt_text, 1, [corrupt_text], {}))
+        monkeypatch.setattr(
+            indexer,
+            "extract_text_from_doc",
+            lambda doc, mode="text", normalize=True: (corrupt_text, 1, [corrupt_text], {}),
+        )
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "0")
 
         pdf_path = _make_pdf(tmp_path, "Content.")
         full, num_pages, page_texts, metadata, ocr_per_page, _ = indexer._extract_with_ocr(
-            pdf_path, "text", None, True, use_ocr=True, file_id="fid6", content_hash=None,
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=True,
+            file_id="fid6",
+            content_hash=None,
         )
         assert num_pages == 1
 
@@ -507,15 +606,27 @@ class TestExtractWithOcr:
         monkeypatch.setattr(indexer, "ocr_available", lambda: True)
         monkeypatch.setattr(indexer, "get_ocr_workers", lambda: 1)
         monkeypatch.setattr(indexer, "render_page_to_image", lambda page: b"img")
-        monkeypatch.setattr(indexer, "ocr_page_from_image_bytes", lambda *a, **kw: ("low conf text", 5.0))
+        monkeypatch.setattr(
+            indexer, "ocr_page_from_image_bytes", lambda *a, **kw: ("low conf text", 5.0)
+        )
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
-        monkeypatch.setattr(indexer, "extract_text_from_doc", lambda doc, mode="text", normalize=True: (native, 1, [native], {}))
+        monkeypatch.setattr(
+            indexer,
+            "extract_text_from_doc",
+            lambda doc, mode="text", normalize=True: (native, 1, [native], {}),
+        )
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "0")
         monkeypatch.setenv("PDFSEARCHABLE_OCR_MIN_CONFIDENCE_VS_NATIVE", "15")
 
         pdf_path = _make_pdf(tmp_path, "dummy")
         full, _, page_texts, _, ocr_per_page, _ = indexer._extract_with_ocr(
-            pdf_path, "text", None, True, use_ocr=True, file_id="fid7", content_hash=None,
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=True,
+            file_id="fid7",
+            content_hash=None,
         )
         assert page_texts[0] == native
 
@@ -524,49 +635,83 @@ class TestExtractWithOcr:
         monkeypatch.setattr(indexer, "ocr_available", lambda: True)
         monkeypatch.setattr(indexer, "get_ocr_workers", lambda: 1)
         monkeypatch.setattr(indexer, "render_page_to_image", lambda page: b"img")
-        monkeypatch.setattr(indexer, "ocr_page_from_image_bytes", lambda *a, **kw: ("raw ocr", 90.0))
+        monkeypatch.setattr(
+            indexer, "ocr_page_from_image_bytes", lambda *a, **kw: ("raw ocr", 90.0)
+        )
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: "corrected ocr text")
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "1")
 
         pdf_path = _make_pdf(tmp_path, "dummy")
         full, _, page_texts, _, _, _ = indexer._extract_with_ocr(
-            pdf_path, "text", None, True, use_ocr=True, file_id="fid8", content_hash=None,
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=True,
+            file_id="fid8",
+            content_hash=None,
         )
         assert "corrected ocr text" in page_texts[0] or "corrected ocr text" in full
 
     def test_merge_extended_tables(self, tmp_path, monkeypatch):
         """Tables in extended metadata are merged into page texts."""
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [{"page": 1, "text": "col1|col2"}],
-            "form_fields": [], "annotations": [], "xmp": {}, "outline": [],
-            "hyperlinks": [], "page_dimensions": [], "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [{"page": 1, "text": "col1|col2"}],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
         monkeypatch.setattr(indexer, "detect_digital_signatures", lambda doc: [])
 
         pdf_path = _make_pdf(tmp_path, "Page with table.")
         full, _, page_texts, _, _, _ = indexer._extract_with_ocr(
-            pdf_path, "text", None, True, use_ocr=False, file_id="fid9", content_hash=None,
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=False,
+            file_id="fid9",
+            content_hash=None,
         )
         assert "col1|col2" in page_texts[0]
 
     def test_merge_extended_no_tables_with_other_extended(self, tmp_path, monkeypatch):
         """Extended metadata (no tables) is merged into metadata dict."""
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [],
-            "form_fields": [{"name": "field1"}],
-            "annotations": [],
-            "xmp": {"title": "Test"},
-            "outline": [],
-            "hyperlinks": [],
-            "page_dimensions": [],
-            "attached_files": [],
-            "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [{"name": "field1"}],
+                "annotations": [],
+                "xmp": {"title": "Test"},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
         monkeypatch.setattr(indexer, "detect_digital_signatures", lambda doc: [])
 
         pdf_path = _make_pdf(tmp_path, "Page with form fields.")
         full, _, page_texts, metadata, _, _ = indexer._extract_with_ocr(
-            pdf_path, "text", None, True, use_ocr=False, file_id="fid10", content_hash=None,
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=False,
+            file_id="fid10",
+            content_hash=None,
         )
         assert "extended" in metadata
 
@@ -575,8 +720,8 @@ class TestExtractWithOcr:
 # index_pdf
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestIndexPdf:
 
+class TestIndexPdf:
     @pytest.fixture(autouse=True)
     def _mock_pipeline(self, monkeypatch):
         """Stub out OCR and enrichment pipeline for all index_pdf tests."""
@@ -610,11 +755,21 @@ class TestIndexPdf:
     def test_index_pdf_simple(self, tmp_path, isolated_store, monkeypatch):
         """End-to-end index of a simple PDF with mocked store and no OCR."""
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
 
         pdf_path = _make_pdf(tmp_path, "Sample indexable content for testing.")
 
@@ -628,11 +783,21 @@ class TestIndexPdf:
     def test_skip_existing_returns_none(self, tmp_path, isolated_store, monkeypatch):
         """If file already indexed with same content_hash, returns None."""
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
 
         pdf_path = _make_pdf(tmp_path, "Content for skip-existing test.")
         # Index once
@@ -654,10 +819,22 @@ class TestIndexPdf:
 
     def test_pdf_corrupt_partial_recovery(self, tmp_path, isolated_store, monkeypatch):
         """validate_pdf returns corrupted error → partial recovery succeeds."""
-        monkeypatch.setattr(indexer, "validate_pdf", lambda path, pwd=None: (False, "PDF corrompido: dados inválidos"))
-        monkeypatch.setattr(indexer, "extract_text_from_pdf_partial", lambda path, password=None, normalize=True: (
-            "partial text", 2, ["page1 text", "page2 text"], {}, [0, 1]
-        ))
+        monkeypatch.setattr(
+            indexer,
+            "validate_pdf",
+            lambda path, pwd=None: (False, "PDF corrompido: dados inválidos"),
+        )
+        monkeypatch.setattr(
+            indexer,
+            "extract_text_from_pdf_partial",
+            lambda path, password=None, normalize=True: (
+                "partial text",
+                2,
+                ["page1 text", "page2 text"],
+                {},
+                [0, 1],
+            ),
+        )
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
 
         pdf_path = _make_pdf(tmp_path, "dummy")
@@ -666,12 +843,24 @@ class TestIndexPdf:
         assert result.get("partial_recovery") is True
         assert result["num_pages"] == 2
 
-    def test_pdf_corrupt_partial_recovery_with_failed_pages(self, tmp_path, isolated_store, monkeypatch):
+    def test_pdf_corrupt_partial_recovery_with_failed_pages(
+        self, tmp_path, isolated_store, monkeypatch
+    ):
         """Partial recovery with some failed pages includes failed_pages in result."""
-        monkeypatch.setattr(indexer, "validate_pdf", lambda path, pwd=None: (False, "PDF corrompido"))
-        monkeypatch.setattr(indexer, "extract_text_from_pdf_partial", lambda path, password=None, normalize=True: (
-            "partial text", 3, ["p1", "p2", "p3"], {}, [3]  # page 3 failed
-        ))
+        monkeypatch.setattr(
+            indexer, "validate_pdf", lambda path, pwd=None: (False, "PDF corrompido")
+        )
+        monkeypatch.setattr(
+            indexer,
+            "extract_text_from_pdf_partial",
+            lambda path, password=None, normalize=True: (
+                "partial text",
+                3,
+                ["p1", "p2", "p3"],
+                {},
+                [3],  # page 3 failed
+            ),
+        )
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
 
         pdf_path = _make_pdf(tmp_path, "dummy")
@@ -681,8 +870,14 @@ class TestIndexPdf:
 
     def test_pdf_corrupt_partial_recovery_fails_raises(self, tmp_path, monkeypatch):
         """If partial recovery also fails, raises ValidationError."""
-        monkeypatch.setattr(indexer, "validate_pdf", lambda path, pwd=None: (False, "PDF corrompido"))
-        monkeypatch.setattr(indexer, "extract_text_from_pdf_partial", MagicMock(side_effect=Exception("partial failed")))
+        monkeypatch.setattr(
+            indexer, "validate_pdf", lambda path, pwd=None: (False, "PDF corrompido")
+        )
+        monkeypatch.setattr(
+            indexer,
+            "extract_text_from_pdf_partial",
+            MagicMock(side_effect=Exception("partial failed")),
+        )
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
 
         pdf_path = _make_pdf(tmp_path, "dummy")
@@ -693,11 +888,21 @@ class TestIndexPdf:
         """Files > 20MB should auto-enable compression."""
         monkeypatch.setattr(indexer, "file_size", lambda p: 25 * 1024 * 1024)  # 25 MB
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
 
         pdf_path = _make_pdf(tmp_path, "Large file content.")
         result = indexer.index_pdf(pdf_path, use_ocr=False, skip_existing=False, compress=False)
@@ -708,14 +913,26 @@ class TestIndexPdf:
 
         embedded_pdf_bytes = _make_pdf(tmp_path, "embedded content").read_bytes()
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: True)
-        monkeypatch.setattr(indexer, "extract_embedded_pdfs", lambda path, password=None: [
-            ("embedded1.pdf", embedded_pdf_bytes)
-        ])
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_embedded_pdfs",
+            lambda path, password=None: [("embedded1.pdf", embedded_pdf_bytes)],
+        )
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
 
         pdf_path = _make_pdf(tmp_path, "Portfolio cover page.")
         result = indexer.index_pdf(pdf_path, use_ocr=False, skip_existing=False)
@@ -726,11 +943,21 @@ class TestIndexPdf:
         """Portfolio with no extractable PDFs falls through to normal indexing."""
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: True)
         monkeypatch.setattr(indexer, "extract_embedded_pdfs", lambda path, password=None: [])
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
 
         pdf_path = _make_pdf(tmp_path, "Empty portfolio.")
         result = indexer.index_pdf(pdf_path, use_ocr=False, skip_existing=False)
@@ -740,17 +967,29 @@ class TestIndexPdf:
     def test_fts_deferred_skips_fts_indexing(self, tmp_path, isolated_store, monkeypatch):
         """With PDFSEARCHABLE_FTS_DEFERRED=1, fts_index_file is not called."""
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
         monkeypatch.setenv("PDFSEARCHABLE_FTS_DEFERRED", "1")
         fts_called = {"count": 0}
         orig_fts = indexer.fts_index_file
+
         def mock_fts(*a, **kw):
             fts_called["count"] += 1
             return orig_fts(*a, **kw)
+
         monkeypatch.setattr(indexer, "fts_index_file", mock_fts)
 
         pdf_path = _make_pdf(tmp_path, "Deferred FTS test content.")
@@ -760,17 +999,29 @@ class TestIndexPdf:
     def test_pdf_structure_warnings_in_result(self, tmp_path, isolated_store, monkeypatch):
         """PDF structure warnings in metadata are surfaced in result."""
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
         # Inject pdf_warnings into extraction result
         from pdfsearchable.pdf_processor import extract_text_from_doc as _orig_extract
+
         def patched_extract(doc, mode="text", normalize=True):
             full, n, pts, meta = _orig_extract(doc, mode=mode, normalize=normalize)
             meta["pdf_warnings"] = ["Structure warning 1"]
             return full, n, pts, meta
+
         monkeypatch.setattr(indexer, "extract_text_from_doc", patched_extract)
 
         pdf_path = _make_pdf(tmp_path, "PDF with structure warnings.")
@@ -781,11 +1032,21 @@ class TestIndexPdf:
     def test_detect_redactions_optional(self, tmp_path, isolated_store, monkeypatch):
         """PDFSEARCHABLE_DETECT_REDACTIONS=1 triggers redaction detection."""
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
         monkeypatch.setenv("PDFSEARCHABLE_DETECT_REDACTIONS", "1")
 
         # Mock redaction module
@@ -795,7 +1056,14 @@ class TestIndexPdf:
         fake_rr.total_redacted_zones = 3
         fake_rr.summary = "3 redacted zones"
         fake_rr.pages = []
-        with mock.patch.dict("sys.modules", {"pdfsearchable.redaction": MagicMock(detect_redactions=lambda path, password=None: fake_rr)}):
+        with mock.patch.dict(
+            "sys.modules",
+            {
+                "pdfsearchable.redaction": MagicMock(
+                    detect_redactions=lambda path, password=None: fake_rr
+                )
+            },
+        ):
             pdf_path = _make_pdf(tmp_path, "Redacted content here.")
             result = indexer.index_pdf(pdf_path, use_ocr=False, skip_existing=False)
             assert result is not None
@@ -803,11 +1071,21 @@ class TestIndexPdf:
     def test_forensics_optional(self, tmp_path, isolated_store, monkeypatch):
         """PDFSEARCHABLE_FORENSICS=1 triggers forensic analysis."""
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
         monkeypatch.setenv("PDFSEARCHABLE_FORENSICS", "1")
 
         fake_fr = MagicMock()
@@ -815,7 +1093,14 @@ class TestIndexPdf:
         fake_fr.risk_score = 0.8
         fake_fr.suspicious = True
         fake_fr.summary = "Suspicious file"
-        with mock.patch.dict("sys.modules", {"pdfsearchable.forensics": MagicMock(analyse_forensics=lambda path, password=None: fake_fr)}):
+        with mock.patch.dict(
+            "sys.modules",
+            {
+                "pdfsearchable.forensics": MagicMock(
+                    analyse_forensics=lambda path, password=None: fake_fr
+                )
+            },
+        ):
             pdf_path = _make_pdf(tmp_path, "Forensic test content.")
             result = indexer.index_pdf(pdf_path, use_ocr=False, skip_existing=False)
             assert result is not None
@@ -823,11 +1108,21 @@ class TestIndexPdf:
     def test_contracts_optional(self, tmp_path, isolated_store, monkeypatch):
         """PDFSEARCHABLE_CONTRACTS=1 and doc_type=contrato triggers contract extraction."""
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
         monkeypatch.setenv("PDFSEARCHABLE_CONTRACTS", "1")
         cl = MagicMock()
         cl.label = "contrato"
@@ -842,7 +1137,10 @@ class TestIndexPdf:
         fake_cd.renewal_date = None
         fake_cd.duration_months = 12
         fake_cd.auto_renewal = False
-        with mock.patch.dict("sys.modules", {"pdfsearchable.contracts": MagicMock(extract_contract_dates=lambda *a, **kw: fake_cd)}):
+        with mock.patch.dict(
+            "sys.modules",
+            {"pdfsearchable.contracts": MagicMock(extract_contract_dates=lambda *a, **kw: fake_cd)},
+        ):
             pdf_path = _make_pdf(tmp_path, "Contrato entre partes. Vigência: 01/01/2024.")
             result = indexer.index_pdf(pdf_path, use_ocr=False, skip_existing=False)
             assert result is not None
@@ -850,17 +1148,32 @@ class TestIndexPdf:
     def test_classifier_feedback_optional(self, tmp_path, isolated_store, monkeypatch):
         """PDFSEARCHABLE_CLASSIFIER_FEEDBACK=1 triggers feedback recording."""
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
         monkeypatch.setenv("PDFSEARCHABLE_CLASSIFIER_FEEDBACK", "1")
 
         called = {"n": 0}
-        with mock.patch.dict("sys.modules", {"pdfsearchable.classifier_feedback": MagicMock(
-            record_correction=lambda *a, **kw: called.update({"n": called["n"] + 1})
-        )}):
+        with mock.patch.dict(
+            "sys.modules",
+            {
+                "pdfsearchable.classifier_feedback": MagicMock(
+                    record_correction=lambda *a, **kw: called.update({"n": called["n"] + 1})
+                )
+            },
+        ):
             pdf_path = _make_pdf(tmp_path, "Feedback test document content.")
             result = indexer.index_pdf(pdf_path, use_ocr=False, skip_existing=False)
             assert result is not None
@@ -887,13 +1200,29 @@ class TestIndexPdf:
     def test_enrichment_partial_in_result(self, tmp_path, isolated_store, monkeypatch):
         """enrichment_partial=True is surfaced in result."""
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
         # Force enrichment partial
-        monkeypatch.setattr(indexer, "_enrich_document", lambda *a, **kw: _fake_enrich(enrichment_partial=True, ocr_warnings="Ollama indisponível"))
+        monkeypatch.setattr(
+            indexer,
+            "_enrich_document",
+            lambda *a, **kw: _fake_enrich(
+                enrichment_partial=True, ocr_warnings="Ollama indisponível"
+            ),
+        )
 
         pdf_path = _make_pdf(tmp_path, "Partial enrichment test.")
         result = indexer.index_pdf(pdf_path, use_ocr=False, skip_existing=False)
@@ -919,19 +1248,32 @@ class TestIndexPdf:
 # _index_one wrapper
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestIndexOne:
 
+class TestIndexOne:
     def test_index_one_delegates_to_index_pdf(self, tmp_path, isolated_store, monkeypatch):
         """_index_one is a thin wrapper around index_pdf."""
 
         monkeypatch.setattr(indexer, "ocr_available", lambda: False)
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
-        cl = MagicMock(); cl.label = "documento"; cl.source = "heuristics"; cl.confidence = 0.9
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
+        cl = MagicMock()
+        cl.label = "documento"
+        cl.source = "heuristics"
+        cl.confidence = 0.9
         monkeypatch.setattr(indexer, "classify_document", lambda *a, **kw: cl)
         monkeypatch.setattr(indexer, "_get_ai_mode", lambda: "off")
         monkeypatch.setattr(indexer, "detect_language", lambda t: "pt")
@@ -953,20 +1295,33 @@ class TestIndexOne:
 # index_pdfs
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestIndexPdfs:
 
+class TestIndexPdfs:
     @pytest.fixture(autouse=True)
     def _mock_pipeline(self, monkeypatch):
         """Disable OCR and stub AI for all index_pdfs tests."""
 
         monkeypatch.setattr(indexer, "ocr_available", lambda: False)
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
-        cl = MagicMock(); cl.label = "documento"; cl.source = "heuristics"; cl.confidence = 0.9
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
+        cl = MagicMock()
+        cl.label = "documento"
+        cl.source = "heuristics"
+        cl.confidence = 0.9
         monkeypatch.setattr(indexer, "classify_document", lambda *a, **kw: cl)
         monkeypatch.setattr(indexer, "_get_ai_mode", lambda: "off")
         monkeypatch.setattr(indexer, "detect_language", lambda t: "pt")
@@ -996,7 +1351,9 @@ class TestIndexPdfs:
     def test_doc_types_passed(self, tmp_path, isolated_store):
         pdf = _make_pdf(tmp_path, "Doc type test content.")
         doc_types = {str(pdf): "contrato"}
-        results = indexer.index_pdfs([pdf], doc_types=doc_types, workers=1, use_ocr=False, skip_existing=False)
+        results = indexer.index_pdfs(
+            [pdf], doc_types=doc_types, workers=1, use_ocr=False, skip_existing=False
+        )
         assert len(results) == 1
         assert results[0]["doc_type"] == "contrato"
 
@@ -1006,7 +1363,9 @@ class TestIndexPdfs:
         bad = tmp_path / "not_pdf.pdf"
         bad.write_bytes(b"not a pdf at all")
 
-        results = indexer.index_pdfs([bad, good], workers=1, use_ocr=False, skip_failed=True, skip_existing=False)
+        results = indexer.index_pdfs(
+            [bad, good], workers=1, use_ocr=False, skip_failed=True, skip_existing=False
+        )
         # At least the good file should be indexed
         assert any(r["id"] for r in results)
 
@@ -1016,28 +1375,42 @@ class TestIndexPdfs:
         bad.write_bytes(b"not a pdf at all")
 
         with pytest.raises((ValidationError, IndexingError, Exception)):
-            indexer.index_pdfs([bad], workers=1, use_ocr=False, skip_failed=False, skip_existing=False)
+            indexer.index_pdfs(
+                [bad], workers=1, use_ocr=False, skip_failed=False, skip_existing=False
+            )
 
     def test_on_file_start_callback(self, tmp_path, isolated_store):
         """on_file_start callback is called for each file in sequential mode."""
         pdf = _make_pdf(tmp_path, "Callback test content.")
         started = []
-        indexer.index_pdfs([pdf], workers=1, use_ocr=False, skip_existing=False,
-                            on_file_start=lambda p: started.append(p))
+        indexer.index_pdfs(
+            [pdf],
+            workers=1,
+            use_ocr=False,
+            skip_existing=False,
+            on_file_start=lambda p: started.append(p),
+        )
         assert len(started) == 1
 
     def test_on_file_progress_callback(self, tmp_path, isolated_store):
         """on_file_progress callback is called for each file."""
         pdfs = [_make_pdf(tmp_path, f"Progress test {i}", f"p{i}.pdf") for i in range(2)]
         progress = []
-        indexer.index_pdfs(pdfs, workers=1, use_ocr=False, skip_existing=False,
-                           on_file_progress=lambda p, cur, tot: progress.append((cur, tot)))
+        indexer.index_pdfs(
+            pdfs,
+            workers=1,
+            use_ocr=False,
+            skip_existing=False,
+            on_file_progress=lambda p, cur, tot: progress.append((cur, tot)),
+        )
         assert len(progress) == 2
 
     def test_batch_size_splits_processing(self, tmp_path, isolated_store):
         """batch_size splits the work into chunks."""
         pdfs = [_make_pdf(tmp_path, f"Batch {i} content", f"b{i}.pdf") for i in range(4)]
-        results = indexer.index_pdfs(pdfs, workers=1, use_ocr=False, skip_existing=False, batch_size=2)
+        results = indexer.index_pdfs(
+            pdfs, workers=1, use_ocr=False, skip_existing=False, batch_size=2
+        )
         assert len(results) == 4
 
     def test_workers_auto_uses_max_workers_auto(self, tmp_path, isolated_store, monkeypatch):
@@ -1050,6 +1423,7 @@ class TestIndexPdfs:
     def test_skip_existing_in_multiprocessing_path(self, tmp_path, isolated_store, monkeypatch):
         """In multiprocessing path, skip_existing checks content_hash before submitting."""
         import pdfsearchable.store as store_mod
+
         pdf = _make_pdf(tmp_path, "Skip existing multiprocessing test.")
 
         # Index once
@@ -1059,15 +1433,19 @@ class TestIndexPdfs:
         class FakeFuture:
             def __init__(self, result_val):
                 self._result = result_val
+
             def done(self):
                 return True
+
             def result(self, timeout=None):
                 return self._result
 
         # Just test that skip_existing check prevents submission
         from pdfsearchable.pdf_processor import content_hash, file_size
+
         c_hash = content_hash(pdf)
         from pdfsearchable.store import _file_id
+
         file_id = _file_id(pdf)
         existing = store_mod.find_by_content_hash(c_hash)
         assert existing is not None  # already in store
@@ -1079,6 +1457,7 @@ class TestIndexPdfs:
 
         # Make extract always raise generic Exception
         call_n = {"n": 0}
+
         def fail_extract(*a, **kw):
             call_n["n"] += 1
             raise RuntimeError("unexpected error")
@@ -1086,7 +1465,9 @@ class TestIndexPdfs:
         monkeypatch.setattr(indexer, "_extract_with_ocr", fail_extract)
         monkeypatch.setattr(indexer, "RETRY_BACKOFF", 0.0)
 
-        results = indexer.index_pdfs([pdf], workers=1, use_ocr=False, skip_failed=True, skip_existing=False)
+        results = indexer.index_pdfs(
+            [pdf], workers=1, use_ocr=False, skip_failed=True, skip_existing=False
+        )
         assert results == []  # all failed, none added
 
 
@@ -1094,11 +1475,14 @@ class TestIndexPdfs:
 # _worker_extract_and_classify
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestWorkerExtractAndClassify:
 
+class TestWorkerExtractAndClassify:
     @pytest.fixture(autouse=True)
     def _mock_ai(self, monkeypatch):
-        cl = MagicMock(); cl.label = "documento"; cl.source = "heuristics"; cl.confidence = 0.9
+        cl = MagicMock()
+        cl.label = "documento"
+        cl.source = "heuristics"
+        cl.confidence = 0.9
         monkeypatch.setattr(indexer, "classify_document", lambda *a, **kw: cl)
         monkeypatch.setattr(indexer, "_get_ai_mode", lambda: "off")
         monkeypatch.setattr(indexer, "detect_language", lambda t: "pt")
@@ -1112,19 +1496,39 @@ class TestWorkerExtractAndClassify:
 
     def test_worker_returns_expected_keys(self, tmp_path, isolated_store, monkeypatch):
         monkeypatch.setattr(indexer, "ocr_available", lambda: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
 
         pdf_path = _make_pdf(tmp_path, "Worker extract test content.")
         args = (str(pdf_path), "text", None, False, None)
         result = indexer._worker_extract_and_classify(args)
 
-        for key in ("file_id", "content_hash", "full_text", "page_texts",
-                    "metadata", "ocr_per_page", "ocr_confidences", "num_pages",
-                    "doc_type", "word_count", "language"):
+        for key in (
+            "file_id",
+            "content_hash",
+            "full_text",
+            "page_texts",
+            "metadata",
+            "ocr_per_page",
+            "ocr_confidences",
+            "num_pages",
+            "doc_type",
+            "word_count",
+            "language",
+        ):
             assert key in result, f"Missing key: {key}"
 
     def test_worker_validation_error_raises(self, tmp_path, monkeypatch):
@@ -1139,10 +1543,20 @@ class TestWorkerExtractAndClassify:
 
     def test_worker_corrupt_partial_recovery(self, tmp_path, isolated_store, monkeypatch):
         """Worker handles corrupt PDF with partial recovery."""
-        monkeypatch.setattr(indexer, "validate_pdf", lambda path, pwd=None: (False, "PDF corrompido"))
-        monkeypatch.setattr(indexer, "extract_text_from_pdf_partial", lambda path, password=None, normalize=True: (
-            "partial text here", 1, ["partial text here"], {}, []
-        ))
+        monkeypatch.setattr(
+            indexer, "validate_pdf", lambda path, pwd=None: (False, "PDF corrompido")
+        )
+        monkeypatch.setattr(
+            indexer,
+            "extract_text_from_pdf_partial",
+            lambda path, password=None, normalize=True: (
+                "partial text here",
+                1,
+                ["partial text here"],
+                {},
+                [],
+            ),
+        )
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
 
         pdf_path = _make_pdf(tmp_path, "dummy")
@@ -1154,6 +1568,7 @@ class TestWorkerExtractAndClassify:
         monkeypatch.setattr(indexer, "RETRY_BACKOFF", 0.0)
 
         call_n = {"n": 0}
+
         def fake_validate(path, pwd=None):
             call_n["n"] += 1
             if call_n["n"] < indexer.MAX_RETRIES:
@@ -1164,13 +1579,16 @@ class TestWorkerExtractAndClassify:
         monkeypatch.setattr(indexer, "_extract_with_ocr", _fake_extract)
 
         pdf_path = _make_pdf(tmp_path, "Retry test content.")
-        result = indexer._worker_extract_and_classify((str(pdf_path), "text", None, False, "documento"))
+        result = indexer._worker_extract_and_classify(
+            (str(pdf_path), "text", None, False, "documento")
+        )
         assert result["doc_type"] == "documento"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # get_stats
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_get_stats_empty_store(isolated_store):
     stats = indexer.get_stats()
@@ -1186,12 +1604,25 @@ def test_get_stats_with_indexed_file(tmp_path, isolated_store, monkeypatch):
 
     monkeypatch.setattr(ocr_mod, "ocr_available", lambda: False)
     monkeypatch.setattr(pe_mod, "is_pdf_portfolio", lambda path, password=None: False)
-    monkeypatch.setattr(pe_mod, "extract_extended_from_doc", lambda doc: {
-        "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-        "outline": [], "hyperlinks": [], "page_dimensions": [],
-        "attached_files": [], "fonts": [],
-    })
-    cl = MagicMock(); cl.label = "documento"; cl.source = "heuristics"; cl.confidence = 0.9
+    monkeypatch.setattr(
+        pe_mod,
+        "extract_extended_from_doc",
+        lambda doc: {
+            "tables": [],
+            "form_fields": [],
+            "annotations": [],
+            "xmp": {},
+            "outline": [],
+            "hyperlinks": [],
+            "page_dimensions": [],
+            "attached_files": [],
+            "fonts": [],
+        },
+    )
+    cl = MagicMock()
+    cl.label = "documento"
+    cl.source = "heuristics"
+    cl.confidence = 0.9
     monkeypatch.setattr(indexer, "classify_document", lambda *a, **kw: cl)
     monkeypatch.setattr(indexer, "_get_ai_mode", lambda: "off")
     monkeypatch.setattr(indexer, "detect_language", lambda t: "pt")
@@ -1215,6 +1646,7 @@ def test_get_stats_with_indexed_file(tmp_path, isolated_store, monkeypatch):
 # Additional gap-filling tests
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestExtractWithOcrGaps:
     """Additional tests for _extract_with_ocr to cover remaining branches."""
 
@@ -1225,18 +1657,24 @@ class TestExtractWithOcrGaps:
         monkeypatch.setattr(indexer, "render_page_to_image", lambda page: b"img")
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
         captured = {"lang": None}
+
         def cap_ocr(img, key, pn, use_cache=True, lang=None):
             captured["lang"] = lang
             return ("ocr text", 90.0)
+
         monkeypatch.setattr(indexer, "ocr_page_from_image_bytes", cap_ocr)
         # Metadata with language field
-        monkeypatch.setattr(indexer, "extract_text_from_doc",
-                            lambda doc, mode="text", normalize=True: ("", 1, [""], {"language": "de"}))
+        monkeypatch.setattr(
+            indexer,
+            "extract_text_from_doc",
+            lambda doc, mode="text", normalize=True: ("", 1, [""], {"language": "de"}),
+        )
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "1")
 
         pdf_path = _make_pdf(tmp_path, "dummy")
-        indexer._extract_with_ocr(pdf_path, "text", None, True, use_ocr=True,
-                                   file_id="f_lang_meta", content_hash=None)
+        indexer._extract_with_ocr(
+            pdf_path, "text", None, True, use_ocr=True, file_id="f_lang_meta", content_hash=None
+        )
         assert captured["lang"] == "de"
 
     def test_language_hint_detected_from_native_text(self, tmp_path, monkeypatch):
@@ -1247,19 +1685,25 @@ class TestExtractWithOcrGaps:
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
         monkeypatch.setattr(indexer, "detect_language", lambda text: "fr")
         captured = {"lang": None}
+
         def cap_ocr(img, key, pn, use_cache=True, lang=None):
             captured["lang"] = lang
             return ("ocr text", 90.0)
+
         monkeypatch.setattr(indexer, "ocr_page_from_image_bytes", cap_ocr)
         # Native text long enough (>80 chars stripped)
         long_native = "Ceci est un document en français avec beaucoup de texte natif pour détection de langue. Nous ajoutons encore plus de texte ici."
-        monkeypatch.setattr(indexer, "extract_text_from_doc",
-                            lambda doc, mode="text", normalize=True: (long_native, 1, [long_native], {}))
+        monkeypatch.setattr(
+            indexer,
+            "extract_text_from_doc",
+            lambda doc, mode="text", normalize=True: (long_native, 1, [long_native], {}),
+        )
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "1")
 
         pdf_path = _make_pdf(tmp_path, "dummy")
-        indexer._extract_with_ocr(pdf_path, "text", None, True, use_ocr=True,
-                                   file_id="f_lang_native", content_hash=None)
+        indexer._extract_with_ocr(
+            pdf_path, "text", None, True, use_ocr=True, file_id="f_lang_native", content_hash=None
+        )
         assert captured["lang"] == "fr"
 
     def test_language_hint_unknown_stays_none(self, tmp_path, monkeypatch):
@@ -1270,18 +1714,24 @@ class TestExtractWithOcrGaps:
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
         monkeypatch.setattr(indexer, "detect_language", lambda text: "unknown")
         captured = {"lang": "not_set"}
+
         def cap_ocr(img, key, pn, use_cache=True, lang=None):
             captured["lang"] = lang
             return ("ocr text", 90.0)
+
         monkeypatch.setattr(indexer, "ocr_page_from_image_bytes", cap_ocr)
         long_native = "Some text that is long enough to trigger language detection attempt but returns unknown."
-        monkeypatch.setattr(indexer, "extract_text_from_doc",
-                            lambda doc, mode="text", normalize=True: (long_native, 1, [long_native], {}))
+        monkeypatch.setattr(
+            indexer,
+            "extract_text_from_doc",
+            lambda doc, mode="text", normalize=True: (long_native, 1, [long_native], {}),
+        )
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "1")
 
         pdf_path = _make_pdf(tmp_path, "dummy")
-        indexer._extract_with_ocr(pdf_path, "text", None, True, use_ocr=True,
-                                   file_id="f_lang_unknown", content_hash=None)
+        indexer._extract_with_ocr(
+            pdf_path, "text", None, True, use_ocr=True, file_id="f_lang_unknown", content_hash=None
+        )
         assert captured["lang"] is None
 
     def test_language_hint_detect_raises(self, tmp_path, monkeypatch):
@@ -1290,19 +1740,27 @@ class TestExtractWithOcrGaps:
         monkeypatch.setattr(indexer, "get_ocr_workers", lambda: 1)
         monkeypatch.setattr(indexer, "render_page_to_image", lambda page: b"img")
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
-        monkeypatch.setattr(indexer, "detect_language",
-                            MagicMock(side_effect=Exception("lang error")))
-        monkeypatch.setattr(indexer, "ocr_page_from_image_bytes",
-                            lambda img, key, pn, use_cache=True, lang=None: ("ocr", 90.0))
+        monkeypatch.setattr(
+            indexer, "detect_language", MagicMock(side_effect=Exception("lang error"))
+        )
+        monkeypatch.setattr(
+            indexer,
+            "ocr_page_from_image_bytes",
+            lambda img, key, pn, use_cache=True, lang=None: ("ocr", 90.0),
+        )
         long_native = "Some long native text for language detection attempt." * 5
-        monkeypatch.setattr(indexer, "extract_text_from_doc",
-                            lambda doc, mode="text", normalize=True: (long_native, 1, [long_native], {}))
+        monkeypatch.setattr(
+            indexer,
+            "extract_text_from_doc",
+            lambda doc, mode="text", normalize=True: (long_native, 1, [long_native], {}),
+        )
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "1")
 
         pdf_path = _make_pdf(tmp_path, "dummy")
         # Should not raise
-        result = indexer._extract_with_ocr(pdf_path, "text", None, True, use_ocr=True,
-                                            file_id="f_lang_exc", content_hash=None)
+        result = indexer._extract_with_ocr(
+            pdf_path, "text", None, True, use_ocr=True, file_id="f_lang_exc", content_hash=None
+        )
         assert result[0] is not None or result[0] == ""
 
     def test_parallel_ocr_future_exception(self, tmp_path, monkeypatch):
@@ -1310,15 +1768,23 @@ class TestExtractWithOcrGaps:
         monkeypatch.setattr(indexer, "ocr_available", lambda: True)
         monkeypatch.setattr(indexer, "get_ocr_workers", lambda: 2)
         monkeypatch.setattr(indexer, "render_page_to_image", lambda page: b"img")
-        monkeypatch.setattr(indexer, "ocr_page_from_image_bytes",
-                            MagicMock(side_effect=Exception("ocr process crashed")))
+        monkeypatch.setattr(
+            indexer,
+            "ocr_page_from_image_bytes",
+            MagicMock(side_effect=Exception("ocr process crashed")),
+        )
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "1")
 
         pdf_path = _make_pdf(tmp_path, "Parallel OCR failure test.")
         full, num_pages, page_texts, _, ocr_per_page, _ = indexer._extract_with_ocr(
-            pdf_path, "text", None, True, use_ocr=True,
-            file_id="f_parallel_exc", content_hash=None,
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=True,
+            file_id="f_parallel_exc",
+            content_hash=None,
         )
         assert num_pages >= 1
 
@@ -1328,18 +1794,27 @@ class TestExtractWithOcrGaps:
         monkeypatch.setattr(indexer, "ocr_available", lambda: True)
         monkeypatch.setattr(indexer, "get_ocr_workers", lambda: 2)
         monkeypatch.setattr(indexer, "render_page_to_image", lambda page: b"img")
-        monkeypatch.setattr(indexer, "ocr_page_from_image_bytes",
-                            lambda *a, **kw: ("low conf ocr", 5.0))
+        monkeypatch.setattr(
+            indexer, "ocr_page_from_image_bytes", lambda *a, **kw: ("low conf ocr", 5.0)
+        )
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
-        monkeypatch.setattr(indexer, "extract_text_from_doc",
-                            lambda doc, mode="text", normalize=True: (native, 1, [native], {}))
+        monkeypatch.setattr(
+            indexer,
+            "extract_text_from_doc",
+            lambda doc, mode="text", normalize=True: (native, 1, [native], {}),
+        )
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "0")
         monkeypatch.setenv("PDFSEARCHABLE_OCR_MIN_CONFIDENCE_VS_NATIVE", "15")
 
         pdf_path = _make_pdf(tmp_path, "dummy")
         full, _, page_texts, _, _, _ = indexer._extract_with_ocr(
-            pdf_path, "text", None, True, use_ocr=True,
-            file_id="f_par_low_conf", content_hash=None,
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=True,
+            file_id="f_par_low_conf",
+            content_hash=None,
         )
         assert page_texts[0] == native
 
@@ -1349,18 +1824,29 @@ class TestExtractWithOcrGaps:
         monkeypatch.setattr(indexer, "ocr_available", lambda: True)
         monkeypatch.setattr(indexer, "get_ocr_workers", lambda: 2)
         monkeypatch.setattr(indexer, "render_page_to_image", lambda page: b"img")
-        monkeypatch.setattr(indexer, "ocr_page_from_image_bytes",
-                            lambda *a, **kw: ("high quality OCR text replacing sparse native", 92.0))
+        monkeypatch.setattr(
+            indexer,
+            "ocr_page_from_image_bytes",
+            lambda *a, **kw: ("high quality OCR text replacing sparse native", 92.0),
+        )
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
         # Very short native — forces OCR path
-        monkeypatch.setattr(indexer, "extract_text_from_doc",
-                            lambda doc, mode="text", normalize=True: ("a", 1, ["a"], {}))
+        monkeypatch.setattr(
+            indexer,
+            "extract_text_from_doc",
+            lambda doc, mode="text", normalize=True: ("a", 1, ["a"], {}),
+        )
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "0")
 
         pdf_path = _make_pdf(tmp_path, "dummy")
         full, _, page_texts, _, ocr_per_page, _ = indexer._extract_with_ocr(
-            pdf_path, "text", None, True, use_ocr=True,
-            file_id="f_par_good", content_hash=None,
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=True,
+            file_id="f_par_good",
+            content_hash=None,
         )
         assert "OCR text" in page_texts[0]
 
@@ -1369,17 +1855,28 @@ class TestExtractWithOcrGaps:
         monkeypatch.setattr(indexer, "ocr_available", lambda: True)
         monkeypatch.setattr(indexer, "get_ocr_workers", lambda: 1)
         monkeypatch.setattr(indexer, "render_page_to_image", lambda page: b"img")
-        monkeypatch.setattr(indexer, "ocr_page_from_image_bytes",
-                            lambda *a, **kw: ("high quality sequential OCR", 90.0))
+        monkeypatch.setattr(
+            indexer,
+            "ocr_page_from_image_bytes",
+            lambda *a, **kw: ("high quality sequential OCR", 90.0),
+        )
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
-        monkeypatch.setattr(indexer, "extract_text_from_doc",
-                            lambda doc, mode="text", normalize=True: ("a", 1, ["a"], {}))
+        monkeypatch.setattr(
+            indexer,
+            "extract_text_from_doc",
+            lambda doc, mode="text", normalize=True: ("a", 1, ["a"], {}),
+        )
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "0")
 
         pdf_path = _make_pdf(tmp_path, "dummy")
         full, _, page_texts, _, ocr_per_page, _ = indexer._extract_with_ocr(
-            pdf_path, "text", None, True, use_ocr=True,
-            file_id="f_seq_good", content_hash=None,
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=True,
+            file_id="f_seq_good",
+            content_hash=None,
         )
         assert "sequential OCR" in page_texts[0]
         assert ocr_per_page[0] is True
@@ -1388,16 +1885,22 @@ class TestExtractWithOcrGaps:
         """Sequential OCR: render returns None → ocr_text='' (lines 663-664)."""
         monkeypatch.setattr(indexer, "ocr_available", lambda: True)
         monkeypatch.setattr(indexer, "get_ocr_workers", lambda: 1)
-        monkeypatch.setattr(indexer, "render_page_to_image",
-                            MagicMock(side_effect=Exception("render failed")))
+        monkeypatch.setattr(
+            indexer, "render_page_to_image", MagicMock(side_effect=Exception("render failed"))
+        )
         monkeypatch.setattr(indexer, "correct_ocr_with_ollama", lambda t: None)
         monkeypatch.setenv("PDFSEARCHABLE_OCR_ALWAYS", "1")
 
         pdf_path = _make_pdf(tmp_path, "Some text here.")
         # render_page_to_image raises → img_bytes=None → OCR returns ('', -1.0)
         full, num_pages, page_texts, _, ocr_per_page, _ = indexer._extract_with_ocr(
-            pdf_path, "text", None, True, use_ocr=True,
-            file_id="f_seq_no_img", content_hash=None,
+            pdf_path,
+            "text",
+            None,
+            True,
+            use_ocr=True,
+            file_id="f_seq_no_img",
+            content_hash=None,
         )
         assert num_pages >= 1
 
@@ -1409,14 +1912,28 @@ class TestIndexPdfsMultiprocessing:
     def _mock_pipeline(self, monkeypatch):
         import pdfsearchable.ocr as ocr_mod
         import pdfsearchable.pdf_extended as pe_mod
+
         monkeypatch.setattr(ocr_mod, "ocr_available", lambda: False)
         monkeypatch.setattr(pe_mod, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(pe_mod, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
-        cl = MagicMock(); cl.label = "documento"; cl.source = "heuristics"; cl.confidence = 0.9
+        monkeypatch.setattr(
+            pe_mod,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
+        cl = MagicMock()
+        cl.label = "documento"
+        cl.source = "heuristics"
+        cl.confidence = 0.9
         monkeypatch.setattr(indexer, "classify_document", lambda *a, **kw: cl)
         monkeypatch.setattr(indexer, "_get_ai_mode", lambda: "off")
         monkeypatch.setattr(indexer, "detect_language", lambda t: "pt")
@@ -1431,12 +1948,19 @@ class TestIndexPdfsMultiprocessing:
     def test_multiprocessing_with_faked_pool(self, tmp_path, isolated_store, monkeypatch):
         """Replace ProcessPoolExecutor with a sync executor to test multiprocessing branch."""
         from concurrent.futures import Future
+
         pdfs = [_make_pdf(tmp_path, f"MP test {i}", f"mp{i}.pdf") for i in range(2)]
 
         class _FakePool:
-            def __init__(self, max_workers=None): pass
-            def __enter__(self): return self
-            def __exit__(self, *a): return False
+            def __init__(self, max_workers=None):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
             def submit(self, fn, arg):
                 f = Future()
                 try:
@@ -1453,13 +1977,20 @@ class TestIndexPdfsMultiprocessing:
     def test_multiprocessing_worker_raises_validation(self, tmp_path, isolated_store, monkeypatch):
         """ValidationError from worker is handled in multiprocessing path."""
         from concurrent.futures import Future
+
         bad = tmp_path / "bad.pdf"
         bad.write_bytes(b"not pdf")
 
         class _FakePool:
-            def __init__(self, max_workers=None): pass
-            def __enter__(self): return self
-            def __exit__(self, *a): return False
+            def __init__(self, max_workers=None):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
             def submit(self, fn, arg):
                 f = Future()
                 try:
@@ -1469,19 +2000,27 @@ class TestIndexPdfsMultiprocessing:
                 return f
 
         monkeypatch.setattr(indexer, "ProcessPoolExecutor", _FakePool)
-        results = indexer.index_pdfs([bad], workers=2, use_ocr=False,
-                                      skip_existing=False, skip_failed=True)
+        results = indexer.index_pdfs(
+            [bad], workers=2, use_ocr=False, skip_existing=False, skip_failed=True
+        )
         assert results == []
 
     def test_multiprocessing_skip_existing_unchanged(self, tmp_path, isolated_store, monkeypatch):
         """Multiprocessing path: same file_id with same hash → skipped (line 1187-1191)."""
         from concurrent.futures import Future
+
         pdf = _make_pdf(tmp_path, "Already indexed content.")
 
         class _FakePool:
-            def __init__(self, max_workers=None): pass
-            def __enter__(self): return self
-            def __exit__(self, *a): return False
+            def __init__(self, max_workers=None):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
             def submit(self, fn, arg):
                 f = Future()
                 try:
@@ -1500,13 +2039,20 @@ class TestIndexPdfsMultiprocessing:
     def test_multiprocessing_all_skipped(self, tmp_path, isolated_store, monkeypatch):
         """Multiprocessing: when all files skipped, to_process empty (line 1200-1201)."""
         from concurrent.futures import Future
+
         pdf = _make_pdf(tmp_path, "Content for all-skipped test.")
         indexer.index_pdfs([pdf], workers=1, use_ocr=False, skip_existing=False)
 
         class _FakePool:
-            def __init__(self, max_workers=None): pass
-            def __enter__(self): return self
-            def __exit__(self, *a): return False
+            def __init__(self, max_workers=None):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
             def submit(self, fn, arg):
                 raise AssertionError("should not submit")
 
@@ -1520,7 +2066,10 @@ class TestEnrichDocumentGaps:
 
     @pytest.fixture(autouse=True)
     def _base_mocks(self, monkeypatch):
-        cl = MagicMock(); cl.label = "documento"; cl.source = "heuristics"; cl.confidence = 0.9
+        cl = MagicMock()
+        cl.label = "documento"
+        cl.source = "heuristics"
+        cl.confidence = 0.9
         monkeypatch.setattr(indexer, "classify_document", lambda *a, **kw: cl)
         monkeypatch.setattr(indexer, "detect_language", lambda t: "pt")
         monkeypatch.setattr(indexer, "extract_tags", lambda *a, **kw: [])
@@ -1533,8 +2082,9 @@ class TestEnrichDocumentGaps:
     def test_ollama_summary_without_subject_keeps_subject(self, monkeypatch):
         """Ollama subject empty but summary returned → subject from metadata preserved."""
         monkeypatch.setattr(indexer, "_get_ai_mode", lambda: "ollama")
-        monkeypatch.setattr(indexer, "extract_summary_and_subject_ollama",
-                            lambda t: ("summary_ok", ""))
+        monkeypatch.setattr(
+            indexer, "extract_summary_and_subject_ollama", lambda t: ("summary_ok", "")
+        )
         monkeypatch.setattr(indexer, "extract_tags_ollama", lambda t, max_tags=5: [])
         monkeypatch.setattr(indexer, "extract_parties_ollama", lambda t, max_parties=8: [])
         monkeypatch.setattr(indexer, "extract_metadata_ollama", lambda t: None)
@@ -1556,8 +2106,9 @@ class TestEnrichDocumentGaps:
         monkeypatch.setattr(indexer, "extract_tags", lambda *a, **kw: ["existing_tag"])
         monkeypatch.setattr(indexer, "_get_ai_mode", lambda: "ollama")
         monkeypatch.setattr(indexer, "extract_summary_and_subject_ollama", lambda t: None)
-        monkeypatch.setattr(indexer, "extract_tags_ollama",
-                            lambda t, max_tags=5: ["existing_tag", "new_tag"])
+        monkeypatch.setattr(
+            indexer, "extract_tags_ollama", lambda t, max_tags=5: ["existing_tag", "new_tag"]
+        )
         monkeypatch.setattr(indexer, "extract_parties_ollama", lambda t, max_parties=8: [])
         monkeypatch.setattr(indexer, "extract_metadata_ollama", lambda t: None)
         monkeypatch.setattr(indexer, "merge_entities_with_ollama", lambda e, m: e)
@@ -1580,8 +2131,9 @@ class TestEnrichDocumentGaps:
         monkeypatch.setattr(indexer, "_get_ai_mode", lambda: "ollama")
         monkeypatch.setattr(indexer, "extract_summary_and_subject_ollama", lambda t: None)
         monkeypatch.setattr(indexer, "extract_tags_ollama", lambda t, max_tags=5: [])
-        monkeypatch.setattr(indexer, "extract_parties_ollama",
-                            lambda t, max_parties=8: ["João", "Maria"])
+        monkeypatch.setattr(
+            indexer, "extract_parties_ollama", lambda t, max_parties=8: ["João", "Maria"]
+        )
         monkeypatch.setattr(indexer, "extract_metadata_ollama", lambda t: None)
         monkeypatch.setattr(indexer, "merge_entities_with_ollama", lambda e, m: e)
 
@@ -1599,14 +2151,20 @@ class TestEnrichDocumentGaps:
 
     def test_ollama_monetary_values_dedup(self, monkeypatch):
         """Ollama monetary values already present are not duplicated (line 258)."""
-        monkeypatch.setattr(indexer, "extract_monetary_values",
-                            lambda t: [{"currency": "BRL", "value_str": "R$ 100"}])
+        monkeypatch.setattr(
+            indexer,
+            "extract_monetary_values",
+            lambda t: [{"currency": "BRL", "value_str": "R$ 100"}],
+        )
         monkeypatch.setattr(indexer, "_get_ai_mode", lambda: "ollama")
         monkeypatch.setattr(indexer, "extract_summary_and_subject_ollama", lambda t: None)
         monkeypatch.setattr(indexer, "extract_tags_ollama", lambda t, max_tags=5: [])
         monkeypatch.setattr(indexer, "extract_parties_ollama", lambda t, max_parties=8: [])
-        monkeypatch.setattr(indexer, "extract_metadata_ollama",
-                            lambda t: {"dates": [], "monetary_values": ["R$ 100", "R$ 200"], "parties": []})
+        monkeypatch.setattr(
+            indexer,
+            "extract_metadata_ollama",
+            lambda t: {"dates": [], "monetary_values": ["R$ 100", "R$ 200"], "parties": []},
+        )
         monkeypatch.setattr(indexer, "merge_entities_with_ollama", lambda e, m: e)
 
         result = indexer._enrich_document(
@@ -1630,8 +2188,11 @@ class TestEnrichDocumentGaps:
         monkeypatch.setattr(indexer, "extract_summary_and_subject_ollama", lambda t: None)
         monkeypatch.setattr(indexer, "extract_tags_ollama", lambda t, max_tags=5: [])
         monkeypatch.setattr(indexer, "extract_parties_ollama", lambda t, max_parties=8: [])
-        monkeypatch.setattr(indexer, "extract_metadata_ollama",
-                            lambda t: {"dates": ["01/01/2024", "15/02/2024"], "monetary_values": [], "parties": []})
+        monkeypatch.setattr(
+            indexer,
+            "extract_metadata_ollama",
+            lambda t: {"dates": ["01/01/2024", "15/02/2024"], "monetary_values": [], "parties": []},
+        )
         monkeypatch.setattr(indexer, "merge_entities_with_ollama", lambda e, m: e)
 
         result = indexer._enrich_document(
@@ -1678,11 +2239,21 @@ class TestOptionalFeaturesExceptions:
 
     def _base_mocks(self, monkeypatch):
         monkeypatch.setattr(indexer, "is_pdf_portfolio", lambda path, password=None: False)
-        monkeypatch.setattr(indexer, "extract_extended_from_doc", lambda doc: {
-            "tables": [], "form_fields": [], "annotations": [], "xmp": {},
-            "outline": [], "hyperlinks": [], "page_dimensions": [],
-            "attached_files": [], "fonts": [],
-        })
+        monkeypatch.setattr(
+            indexer,
+            "extract_extended_from_doc",
+            lambda doc: {
+                "tables": [],
+                "form_fields": [],
+                "annotations": [],
+                "xmp": {},
+                "outline": [],
+                "hyperlinks": [],
+                "page_dimensions": [],
+                "attached_files": [],
+                "fonts": [],
+            },
+        )
 
     def test_detect_redactions_exception(self, tmp_path, isolated_store, monkeypatch):
         """Exception in redaction detection is caught and logged."""

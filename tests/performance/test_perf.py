@@ -3,6 +3,7 @@ Testes de Performance e Carga.
 Medem tempo de resposta, throughput e estabilidade sob carga.
 Não requerem recursos externos (offline).
 """
+
 from __future__ import annotations
 
 import json
@@ -20,6 +21,7 @@ from pdfsearchable.search import search_with_masks
 # ---------------------------------------------------------------------------
 # Benchmarks de texto / busca
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.performance
 @pytest.mark.functional
@@ -69,10 +71,12 @@ def test_search_throughput_100_queries() -> None:
 # Performance do índice JSON
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.performance
 def test_load_index_performance_with_100_files(isolated_store, monkeypatch) -> None:
     """load_index com 100 documentos deve completar em < 0.5s."""
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
     files = [
@@ -99,12 +103,10 @@ def test_load_index_performance_with_100_files(isolated_store, monkeypatch) -> N
 def test_save_index_performance(isolated_store, monkeypatch) -> None:
     """save_index com 500 documentos deve completar em < 1s."""
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
-    files = [
-        {"id": f"file{i:04d}", "name": f"doc{i}.pdf", "pages": 5}
-        for i in range(500)
-    ]
+    files = [{"id": f"file{i:04d}", "name": f"doc{i}.pdf", "pages": 5} for i in range(500)]
     start = time.perf_counter()
     store_mod.save_index({"files": files, "version": 1})
     elapsed = time.perf_counter() - start
@@ -115,10 +117,12 @@ def test_save_index_performance(isolated_store, monkeypatch) -> None:
 # Performance FTS
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.performance
 def test_fts_index_and_search_performance(isolated_store, monkeypatch) -> None:
     """Indexar 50 documentos no FTS e buscar deve completar em < 5s."""
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
     # Garantir que o directório existe e inicializar FTS
@@ -146,10 +150,12 @@ def test_fts_index_and_search_performance(isolated_store, monkeypatch) -> None:
 # Testes de carga (concorrência)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.performance
 def test_concurrent_load_index_throughput(isolated_store, monkeypatch) -> None:
     """30 threads a carregar o índice em simultâneo devem terminar em < 3s."""
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
     files = [{"id": f"f{i}", "name": f"d{i}.pdf"} for i in range(20)]
@@ -181,14 +187,13 @@ def test_concurrent_load_index_throughput(isolated_store, monkeypatch) -> None:
 def test_concurrent_fts_search_throughput(isolated_store, monkeypatch) -> None:
     """20 threads a fazer FTS search simultâneo devem terminar em < 5s."""
     import pdfsearchable.store as store_mod
+
     monkeypatch.chdir(isolated_store)
 
     # Inicializar e popular FTS
     (isolated_store / ".pdfsearchable").mkdir(exist_ok=True)
     for i in range(10):
-        store_mod.fts_index_file(
-            f"load{i}", [(1, f"texto de carga {i} para pesquisa")]
-        )
+        store_mod.fts_index_file(f"load{i}", [(1, f"texto de carga {i} para pesquisa")])
 
     errors: list[Exception] = []
     barrier = threading.Barrier(20)
@@ -215,6 +220,7 @@ def test_concurrent_fts_search_throughput(isolated_store, monkeypatch) -> None:
 # ---------------------------------------------------------------------------
 # Baseline de memória (sanidade)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.performance
 def test_large_text_processing_memory_stable() -> None:

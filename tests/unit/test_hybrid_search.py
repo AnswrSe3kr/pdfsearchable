@@ -85,6 +85,7 @@ def test_hybrid_top_k_respected(isolated_store, monkeypatch):
         return fake_results
 
     from pdfsearchable import store
+
     monkeypatch.setattr(store, "fts_search", fake_fts)
     # também precisa interceptar no import dentro da função
     monkeypatch.setitem(__import__("sys").modules, "pdfsearchable.store", store)
@@ -96,6 +97,7 @@ def test_hybrid_top_k_respected(isolated_store, monkeypatch):
 def test_hybrid_result_shape(isolated_store, monkeypatch):
     """Verifica estrutura do dict de resposta."""
     from pdfsearchable import store
+
     monkeypatch.setattr(
         store,
         "fts_search",
@@ -115,6 +117,7 @@ def test_hybrid_result_shape(isolated_store, monkeypatch):
 def test_hybrid_consensus_scoring(isolated_store, monkeypatch):
     """Doc presente em ambos os rankings deve ter score maior que só num."""
     from pdfsearchable import store, semantic_search as ss
+
     monkeypatch.setattr(
         store,
         "fts_search",
@@ -142,24 +145,32 @@ def test_hybrid_consensus_scoring(isolated_store, monkeypatch):
 def test_semantic_available_health_check_true(monkeypatch):
     """_semantic_available returns True when ollama_health_check returns True (lines 91-92)."""
     import pdfsearchable.content_extractors as ce
+
     monkeypatch.setattr(ce, "ollama_health_check", lambda: True)
     from pdfsearchable.hybrid_search import _semantic_available
+
     assert _semantic_available() is True
 
 
 def test_semantic_available_health_check_false(monkeypatch):
     """_semantic_available returns False when ollama_health_check returns False (lines 91-92)."""
     import pdfsearchable.content_extractors as ce
+
     monkeypatch.setattr(ce, "ollama_health_check", lambda: False)
     from pdfsearchable.hybrid_search import _semantic_available
+
     assert _semantic_available() is False
 
 
 def test_semantic_available_exception(monkeypatch):
     """_semantic_available returns False on exception (line 92 except)."""
     import pdfsearchable.content_extractors as ce
-    monkeypatch.setattr(ce, "ollama_health_check", lambda: (_ for _ in ()).throw(RuntimeError("fail")))
+
+    monkeypatch.setattr(
+        ce, "ollama_health_check", lambda: (_ for _ in ()).throw(RuntimeError("fail"))
+    )
     from pdfsearchable.hybrid_search import _semantic_available
+
     assert _semantic_available() is False
 
 
@@ -169,6 +180,7 @@ def test_semantic_available_exception(monkeypatch):
 def test_hybrid_semantic_auto_detect_false(isolated_store, monkeypatch):
     """enable_semantic=None + _semantic_available()=False → no semantic (line 99)."""
     import pdfsearchable.hybrid_search as hs
+
     monkeypatch.setattr(hs, "_semantic_available", lambda: False)
     r = hs.hybrid_search("query text", enable_semantic=None, top_k=5)
     assert isinstance(r, list)
@@ -184,6 +196,7 @@ def test_hybrid_semantic_auto_detect_true(isolated_store, monkeypatch):
 
     import sys
     import types
+
     fake_ss = types.ModuleType("pdfsearchable.semantic_search")
     fake_ss.semantic_search = lambda q, **kw: [
         {"file_id": "sem1", "page": 1, "snippet": "sem text", "similarity": 0.8},
@@ -204,6 +217,7 @@ def test_hybrid_semantic_failure_fallback(isolated_store, monkeypatch):
 
     import sys
     import types
+
     fake_ss = types.ModuleType("pdfsearchable.semantic_search")
     fake_ss.semantic_search = lambda q, **kw: (_ for _ in ()).throw(RuntimeError("sem fail"))
     monkeypatch.setitem(sys.modules, "pdfsearchable.semantic_search", fake_ss)
@@ -218,7 +232,9 @@ def test_hybrid_fts_exception_logs_warning(isolated_store, monkeypatch):
     import pdfsearchable.hybrid_search as hs
     from pdfsearchable import store
 
-    monkeypatch.setattr(store, "fts_search", lambda q, limit=100: (_ for _ in ()).throw(RuntimeError("fts fail")))
+    monkeypatch.setattr(
+        store, "fts_search", lambda q, limit=100: (_ for _ in ()).throw(RuntimeError("fts fail"))
+    )
     r = hs.hybrid_search("query", enable_semantic=False, top_k=5)
     assert r == []
 
@@ -229,12 +245,17 @@ def test_hybrid_fts_exception_logs_warning(isolated_store, monkeypatch):
 def test_hybrid_semantic_snippet_uses_fts_if_available(isolated_store, monkeypatch):
     """When FTS and semantic both match, FTS snippet is preferred (line 152-153)."""
     from pdfsearchable import store, semantic_search as ss
-    monkeypatch.setattr(store, "fts_search",
-                        lambda q, limit=100: [("doc_shared", 1, "fts_snippet_here")])
-    monkeypatch.setattr(ss, "semantic_search",
-                        lambda q, **kw: [
-                            {"file_id": "doc_shared", "page": 1, "snippet": "sem_snippet", "similarity": 0.9},
-                        ])
+
+    monkeypatch.setattr(
+        store, "fts_search", lambda q, limit=100: [("doc_shared", 1, "fts_snippet_here")]
+    )
+    monkeypatch.setattr(
+        ss,
+        "semantic_search",
+        lambda q, **kw: [
+            {"file_id": "doc_shared", "page": 1, "snippet": "sem_snippet", "similarity": 0.9},
+        ],
+    )
     r = hybrid_search("q", enable_semantic=True, top_k=5)
     # doc_shared in both; snippet from FTS should be kept (non-empty FTS snippet)
     hit = next(h for h in r if h["file_id"] == "doc_shared")
@@ -244,11 +265,13 @@ def test_hybrid_semantic_snippet_uses_fts_if_available(isolated_store, monkeypat
 def test_hybrid_semantic_snippet_falls_back_when_fts_empty(isolated_store, monkeypatch):
     """When FTS snippet is empty, semantic snippet is used (line 152-153)."""
     from pdfsearchable import store
+
     monkeypatch.setattr(store, "fts_search", lambda q, limit=100: [])
     import pdfsearchable.hybrid_search as hs
 
     import sys
     import types
+
     fake_ss = types.ModuleType("pdfsearchable.semantic_search")
     fake_ss.semantic_search = lambda q, **kw: [
         {"file_id": "sem_only", "page": 2, "snippet": "sem_snippet_used", "similarity": 0.7},
@@ -268,10 +291,14 @@ def test_hybrid_rerank_called_when_true(isolated_store, monkeypatch):
     from pdfsearchable import store
     import pdfsearchable.hybrid_search as hs
 
-    monkeypatch.setattr(store, "fts_search",
-                        lambda q, limit=100: [(f"doc{i}", 1, f"snippet {i}") for i in range(10)])
+    monkeypatch.setattr(
+        store,
+        "fts_search",
+        lambda q, limit=100: [(f"doc{i}", 1, f"snippet {i}") for i in range(10)],
+    )
 
     rerank_called = {"n": 0}
+
     def fake_rerank(query, candidates):
         rerank_called["n"] += 1
         return candidates  # passthrough
@@ -286,8 +313,9 @@ def test_hybrid_rerank_exception_logged(isolated_store, monkeypatch):
     from pdfsearchable import store
     import pdfsearchable.hybrid_search as hs
 
-    monkeypatch.setattr(store, "fts_search",
-                        lambda q, limit=100: [(f"doc{i}", 1, f"s{i}") for i in range(5)])
+    monkeypatch.setattr(
+        store, "fts_search", lambda q, limit=100: [(f"doc{i}", 1, f"s{i}") for i in range(5)]
+    )
 
     def fail_rerank(query, candidates):
         raise ImportError("no model")
@@ -340,6 +368,7 @@ def test_cross_encoder_rerank_predict_failure(monkeypatch):
     class FakeCrossEncoder:
         def __init__(self, name):
             pass
+
         def predict(self, pairs):
             raise RuntimeError("predict failed")
 
@@ -362,6 +391,7 @@ def test_cross_encoder_rerank_success(monkeypatch):
     class FakeCrossEncoder:
         def __init__(self, name):
             pass
+
         def predict(self, pairs):
             # Return score 1.0 for second, 0.5 for first → should reverse order
             return [0.5, 1.0]
@@ -405,14 +435,19 @@ def test_hybrid_rerank_exception_swallowed(isolated_store, monkeypatch):
     from pdfsearchable import store
     import pdfsearchable.hybrid_search as hs
 
-    monkeypatch.setattr(store, "fts_search", lambda q, limit=100: [
-        ("doc1", 1, "snippet text"),
-    ])
+    monkeypatch.setattr(
+        store,
+        "fts_search",
+        lambda q, limit=100: [
+            ("doc1", 1, "snippet text"),
+        ],
+    )
 
     def bad_reranker(query, candidates):
         raise RuntimeError("no sentence-transformers")
 
     import unittest.mock as mock
+
     with mock.patch.object(hs, "_cross_encoder_rerank", bad_reranker):
         results = hs.hybrid_search("query", rerank=True, top_k=5)
     assert len(results) >= 1  # still returns results after exception
@@ -426,9 +461,13 @@ def test_hybrid_semantic_fills_empty_fts_snippet(isolated_store, monkeypatch):
     import pdfsearchable.hybrid_search as hs
 
     # FTS returns a hit with empty snippet for doc1
-    monkeypatch.setattr(store, "fts_search", lambda q, limit=100: [
-        ("doc1", 1, ""),  # empty snippet
-    ])
+    monkeypatch.setattr(
+        store,
+        "fts_search",
+        lambda q, limit=100: [
+            ("doc1", 1, ""),  # empty snippet
+        ],
+    )
 
     # Semantic returns same doc with a non-empty snippet
     fake_ss = types.ModuleType("pdfsearchable.semantic_search")

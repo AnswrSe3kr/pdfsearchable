@@ -15,9 +15,11 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from typing import Any
 
+
 # Arquivo para retomar processamento interrompido (add --resume)
 def _pending_add_file() -> Path:
     return Path.cwd() / ".pdfsearchable" / "pending_add.json"
+
 
 import click
 from rich import box
@@ -225,7 +227,12 @@ def stats_cmd() -> None:
 )
 @click.argument("files", type=click.Path(exists=True, path_type=Path), nargs=-1)
 @click.option("--password", "-p", envvar="PDF_PASSWORD", help="Senha do PDF (ou env PDF_PASSWORD).")
-@click.option("--skip-failed/--no-skip-failed", default=True, show_default=True, help="Continuar mesmo quando um arquivo falhar.")
+@click.option(
+    "--skip-failed/--no-skip-failed",
+    default=True,
+    show_default=True,
+    help="Continuar mesmo quando um arquivo falhar.",
+)
 @click.option(
     "--extract-mode",
     type=click.Choice(["text", "blocks", "dict"]),
@@ -255,7 +262,13 @@ def stats_cmd() -> None:
     is_flag=True,
     help="Modo contínuo: pular já indexados e continuar mesmo se um arquivo falhar.",
 )
-@click.option("--recursive/--no-recursive", "-r", default=True, show_default=True, help="Incluir PDFs em subpastas (recursivo).")
+@click.option(
+    "--recursive/--no-recursive",
+    "-r",
+    default=True,
+    show_default=True,
+    help="Incluir PDFs em subpastas (recursivo).",
+)
 @click.option(
     "--reprocess",
     is_flag=True,
@@ -397,13 +410,19 @@ def add(
 
     # Dirs de sistema a excluir do scan (contêm PDFs que não são documentos do utilizador)
     _EXCLUDED_DIR_PARTS = {
-        ".venv", "venv", "env", ".env",  # ambientes virtuais Python
-        "node_modules",                   # dependências JS
-        ".git",                           # controlo de versão
-        ".pdfsearchable",                 # própria store do projeto (inclui subpastas)
-        "__pycache__", ".tox", ".pytest_cache",  # artefactos de build/test
-        "site-packages",                  # pacotes instalados (pip, conda, etc.)
+        ".venv",
+        "venv",
+        "env",
+        ".env",  # ambientes virtuais Python
+        "node_modules",  # dependências JS
+        ".git",  # controlo de versão
+        ".pdfsearchable",  # própria store do projeto (inclui subpastas)
+        "__pycache__",
+        ".tox",
+        ".pytest_cache",  # artefactos de build/test
+        "site-packages",  # pacotes instalados (pip, conda, etc.)
     }
+
     def _is_excluded(path: Path) -> bool:
         # Verificar todas as partes do path resolvido para apanhar subpastas
         # Ex.: /proj/.pdfsearchable/archive/file.pdf → partes incluem ".pdfsearchable"
@@ -503,6 +522,7 @@ def add(
     # 2. Verificar espaço em disco (~3x do tamanho da fonte: texto + OCR cache + cópias)
     try:
         from shutil import disk_usage
+
         store_parent = Path.cwd()
         store_parent.mkdir(parents=True, exist_ok=True)
         free = disk_usage(store_parent).free
@@ -512,9 +532,7 @@ def add(
                 f"[red]✗ Espaço em disco insuficiente:[/] "
                 f"{free / 1024**3:.2f} GB livres, ~{needed / 1024**3:.2f} GB necessários."
             )
-            console.print(
-                "[dim]Liberte espaço ou mude para outro disco antes de continuar.[/]"
-            )
+            console.print("[dim]Liberte espaço ou mude para outro disco antes de continuar.[/]")
             raise click.Abort()
         if free < needed * 2:
             console.print(
@@ -532,9 +550,7 @@ def add(
         test_file.write_text("ok", encoding="utf-8")
         test_file.unlink()
     except OSError as e:
-        console.print(
-            f"[red]✗ Sem permissão de escrita em {Path.cwd()}/.pdfsearchable:[/] {e}"
-        )
+        console.print(f"[red]✗ Sem permissão de escrita em {Path.cwd()}/.pdfsearchable:[/] {e}")
         raise click.Abort() from e
     # ───────────────────────────────────────────────────────────────────────────
 
@@ -668,10 +684,7 @@ def add(
                 if _is_corrupt
                 else "Verifique se o arquivo existe, não está protegido por senha e não está a ser usado por outra aplicação."
             )
-            console.print(
-                f"[yellow]⚠ {_fname}:[/] {_ferr}\n"
-                f"  [dim]{_hint}[/]"
-            )
+            console.print(f"[yellow]⚠ {_fname}:[/] {_ferr}\n  [dim]{_hint}[/]")
         results = [r for r in results if not r.get("error")]
 
     if not results:
@@ -759,13 +772,12 @@ def add(
         console.print("\n[cyan]Gerando embeddings semânticos…[/]")
         try:
             from pdfsearchable.semantic_search import embed_all_documents
+
             ok_n, fail_n = embed_all_documents()
             if fail_n == 0:
                 console.print(f"[green]✓[/] {ok_n} documento(s) embeddeds (incremental).")
             else:
-                console.print(
-                    f"[yellow]⚠[/] {ok_n} OK, {fail_n} falhou (Ollama indisponível?)."
-                )
+                console.print(f"[yellow]⚠[/] {ok_n} OK, {fail_n} falhou (Ollama indisponível?).")
         except Exception as _e:
             logger.exception("Falha ao gerar embeddings pós-add")
             console.print(f"[yellow]⚠ Embeddings falharam:[/] {_e}")
@@ -807,8 +819,12 @@ def remove(file_id_or_name: str, yes_confirm: bool) -> None:
             "[yellow]Arquivo não encontrado no índice. Use [bold]pdfsearchable status[/] para listar.[/]"
         )
         return
-    if not yes_confirm and sys.stdin.isatty() and not click.confirm(
-        f'Remover "{name}" do índice? O arquivo PDF na pasta NÃO será apagado; apenas sairá do índice.'
+    if (
+        not yes_confirm
+        and sys.stdin.isatty()
+        and not click.confirm(
+            f'Remover "{name}" do índice? O arquivo PDF na pasta NÃO será apagado; apenas sairá do índice.'
+        )
     ):
         return
     # Backup opcional do índice antes de operação destrutiva
@@ -1060,7 +1076,9 @@ def _warn_content_duplicates(pdfs: list[Path], results: list[dict]) -> None:
             try:
                 h = _ch(p)
             except Exception as _e:
-                logger.debug("content_hash falhou para %s: %s — verificação de duplicados ignorada", p, _e)
+                logger.debug(
+                    "content_hash falhou para %s: %s — verificação de duplicados ignorada", p, _e
+                )
                 continue
             dup_name = hash_to_name.get(h)
             if dup_name and dup_name != p.name:
@@ -1095,7 +1113,9 @@ def _semantic_search(
         )
         return
 
-    ollama_url = (os.environ.get("PDFSEARCHABLE_OLLAMA_URL") or "http://localhost:11434").rstrip("/")
+    ollama_url = (os.environ.get("PDFSEARCHABLE_OLLAMA_URL") or "http://localhost:11434").rstrip(
+        "/"
+    )
     model = (os.environ.get("PDFSEARCHABLE_EMBED_MODEL") or "nomic-embed-text").strip()
 
     # Obter embedding da query
@@ -1131,7 +1151,9 @@ def _semantic_search(
 
     # Carregar embeddings do DB
     conn = _sq.connect(emb_db, timeout=15)
-    rows = conn.execute("SELECT file_id, embedding FROM embeddings WHERE model=?", (model,)).fetchall()
+    rows = conn.execute(
+        "SELECT file_id, embedding FROM embeddings WHERE model=?", (model,)
+    ).fetchall()
     conn.close()
     if not rows:
         console.print(f"[yellow]Nenhum embedding gerado para o modelo '{model}'.[/]")
@@ -1190,19 +1212,26 @@ def _semantic_search(
             str(meta.get("num_pages") or 0),
         )
     console.print(table)
-    console.print(
-        f"[dim]{len(top)} documento(s) mais semelhantes · modelo: {model}[/]"
-    )
+    console.print(f"[dim]{len(top)} documento(s) mais semelhantes · modelo: {model}[/]")
     audit("cli_search_semantic", {"query": query, "model": model, "hits": len(top)})
 
 
 _LOCAL_ASSETS: list[tuple[str, str]] = [
-    ("leaflet.css",              "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"),
-    ("leaflet.js",               "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"),
-    ("MarkerCluster.css",        "https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"),
-    ("MarkerCluster.Default.css","https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"),
-    ("leaflet.markercluster.js", "https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"),
-    ("wordcloud2.min.js",        "https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.0.2/wordcloud2.min.js"),
+    ("leaflet.css", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"),
+    ("leaflet.js", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"),
+    ("MarkerCluster.css", "https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"),
+    (
+        "MarkerCluster.Default.css",
+        "https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css",
+    ),
+    (
+        "leaflet.markercluster.js",
+        "https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js",
+    ),
+    (
+        "wordcloud2.min.js",
+        "https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.0.2/wordcloud2.min.js",
+    ),
 ]
 
 
@@ -1233,6 +1262,7 @@ def _setup_spa(base_dir: Path) -> None:
     Silencioso em caso de falha (o servidor continua sem os templates).
     """
     import shutil as _shutil
+
     templates_dir = Path(__file__).parent / "templates"
     for _tmpl in templates_dir.glob("*.html"):
         try:
@@ -1343,6 +1373,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
             if not _auth_token:
                 return True
             import base64 as _b64
+
             auth = self.headers.get("Authorization", "")
             if auth.startswith("Bearer "):
                 return auth[7:].strip() == _auth_token
@@ -1375,6 +1406,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
         def _send_json(self, body: bytes, status: int = 200) -> None:
             """Envia JSON com compressão gzip se o cliente suportar e body > 1 KB."""
             import gzip as _gz
+
             accept_enc = self.headers.get("Accept-Encoding", "")
             if len(body) > 1024 and "gzip" in accept_enc:
                 compressed = _gz.compress(body, compresslevel=6)
@@ -1461,7 +1493,11 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
             if parsed.path == "/api/text":
                 qs = urllib.parse.parse_qs(parsed.query)
                 file_id = (qs.get("id") or [""])[0].strip()
-                if not file_id or len(file_id) != 16 or not all(c in "0123456789abcdefABCDEF" for c in file_id):
+                if (
+                    not file_id
+                    or len(file_id) != 16
+                    or not all(c in "0123456789abcdefABCDEF" for c in file_id)
+                ):
                     self._send_json_error(400, "ID inválido")
                     return
                 try:
@@ -1485,6 +1521,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
             if parsed.path == "/api/stats":
                 try:
                     from pdfsearchable.store import compute_dashboard_stats
+
                     stats = compute_dashboard_stats()
                     body = json.dumps(stats, ensure_ascii=False).encode("utf-8")
                     self._send_json(body)
@@ -1515,7 +1552,9 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     results = fts_search(query, limit=20)
                     if type_filter:
                         idx = load_index()
-                        type_map = {f.get("id", ""): f.get("doc_type", "") for f in idx.get("files", [])}
+                        type_map = {
+                            f.get("id", ""): f.get("doc_type", "") for f in idx.get("files", [])
+                        }
                         # fts_search returns tuples (file_id, page_num, snippet)
                         results = [r for r in results if type_map.get(r[0], "") == type_filter]
                     self._send_json(json.dumps(results, ensure_ascii=False).encode("utf-8"))
@@ -1532,11 +1571,16 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                 except (ValueError, TypeError):
                     self._send_json_error(400, "page deve ser um inteiro")
                     return
-                if not file_id or len(file_id) != 16 or not all(c in "0123456789abcdefABCDEF" for c in file_id):
+                if (
+                    not file_id
+                    or len(file_id) != 16
+                    or not all(c in "0123456789abcdefABCDEF" for c in file_id)
+                ):
                     self._send_json_error(400, "id inválido")
                     return
                 try:
                     from pdfsearchable.store import load_page_text
+
                     text = load_page_text(file_id, page_n)
                 except Exception as _pg_err:
                     logger.debug("Falha ao carregar página %d de %s: %s", page_n, file_id, _pg_err)
@@ -1554,11 +1598,16 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
             if parsed.path == "/api/annotations":
                 qs = urllib.parse.parse_qs(parsed.query)
                 file_id = (qs.get("id") or [""])[0].strip()
-                if not file_id or len(file_id) != 16 or not all(c in "0123456789abcdefABCDEF" for c in file_id):
+                if (
+                    not file_id
+                    or len(file_id) != 16
+                    or not all(c in "0123456789abcdefABCDEF" for c in file_id)
+                ):
                     self._send_json_error(400, "id inválido")
                     return
                 try:
                     from pdfsearchable.annotations import AnnotationStore
+
                     _ann_store = AnnotationStore(STORE_DIR)
                     anns = _ann_store.get(file_id)
                     body = json.dumps(anns, ensure_ascii=False).encode()
@@ -1580,21 +1629,129 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     wc_limit = max(10, min(500, int((qs.get("limit") or ["200"])[0])))
                 except (ValueError, IndexError):
                     wc_limit = 200
-                _PT_STOP = frozenset([
-                    "de","da","do","das","dos","em","no","na","nos","nas","a","o","as","os",
-                    "e","que","para","com","por","se","um","uma","uns","umas","ao","aos","à",
-                    "às","ou","mas","como","ser","ter","foi","são","este","esta","estes","estas",
-                    "esse","essa","esses","essas","ele","ela","eles","elas","seu","sua","seus",
-                    "suas","meu","minha","neste","nesta","nesse","nessa","pelo","pela","pelos",
-                    "pelas","mais","nem","já","ainda","sobre","entre","até","após","ante","muito",
-                    "também","quando","onde","qual","quais","que","não","sim","pois","logo",
-                    "então","aqui","ali","lá","há","era","está","estão","deve","tem","têm",
-                    "todo","toda","todos","todas","cada","entre","desde","durante","após",
-                    "mediante","conforme","sendo","tendo","podendo","referente","relativo",
-                    "presente","contrato","acordo","mediante","estabelecido","nos","nas","nos",
-                ])
+                _PT_STOP = frozenset(
+                    [
+                        "de",
+                        "da",
+                        "do",
+                        "das",
+                        "dos",
+                        "em",
+                        "no",
+                        "na",
+                        "nos",
+                        "nas",
+                        "a",
+                        "o",
+                        "as",
+                        "os",
+                        "e",
+                        "que",
+                        "para",
+                        "com",
+                        "por",
+                        "se",
+                        "um",
+                        "uma",
+                        "uns",
+                        "umas",
+                        "ao",
+                        "aos",
+                        "à",
+                        "às",
+                        "ou",
+                        "mas",
+                        "como",
+                        "ser",
+                        "ter",
+                        "foi",
+                        "são",
+                        "este",
+                        "esta",
+                        "estes",
+                        "estas",
+                        "esse",
+                        "essa",
+                        "esses",
+                        "essas",
+                        "ele",
+                        "ela",
+                        "eles",
+                        "elas",
+                        "seu",
+                        "sua",
+                        "seus",
+                        "suas",
+                        "meu",
+                        "minha",
+                        "neste",
+                        "nesta",
+                        "nesse",
+                        "nessa",
+                        "pelo",
+                        "pela",
+                        "pelos",
+                        "pelas",
+                        "mais",
+                        "nem",
+                        "já",
+                        "ainda",
+                        "sobre",
+                        "entre",
+                        "até",
+                        "após",
+                        "ante",
+                        "muito",
+                        "também",
+                        "quando",
+                        "onde",
+                        "qual",
+                        "quais",
+                        "que",
+                        "não",
+                        "sim",
+                        "pois",
+                        "logo",
+                        "então",
+                        "aqui",
+                        "ali",
+                        "lá",
+                        "há",
+                        "era",
+                        "está",
+                        "estão",
+                        "deve",
+                        "tem",
+                        "têm",
+                        "todo",
+                        "toda",
+                        "todos",
+                        "todas",
+                        "cada",
+                        "entre",
+                        "desde",
+                        "durante",
+                        "após",
+                        "mediante",
+                        "conforme",
+                        "sendo",
+                        "tendo",
+                        "podendo",
+                        "referente",
+                        "relativo",
+                        "presente",
+                        "contrato",
+                        "acordo",
+                        "mediante",
+                        "estabelecido",
+                        "nos",
+                        "nas",
+                        "nos",
+                    ]
+                )
                 try:
                     import re as _re2
+
                     idx2 = load_index()
                     files2 = idx2.get("files", [])
                     if wc_type:
@@ -1602,13 +1759,17 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     freq: dict[str, int] = {}
                     for f2 in files2:
                         txt2 = load_file_text(f2.get("id", ""))
-                        for w2 in _re2.findall(r'\b[a-záéíóúàâãêôçA-ZÁÉÍÓÚÀÂÃÊÔÇ]{3,}\b', txt2):
+                        for w2 in _re2.findall(r"\b[a-záéíóúàâãêôçA-ZÁÉÍÓÚÀÂÃÊÔÇ]{3,}\b", txt2):
                             lw = w2.lower()
                             if lw not in _PT_STOP:
                                 freq[lw] = freq.get(lw, 0) + 1
                     top = sorted(freq.items(), key=lambda x: -x[1])[:wc_limit]
-                    body_wc = json.dumps({"words": [{"text": t, "weight": c} for t, c in top],
-                                          "total_words": len(freq)}).encode()
+                    body_wc = json.dumps(
+                        {
+                            "words": [{"text": t, "weight": c} for t, c in top],
+                            "total_words": len(freq),
+                        }
+                    ).encode()
                     self._send_json(body_wc)
                 except Exception as exc:
                     self._send_json_error(500, str(exc)[:80])
@@ -1622,9 +1783,8 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     idx3 = load_index()
                     loc_map: dict[str, list[dict]] = {}
                     for f3 in idx3.get("files", []):
-                        locs3 = (
-                            (f3.get("identified_locations") or [])
-                            + (f3.get("identified_addresses") or [])
+                        locs3 = (f3.get("identified_locations") or []) + (
+                            f3.get("identified_addresses") or []
                         )
                         for loc3 in locs3:
                             if loc3 and len(str(loc3).strip()) >= 3:
@@ -1634,22 +1794,33 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                                 )
                     result_locs = []
                     for loc_name, loc_docs in sorted(loc_map.items(), key=lambda x: -len(x[1])):
-                        entry: dict = {"name": loc_name, "lat": None, "lng": None,
-                                       "doc_count": len(loc_docs), "docs": loc_docs[:10]}
+                        entry: dict = {
+                            "name": loc_name,
+                            "lat": None,
+                            "lng": None,
+                            "doc_count": len(loc_docs),
+                            "docs": loc_docs[:10],
+                        }
                         if do_geo:
                             if loc_name in _geocode_cache:
                                 entry["lat"], entry["lng"] = _geocode_cache[loc_name]
                             else:
                                 try:
                                     import urllib.request as _ur2
+
                                     _geo_q = urllib.parse.urlencode(
                                         {"q": loc_name, "format": "json", "limit": "1"}
                                     )
-                                    _geo_url = f"https://nominatim.openstreetmap.org/search?{_geo_q}"
-                                    if not _geo_url.startswith("https://nominatim.openstreetmap.org/"):
+                                    _geo_url = (
+                                        f"https://nominatim.openstreetmap.org/search?{_geo_q}"
+                                    )
+                                    if not _geo_url.startswith(
+                                        "https://nominatim.openstreetmap.org/"
+                                    ):
                                         raise ValueError("URL de geocodificação inválida")
                                     _geo_req = _ur2.Request(
-                                        _geo_url, headers={"User-Agent": f"pdfsearchable/{__version__}"}
+                                        _geo_url,
+                                        headers={"User-Agent": f"pdfsearchable/{__version__}"},
                                     )
                                     with _ur2.urlopen(_geo_req, timeout=3) as _gr:  # nosec B310
                                         _gd = json.loads(_gr.read())
@@ -1658,11 +1829,14 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                                         entry["lng"] = float(_gd[0]["lon"])
                                     _geocode_cache[loc_name] = (entry["lat"], entry["lng"])
                                 except Exception as _geo_err:
-                                    logger.debug("Geocodificação falhou para '%s': %s", loc_name, _geo_err)
+                                    logger.debug(
+                                        "Geocodificação falhou para '%s': %s", loc_name, _geo_err
+                                    )
                                     _geocode_cache[loc_name] = (None, None)
                         result_locs.append(entry)
-                    body_loc = json.dumps({"locations": result_locs,
-                                           "total": len(result_locs)}).encode()
+                    body_loc = json.dumps(
+                        {"locations": result_locs, "total": len(result_locs)}
+                    ).encode()
                     self._send_json(body_loc)
                 except Exception as exc:
                     self._send_json_error(500, str(exc)[:80])
@@ -1673,6 +1847,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                 try:
                     from pdfsearchable.store import load_index as _li_g
                     from pdfsearchable.knowledge_graph import build_graph as _build_g
+
                     _idx_g = _li_g()
                     _files_g = _idx_g.get("files", [])
                     _graph = _build_g(_files_g)
@@ -1687,7 +1862,11 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                 try:
                     import dataclasses as _dc
                     from pdfsearchable.store import load_index as _li_t
-                    from pdfsearchable.timeline import build_timeline as _btl, timeline_stats as _tls
+                    from pdfsearchable.timeline import (
+                        build_timeline as _btl,
+                        timeline_stats as _tls,
+                    )
+
                     _idx_t = _li_t()
                     _files_t = _idx_t.get("files", [])
                     _raw_entries = _btl(_files_t)
@@ -1740,6 +1919,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
             if parsed.path == "/api/metrics":
                 try:
                     from pdfsearchable.metrics import render_metrics
+
                     body = render_metrics().encode("utf-8")
                     self.send_response(200)
                     self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
@@ -1755,6 +1935,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
             if parsed.path == "/api/health":
                 try:
                     from pdfsearchable.metrics import health_status
+
                     h = health_status()
                     status_code = 200 if h["status"] != "down" else 503
                     body = json.dumps(h, ensure_ascii=False).encode("utf-8")
@@ -1781,6 +1962,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     return
                 try:
                     from pdfsearchable.hybrid_search import hybrid_search
+
                     results = hybrid_search(query, top_k=top_k)
                     body = json.dumps(results, ensure_ascii=False).encode("utf-8")
                     self._send_json(body)
@@ -1797,6 +1979,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     return
                 try:
                     from pdfsearchable.pdf_profiler import profile_pdf, recommend_pipeline
+
                     pr = profile_pdf(path_q)
                     pr["recommendation"] = recommend_pipeline(pr)
                     body = json.dumps(pr, ensure_ascii=False).encode("utf-8")
@@ -1809,6 +1992,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
             if parsed.path == "/api/duplicates":
                 try:
                     from pdfsearchable.dedup import scan_store_for_near_duplicates
+
                     qs = urllib.parse.parse_qs(parsed.query)
                     try:
                         thr = float((qs.get("threshold") or ["0.8"])[0])
@@ -1831,6 +2015,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     return
                 try:
                     from pdfsearchable.doc_diff import diff_documents
+
                     d = diff_documents(a, b)
                     body = json.dumps(d, ensure_ascii=False).encode("utf-8")
                     self._send_json(body)
@@ -1842,6 +2027,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
             if parsed.path == "/api/saved_searches":
                 try:
                     from pdfsearchable.saved_searches import list_saved_searches
+
                     body = json.dumps(list_saved_searches(), ensure_ascii=False).encode("utf-8")
                     self._send_json(body)
                 except Exception as exc:
@@ -1852,6 +2038,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
             if parsed.path == "/api/tombstones":
                 try:
                     from pdfsearchable.tombstone import tombstone_list
+
                     body = json.dumps(tombstone_list(), ensure_ascii=False).encode("utf-8")
                     self._send_json(body)
                 except Exception as exc:
@@ -1888,7 +2075,11 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     self._send_json_error(400, "JSON inválido")
                     return
                 file_id = data.get("id", "").strip()
-                if not file_id or len(file_id) != 16 or not all(c in "0123456789abcdefABCDEF" for c in file_id):
+                if (
+                    not file_id
+                    or len(file_id) != 16
+                    or not all(c in "0123456789abcdefABCDEF" for c in file_id)
+                ):
                     self._send_json_error(400, "id inválido")
                     return
                 changed = False
@@ -1921,11 +2112,16 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     self._send_json_error(400, "JSON inválido")
                     return
                 file_id = data.pop("file_id", "").strip()
-                if not file_id or len(file_id) != 16 or not all(c in "0123456789abcdefABCDEF" for c in file_id):
+                if (
+                    not file_id
+                    or len(file_id) != 16
+                    or not all(c in "0123456789abcdefABCDEF" for c in file_id)
+                ):
                     self._send_json_error(400, "file_id inválido")
                     return
                 try:
                     from pdfsearchable.annotations import AnnotationStore
+
                     _ann_store = AnnotationStore(STORE_DIR)
                     ann_id = _ann_store.add(file_id, data)
                     body = json.dumps({"id": ann_id}).encode()
@@ -1975,7 +2171,11 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                 return
             file_id = (payload.get("id") or "").strip()
             question = (payload.get("question") or "").strip()
-            if not file_id or len(file_id) != 16 or not all(c in "0123456789abcdefABCDEF" for c in file_id):
+            if (
+                not file_id
+                or len(file_id) != 16
+                or not all(c in "0123456789abcdefABCDEF" for c in file_id)
+            ):
                 self._send_json_error(400, "id inválido")
                 return
             if not question:
@@ -1983,7 +2183,9 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                 return
 
             if (os.environ.get("PDFSEARCHABLE_AI") or "").strip().lower() != "ollama":
-                _body = json.dumps({"error": "PDFSEARCHABLE_AI=ollama é obrigatório para /api/ask."}).encode("utf-8")
+                _body = json.dumps(
+                    {"error": "PDFSEARCHABLE_AI=ollama é obrigatório para /api/ask."}
+                ).encode("utf-8")
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Content-Length", str(len(_body)))
@@ -2010,11 +2212,15 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     e.message,
                     e.details,
                 )
-                self._send_json_error(500, "Erro ao ler o documento (índice ou arquivo inacessível).")
+                self._send_json_error(
+                    500, "Erro ao ler o documento (índice ou arquivo inacessível)."
+                )
                 return
             except Exception:
                 logger.exception("API /api/ask: falha ao ler documento %s", file_id)
-                self._send_json_error(500, "Erro ao ler o documento (índice ou arquivo inacessível).")
+                self._send_json_error(
+                    500, "Erro ao ler o documento (índice ou arquivo inacessível)."
+                )
                 return
             if not text:
                 self._send_json_error(404, "Documento não encontrado ou sem texto.")
@@ -2052,6 +2258,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                         self._send_json_error(400, "name e query obrigatórios")
                         return
                     from pdfsearchable.saved_searches import save_search
+
                     entry = save_search(name, query, options=payload.get("options"))
                     self._send_json(json.dumps(entry).encode("utf-8"))
                 except Exception as exc:
@@ -2065,6 +2272,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
                     name = (payload.get("name") or "").strip()
                     from pdfsearchable.saved_searches import run_saved_search
+
                     r = run_saved_search(name)
                     self._send_json(json.dumps(r, ensure_ascii=False).encode("utf-8"))
                 except Exception as exc:
@@ -2078,6 +2286,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
                     name = (payload.get("name") or "").strip()
                     from pdfsearchable.saved_searches import delete_saved_search
+
                     ok = delete_saved_search(name)
                     self._send_json(json.dumps({"ok": ok}).encode("utf-8"))
                 except Exception as exc:
@@ -2091,6 +2300,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
                     fid = (payload.get("file_id") or "").strip()
                     from pdfsearchable.tombstone import tombstone_restore
+
                     data = tombstone_restore(fid)
                     if data is None:
                         self._send_json_error(404, "tombstone não encontrado")
@@ -2103,7 +2313,9 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
             # /api/dossier/generate — { query, results, title? } → retorna path do PDF
             if parsed.path == "/api/dossier/generate":
                 try:
-                    length = min(1 * 1024 * 1024, max(0, int(self.headers.get("Content-Length", "0"))))
+                    length = min(
+                        1 * 1024 * 1024, max(0, int(self.headers.get("Content-Length", "0")))
+                    )
                     payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
                     results = payload.get("results") or []
                     query = payload.get("query") or ""
@@ -2111,12 +2323,17 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     import time as _time
 
                     from pdfsearchable.dossier import generate_dossier
+
                     out_path = STORE_DIR / f"dossier_{int(_time.time())}.pdf"
                     generate_dossier(results, out_path, title=title, query=query)
-                    self._send_json(json.dumps({
-                        "path": str(out_path),
-                        "size": out_path.stat().st_size,
-                    }).encode("utf-8"))
+                    self._send_json(
+                        json.dumps(
+                            {
+                                "path": str(out_path),
+                                "size": out_path.stat().st_size,
+                            }
+                        ).encode("utf-8")
+                    )
                 except Exception as exc:
                     self._send_json_error(500, str(exc)[:120])
                 return
@@ -2134,6 +2351,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     try:
                         from pdfsearchable.classifier_feedback import record_correction
                         from pdfsearchable.store import read_page_text
+
                         snippet = ""
                         try:
                             snippet = (read_page_text(fid, 1) or "")[:500]
@@ -2156,9 +2374,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
     audit("serve_start", {"host": host, "port": port})
     app_url = f"http://{host}:{port}/app.html"
     auth_hint = (
-        "\n[dim]Auth: [yellow]PDFSEARCHABLE_AUTH_TOKEN[/] configurado.[/]"
-        if _auth_token
-        else ""
+        "\n[dim]Auth: [yellow]PDFSEARCHABLE_AUTH_TOKEN[/] configurado.[/]" if _auth_token else ""
     )
     console.print(
         Panel(
@@ -2171,6 +2387,7 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
     )
     if open_browser:
         import webbrowser
+
         webbrowser.open(app_url)
     try:
         httpd.serve_forever()
@@ -2187,6 +2404,7 @@ def report() -> None:
     """
     try:
         from pdfsearchable.report import generate_report
+
         generate_report()
     except (StoreError, ReportError) as e:
         logger.exception("Erro ao gerar report")
@@ -2211,8 +2429,12 @@ def report() -> None:
 
 
 @main.command()
-@click.option("--benchmark", is_flag=True, default=False,
-              help="Executa benchmarks sintéticos de indexação, FTS e MinHash.")
+@click.option(
+    "--benchmark",
+    is_flag=True,
+    default=False,
+    help="Executa benchmarks sintéticos de indexação, FTS e MinHash.",
+)
 def doctor(benchmark: bool) -> None:
     """
     Verifica dependências, configuração e estado do projeto.
@@ -2241,6 +2463,7 @@ def doctor(benchmark: bool) -> None:
     # PyMuPDF
     try:
         import fitz as _fitz
+
         ver = getattr(_fitz, "version", ("?",))[0]
         table.add_row("PyMuPDF", "[green]OK[/]", f"v{ver}")
     except ImportError:
@@ -2252,7 +2475,10 @@ def doctor(benchmark: bool) -> None:
     if tess_path:
         try:
             res = subprocess.run(
-                ["tesseract", "--version"], capture_output=True, text=True, timeout=5  # noqa: S607
+                ["tesseract", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,  # noqa: S607
             )
             out = res.stdout or res.stderr or ""
             ver_line = out.splitlines()[0] if out.strip() else tess_path
@@ -2272,12 +2498,20 @@ def doctor(benchmark: bool) -> None:
         table.add_row("HTR", "[dim]desativado[/]", "PDFSEARCHABLE_HTR=0")
     else:
         try:
-            from pdfsearchable.htr import get_htr_backend, htr_available as _htr_avail, list_supported_languages
+            from pdfsearchable.htr import (
+                get_htr_backend,
+                htr_available as _htr_avail,
+                list_supported_languages,
+            )
 
             backend = get_htr_backend()
             if _htr_avail():
                 langs = list_supported_languages()
-                dedicated = [k for k, v in langs.items() if k != "printed" and "fallback" not in v.lower() and "Latin" not in v]
+                dedicated = [
+                    k
+                    for k, v in langs.items()
+                    if k != "printed" and "fallback" not in v.lower() and "Latin" not in v
+                ]
                 lang_info = f"backend={backend} · idiomas com modelo dedicado: {', '.join(sorted(dedicated))}"
                 table.add_row("HTR", "[green]OK[/]", lang_info)
             else:
@@ -2297,7 +2531,11 @@ def doctor(benchmark: bool) -> None:
     # pymupdf_layout — melhoria opcional de análise de layout
     try:
         import importlib.util as _ilu
-        if _ilu.find_spec("pymupdf.layout") is not None or _ilu.find_spec("pymupdf_layout") is not None:
+
+        if (
+            _ilu.find_spec("pymupdf.layout") is not None
+            or _ilu.find_spec("pymupdf_layout") is not None
+        ):
             table.add_row("pymupdf_layout", "[green]instalado[/]", "layout aprimorado activo")
         else:
             table.add_row(
@@ -2313,6 +2551,7 @@ def doctor(benchmark: bool) -> None:
     if ai_mode == "ollama":
         try:
             from pdfsearchable.content_extractors import ollama_health_check as _ollama_hc
+
             if _ollama_hc():
                 model = (os.environ.get("PDFSEARCHABLE_OLLAMA_MODEL") or "llama3.2").strip()
                 table.add_row("Ollama", "[green]OK[/]", f"acessível · modelo={model}")
@@ -2332,9 +2571,7 @@ def doctor(benchmark: bool) -> None:
     # Armazenamento
     if STORE_DIR.exists():
         try:
-            store_bytes = sum(
-                f.stat().st_size for f in STORE_DIR.rglob("*") if f.is_file()
-            )
+            store_bytes = sum(f.stat().st_size for f in STORE_DIR.rglob("*") if f.is_file())
             store_mb = store_bytes / (1024 * 1024)
             table.add_row(
                 "Armazenamento (.pdfsearchable)",
@@ -2365,9 +2602,7 @@ def doctor(benchmark: bool) -> None:
     if fts_db.exists():
         try:
             with _sq.connect(str(fts_db), timeout=5) as _conn:
-                row = _conn.execute(
-                    "SELECT COUNT(*) FROM fts_idx"
-                ).fetchone()
+                row = _conn.execute("SELECT COUNT(*) FROM fts_idx").fetchone()
                 fts_n = row[0] if row else 0
             fts_size_kb = fts_db.stat().st_size // 1024
             table.add_row("FTS SQLite", "[green]OK[/]", f"{fts_n} entrada(s) · {fts_size_kb} KB")
@@ -2423,6 +2658,7 @@ def doctor(benchmark: bool) -> None:
         # 1. Criar PDF sintético
         import tempfile as _tmp
         import fitz as _fb
+
         with _tmp.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
             tmp_pdf = Path(f.name)
         try:
@@ -2439,8 +2675,8 @@ def doctor(benchmark: bool) -> None:
             _d.close()
             bench_table.add_row(
                 "Criar PDF (5 páginas)",
-                f"{(_time.perf_counter()-t0)*1000:.1f} ms",
-                f"{tmp_pdf.stat().st_size//1024} KB",
+                f"{(_time.perf_counter() - t0) * 1000:.1f} ms",
+                f"{tmp_pdf.stat().st_size // 1024} KB",
             )
 
             # 2. Extração PyMuPDF
@@ -2450,7 +2686,7 @@ def doctor(benchmark: bool) -> None:
             _d2.close()
             bench_table.add_row(
                 "Extrair texto (5 páginas)",
-                f"{(_time.perf_counter()-t0)*1000:.1f} ms",
+                f"{(_time.perf_counter() - t0) * 1000:.1f} ms",
                 f"{total_chars} chars",
             )
 
@@ -2458,10 +2694,11 @@ def doctor(benchmark: bool) -> None:
             t0 = _time.perf_counter()
             try:
                 from pdfsearchable.pdf_profiler import profile_pdf
+
                 _pr = profile_pdf(tmp_pdf)
                 bench_table.add_row(
                     "PDF profiler",
-                    f"{(_time.perf_counter()-t0)*1000:.1f} ms",
+                    f"{(_time.perf_counter() - t0) * 1000:.1f} ms",
                     f"kind={_pr.get('kind')}",
                 )
             except Exception as _e:
@@ -2470,11 +2707,12 @@ def doctor(benchmark: bool) -> None:
             # 4. FTS search (se já existir índice)
             try:
                 from pdfsearchable.store import fts_search as _fs
+
                 t0 = _time.perf_counter()
                 _r = _fs("teste", limit=20)
                 bench_table.add_row(
                     "FTS search",
-                    f"{(_time.perf_counter()-t0)*1000:.1f} ms",
+                    f"{(_time.perf_counter() - t0) * 1000:.1f} ms",
                     f"{len(_r or [])} hits",
                 )
             except Exception as _e:
@@ -2483,12 +2721,13 @@ def doctor(benchmark: bool) -> None:
             # 5. MinHash (1000 shingles ~ doc médio)
             try:
                 from pdfsearchable.dedup import minhash as _mh
+
                 sample = "palavra diversa contexto " * 200
                 t0 = _time.perf_counter()
                 _sig = _mh(sample)
                 bench_table.add_row(
                     "MinHash 128 perm",
-                    f"{(_time.perf_counter()-t0)*1000:.1f} ms",
+                    f"{(_time.perf_counter() - t0) * 1000:.1f} ms",
                     f"{len(_sig)} hashes",
                 )
             except Exception as _e:
@@ -2497,11 +2736,12 @@ def doctor(benchmark: bool) -> None:
             # 6. Render metrics
             try:
                 from pdfsearchable.metrics import render_metrics as _rm
+
                 t0 = _time.perf_counter()
                 _out = _rm()
                 bench_table.add_row(
                     "render_metrics",
-                    f"{(_time.perf_counter()-t0)*1000:.2f} ms",
+                    f"{(_time.perf_counter() - t0) * 1000:.2f} ms",
                     f"{len(_out)} bytes",
                 )
             except Exception as _e:
@@ -2510,6 +2750,7 @@ def doctor(benchmark: bool) -> None:
             # 7. Dashboard stats (cached)
             try:
                 from pdfsearchable.store import compute_dashboard_stats as _cds
+
                 t0 = _time.perf_counter()
                 _s = _cds()
                 d1 = (_time.perf_counter() - t0) * 1000
@@ -2573,7 +2814,7 @@ def _filter_files_by_filters(
     epilog=(
         "Exemplos:\n\n"
         "  pdfsearchable search contrato\n\n"
-        "  pdfsearchable search \"nota fiscal\" --type nota_fiscal\n\n"
+        '  pdfsearchable search "nota fiscal" --type nota_fiscal\n\n'
         "  pdfsearchable search cpf --date-from 2024-01-01\n\n"
         "  pdfsearchable search empresa --ollama"
     ),
@@ -2940,7 +3181,9 @@ def open_cmd(host: str, port: int) -> None:
         "  pdfsearchable logs -n 10"
     ),
 )
-@click.option("-n", "--lines", default=30, show_default=True, help="Número de entradas de auditoria.")
+@click.option(
+    "-n", "--lines", default=30, show_default=True, help="Número de entradas de auditoria."
+)
 def logs(lines: int) -> None:
     """
     Mostra as últimas entradas do log de auditoria.
@@ -3064,13 +3307,9 @@ def export(
             safe_name = safe_name.removesuffix(".pdf") if safe_name.endswith(".pdf") else safe_name
             md_path = dest_dir / f"{safe_name}.md"
             tags_raw = f.get("tags") or []
-            tags_yaml = (
-                "\n".join(f"  - {t}" for t in tags_raw) if tags_raw else "  []"
-            )
+            tags_yaml = "\n".join(f"  - {t}" for t in tags_raw) if tags_raw else "  []"
             parties_raw = f.get("parties") or []
-            parties_yaml = (
-                "\n".join(f'  - "{p}"' for p in parties_raw) if parties_raw else "  []"
-            )
+            parties_yaml = "\n".join(f'  - "{p}"' for p in parties_raw) if parties_raw else "  []"
             summary = (f.get("summary") or "").replace('"', "'")
             subject = (f.get("subject") or "").replace('"', "'")
             indexed_date = (f.get("indexed_at") or "")[:10]
@@ -3135,9 +3374,9 @@ def export(
     out_path = output
     if out_path is None:
         defaults: dict[str, Path] = {
-            "json":     Path(f"pdfsearchable-export-{ts}.json"),
-            "jsonl":    Path(f"pdfsearchable-export-{ts}.jsonl"),
-            "csv":      Path(f"pdfsearchable-export-{ts}.csv"),
+            "json": Path(f"pdfsearchable-export-{ts}.json"),
+            "jsonl": Path(f"pdfsearchable-export-{ts}.jsonl"),
+            "csv": Path(f"pdfsearchable-export-{ts}.csv"),
             "markdown": Path(f"pdfsearchable-export-{ts}-md"),
         }
         out_path = defaults.get(fmt, Path(f"pdfsearchable-export-{ts}.out"))
@@ -3343,7 +3582,9 @@ def backup(output: Path | None) -> None:
 
     store_dir = Path.cwd() / ".pdfsearchable"
     if not store_dir.exists():
-        console.print("[red]Pasta .pdfsearchable não encontrada.[/] Use [cyan]pdfsearchable add[/] primeiro.")
+        console.print(
+            "[red]Pasta .pdfsearchable não encontrada.[/] Use [cyan]pdfsearchable add[/] primeiro."
+        )
         raise click.Abort() from None
 
     if output is None:
@@ -3356,8 +3597,7 @@ def backup(output: Path | None) -> None:
         size_mb = round(output.stat().st_size / (1024 * 1024), 2)
         console.print(
             Panel(
-                f"[green]✓[/] Backup criado em [cyan]{output}[/]\n"
-                f"[dim]Tamanho: {size_mb} MB[/]",
+                f"[green]✓[/] Backup criado em [cyan]{output}[/]\n[dim]Tamanho: {size_mb} MB[/]",
                 title="[bold green]Backup concluído[/]",
                 border_style="green",
             )
@@ -3522,14 +3762,21 @@ def chat(doc_id: str | None, max_docs: int) -> None:
         _abort_index_error(e)
     files = idx.get("files", [])
     if not files:
-        console.print("[yellow]Nenhum documento indexado. Use [cyan]pdfsearchable add[/] primeiro.[/]")
+        console.print(
+            "[yellow]Nenhum documento indexado. Use [cyan]pdfsearchable add[/] primeiro.[/]"
+        )
         return
 
     # Modo foco: um único documento
     focused_meta: dict | None = None
     if doc_id:
         focused_meta = next(
-            (f for f in files if f.get("id", "").startswith(doc_id) or doc_id.lower() in (f.get("name") or "").lower()),
+            (
+                f
+                for f in files
+                if f.get("id", "").startswith(doc_id)
+                or doc_id.lower() in (f.get("name") or "").lower()
+            ),
             None,
         )
         if not focused_meta:
@@ -3689,7 +3936,9 @@ def embed(model: str, force: bool) -> None:
     import urllib.request as _req
     import urllib.error
 
-    ollama_url = (os.environ.get("PDFSEARCHABLE_OLLAMA_URL") or "http://localhost:11434").rstrip("/")
+    ollama_url = (os.environ.get("PDFSEARCHABLE_OLLAMA_URL") or "http://localhost:11434").rstrip(
+        "/"
+    )
     emb_db = STORE_DIR / "embeddings.sqlite"
 
     def _get_embedding(text: str) -> list[float] | None:
@@ -3729,14 +3978,18 @@ def embed(model: str, force: bool) -> None:
         return
 
     if not force:
-        existing = {r[0] for r in conn.execute("SELECT file_id FROM embeddings WHERE model=?", (model,)).fetchall()}
+        existing = {
+            r[0]
+            for r in conn.execute(
+                "SELECT file_id FROM embeddings WHERE model=?", (model,)
+            ).fetchall()
+        }
         files = [f for f in files if f.get("id") not in existing]
 
     if not files:
         console.print(f"[dim]Todos os documentos já têm embeddings para o modelo '{model}'.[/]")
         conn.close()
         return
-
 
     with Progress(
         SpinnerColumn(),
@@ -3760,6 +4013,7 @@ def embed(model: str, force: bool) -> None:
             if vec:
                 blob = _vec_to_blob(vec)
                 from datetime import datetime, timezone
+
                 now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
                 try:
                     conn.execute(
@@ -3774,6 +4028,7 @@ def embed(model: str, force: bool) -> None:
                 if num_pages > 0:
                     try:
                         from pdfsearchable.semantic_search import embed_document_pages
+
                         saved = embed_document_pages(fid, num_pages, model, ollama_url)
                         chunks_total += saved
                     except Exception as _chunk_err:
@@ -3893,6 +4148,7 @@ def info_cmd(doc: str) -> None:
     has_embedding = False
     if emb_db.exists():
         import sqlite3 as _sq
+
         try:
             with _sq.connect(str(emb_db), timeout=5) as _c:
                 row = _c.execute("SELECT model FROM embeddings WHERE file_id=?", (fid,)).fetchone()
@@ -3920,10 +4176,20 @@ def info_cmd(doc: str) -> None:
 
 
 @main.command("dedup-semantic")
-@click.option("--threshold", "-t", type=float, default=0.98, show_default=True,
-              help="Limiar de similaridade cosine (0-1). 0.98 = quase idêntico.")
-@click.option("--model", default="nomic-embed-text", show_default=True,
-              help="Modelo Ollama usado para embeddings.")
+@click.option(
+    "--threshold",
+    "-t",
+    type=float,
+    default=0.98,
+    show_default=True,
+    help="Limiar de similaridade cosine (0-1). 0.98 = quase idêntico.",
+)
+@click.option(
+    "--model",
+    default="nomic-embed-text",
+    show_default=True,
+    help="Modelo Ollama usado para embeddings.",
+)
 def dedup_semantic_cmd(threshold: float, model: str) -> None:
     """
     Encontra documentos com texto semanticamente duplicado.
@@ -3957,6 +4223,7 @@ def dedup_semantic_cmd(threshold: float, model: str) -> None:
         return
 
     from rich.table import Table
+
     table = Table(title=f"Duplicados semânticos (threshold={threshold:.2f})")
     table.add_column("Score", justify="right", style="yellow")
     table.add_column("Documento A", style="cyan")
@@ -3973,12 +4240,16 @@ def dedup_semantic_cmd(threshold: float, model: str) -> None:
 
 @main.command("benchmark-markdown")
 @click.argument("file_id_or_name", required=False)
-@click.option("--iterations", "-n", type=int, default=5, show_default=True,
-              help="Número de iterações por estratégia (exclui warm-up).")
+@click.option(
+    "--iterations",
+    "-n",
+    type=int,
+    default=5,
+    show_default=True,
+    help="Número de iterações por estratégia (exclui warm-up).",
+)
 @click.option("--json", "as_json", is_flag=True, help="Imprime resultado em JSON.")
-def benchmark_markdown_cmd(
-    file_id_or_name: str | None, iterations: int, as_json: bool
-) -> None:
+def benchmark_markdown_cmd(file_id_or_name: str | None, iterations: int, as_json: bool) -> None:
     """
     Mede o speedup da conversão PDF → Markdown do pdfsearchable vs baseline PyMuPDF.
 
@@ -4041,6 +4312,7 @@ def benchmark_markdown_cmd(
         console.print(_json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
     else:
         from rich.table import Table
+
         t = Table(title=f"PDF → Markdown — {pdf_path.name} ({result.pages} páginas)")
         t.add_column("Estratégia", style="cyan")
         t.add_column("Média (s)", justify="right")
@@ -4060,10 +4332,7 @@ def benchmark_markdown_cmd(
         )
         console.print(t)
         emoji = "🚀" if result.speedup >= 5.0 else ("⚡" if result.speedup >= 2.0 else "➡")
-        console.print(
-            f"{emoji} [bold]Speedup: {result.speedup:.2f}×[/] "
-            f"(iterations={iterations})"
-        )
+        console.print(f"{emoji} [bold]Speedup: {result.speedup:.2f}×[/] (iterations={iterations})")
     audit(
         "cli_benchmark_markdown",
         {
@@ -4292,7 +4561,16 @@ def inspect_cmd(doc: str, as_json: bool) -> None:
     t5 = Table(show_header=False, box=None)
     t5.add_column("Campo", style="dim", min_width=18)
     t5.add_column("Valor")
-    for k in ("title", "author", "subject", "keywords", "creation_date", "mod_date", "producer", "creator"):
+    for k in (
+        "title",
+        "author",
+        "subject",
+        "keywords",
+        "creation_date",
+        "mod_date",
+        "producer",
+        "creator",
+    ):
         if meta.get(k):
             t5.add_row(k.replace("_", " ").capitalize(), str(meta[k])[:200])
     ext = meta.get("extended") or {}
@@ -4317,13 +4595,20 @@ def inspect_cmd(doc: str, as_json: bool) -> None:
 # Grafo de conhecimento
 # ---------------------------------------------------------------------------
 
+
 @main.command("graph")
-@click.option("--output", "-o", type=click.Path(path_type=Path), default=None,
-              help="Caminho do arquivo HTML de saída (padrão: .pdfsearchable/graph.html).")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Caminho do arquivo HTML de saída (padrão: .pdfsearchable/graph.html).",
+)
 def graph_cmd(output: Path | None) -> None:
     """Gera grafo interactivo de entidades e relações entre documentos (D3.js)."""
     ensure_store()
     from pdfsearchable.knowledge_graph import generate_graph_html, get_graph_stats
+
     idx = load_index()
     files = idx.get("files", [])
     if not files:
@@ -4350,13 +4635,20 @@ def graph_cmd(output: Path | None) -> None:
 # Linha do tempo
 # ---------------------------------------------------------------------------
 
+
 @main.command("timeline")
-@click.option("--format", "fmt", type=click.Choice(["table", "json"]), default="table",
-              help="Formato de saída.")
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["table", "json"]),
+    default="table",
+    help="Formato de saída.",
+)
 def timeline_cmd(fmt: str) -> None:
     """Exibe cronologia automática de documentos detectada a partir das datas nos PDFs."""
     ensure_store()
     from pdfsearchable.timeline import build_timeline, group_by_year, timeline_stats
+
     idx = load_index()
     entries = build_timeline(idx.get("files", []))
     if not entries:
@@ -4365,12 +4657,17 @@ def timeline_cmd(fmt: str) -> None:
     stats = timeline_stats(entries)
     if fmt == "json":
         import dataclasses
-        console.print_json(_json.dumps([dataclasses.asdict(e) for e in entries], ensure_ascii=False))
+
+        console.print_json(
+            _json.dumps([dataclasses.asdict(e) for e in entries], ensure_ascii=False)
+        )
         return
     by_year = group_by_year(entries)
-    console.print(f"\n[bold]Linha do Tempo[/] — {stats['total']} documento(s) "
-                  f"· span {stats['span_years']} ano(s) "
-                  f"· de [cyan]{stats.get('oldest', '?')}[/] a [cyan]{stats.get('newest', '?')}[/]\n")
+    console.print(
+        f"\n[bold]Linha do Tempo[/] — {stats['total']} documento(s) "
+        f"· span {stats['span_years']} ano(s) "
+        f"· de [cyan]{stats.get('oldest', '?')}[/] a [cyan]{stats.get('newest', '?')}[/]\n"
+    )
     for year, year_entries in by_year.items():
         console.print(f"[bold yellow]{year}[/]")
         for e in year_entries:
@@ -4384,10 +4681,16 @@ def timeline_cmd(fmt: str) -> None:
 # Detecção de redacções
 # ---------------------------------------------------------------------------
 
+
 @main.command("redactions")
 @click.argument("doc_id", required=False, default=None)
-@click.option("--all", "show_all", is_flag=True, default=False,
-              help="Mostrar todos os documentos, mesmo sem redacções.")
+@click.option(
+    "--all",
+    "show_all",
+    is_flag=True,
+    default=False,
+    help="Mostrar todos os documentos, mesmo sem redacções.",
+)
 def redactions_cmd(doc_id: str | None, show_all: bool) -> None:
     """Detecta redacções e zonas ocultas nos PDFs indexados.
 
@@ -4395,11 +4698,18 @@ def redactions_cmd(doc_id: str | None, show_all: bool) -> None:
     """
     ensure_store()
     from pdfsearchable.redaction import detect_redactions
+
     idx = load_index()
     files = idx.get("files", [])
     if doc_id:
-        match = next((f for f in files if f.get("id", "").startswith(doc_id)
-                      or doc_id.lower() in f.get("name", "").lower()), None)
+        match = next(
+            (
+                f
+                for f in files
+                if f.get("id", "").startswith(doc_id) or doc_id.lower() in f.get("name", "").lower()
+            ),
+            None,
+        )
         if not match:
             console.print(f"[red]Documento '{doc_id}' não encontrado.[/]")
             return
@@ -4440,10 +4750,15 @@ def redactions_cmd(doc_id: str | None, show_all: bool) -> None:
 # Análise forense
 # ---------------------------------------------------------------------------
 
+
 @main.command("forensics")
 @click.argument("doc_id", required=False, default=None)
-@click.option("--min-risk", type=int, default=20,
-              help="Pontuação mínima de risco para mostrar (0–100, padrão 20).")
+@click.option(
+    "--min-risk",
+    type=int,
+    default=20,
+    help="Pontuação mínima de risco para mostrar (0–100, padrão 20).",
+)
 def forensics_cmd(doc_id: str | None, min_risk: int) -> None:
     """Analisa PDFs à procura de anomalias e sinais de adulteração.
 
@@ -4451,11 +4766,18 @@ def forensics_cmd(doc_id: str | None, min_risk: int) -> None:
     """
     ensure_store()
     from pdfsearchable.forensics import analyse_forensics
+
     idx = load_index()
     files = idx.get("files", [])
     if doc_id:
-        match = next((f for f in files if f.get("id", "").startswith(doc_id)
-                      or doc_id.lower() in f.get("name", "").lower()), None)
+        match = next(
+            (
+                f
+                for f in files
+                if f.get("id", "").startswith(doc_id) or doc_id.lower() in f.get("name", "").lower()
+            ),
+            None,
+        )
         if not match:
             console.print(f"[red]Documento '{doc_id}' não encontrado.[/]")
             return
@@ -4466,22 +4788,27 @@ def forensics_cmd(doc_id: str | None, min_risk: int) -> None:
         if path and path.exists():
             with console.status("A analisar…"):
                 fr = analyse_forensics(path)
-            console.print(Panel(
-                f"[bold]Risco:[/] {fr.risk_score}/100  "
-                f"{'[red]⚠ Suspeito[/]' if fr.suspicious else '[green]OK[/]'}\n\n"
-                + "\n".join(
-                    f"[{'red' if a['severity']=='high' else 'yellow' if a['severity']=='medium' else 'dim'}]"
-                    f"[{a['severity'].upper()}][/] {a['type']}: {a['detail']}"
-                    for a in fr.anomalies
-                ) or "[dim]Sem anomalias[/]",
-                title=f"[bold]Forense — {match.get('name', '')}[/]",
-                border_style="red" if fr.suspicious else "green",
-            ))
+            console.print(
+                Panel(
+                    f"[bold]Risco:[/] {fr.risk_score}/100  "
+                    f"{'[red]⚠ Suspeito[/]' if fr.suspicious else '[green]OK[/]'}\n\n"
+                    + "\n".join(
+                        f"[{'red' if a['severity'] == 'high' else 'yellow' if a['severity'] == 'medium' else 'dim'}]"
+                        f"[{a['severity'].upper()}][/] {a['type']}: {a['detail']}"
+                        for a in fr.anomalies
+                    )
+                    or "[dim]Sem anomalias[/]",
+                    title=f"[bold]Forense — {match.get('name', '')}[/]",
+                    border_style="red" if fr.suspicious else "green",
+                )
+            )
         else:
             # Usar cache
             cached = (match.get("metadata") or {}).get("forensics") or {}
             if cached:
-                console.print(f"Risco (cache): {cached.get('risk_score', 0)}/100 — {cached.get('summary', '—')}")
+                console.print(
+                    f"Risco (cache): {cached.get('risk_score', 0)}/100 — {cached.get('summary', '—')}"
+                )
             else:
                 console.print("[yellow]Arquivo não disponível para análise directa.[/]")
         return
@@ -4514,14 +4841,26 @@ def forensics_cmd(doc_id: str | None, min_risk: int) -> None:
 # Extracção de tabelas
 # ---------------------------------------------------------------------------
 
+
 @main.command("tables")
 @click.argument("doc_id")
-@click.option("--output-dir", "-o", type=click.Path(path_type=Path), default=None,
-              help="Directório de saída (padrão: directório actual).")
-@click.option("--format", "fmt", type=click.Choice(["csv", "json"]), default="csv",
-              help="Formato de saída.")
-@click.option("--img2table", "use_img2table", is_flag=True, default=False,
-              help="Usar img2table para páginas sem tabelas nativas (requer pip install img2table).")
+@click.option(
+    "--output-dir",
+    "-o",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Directório de saída (padrão: directório actual).",
+)
+@click.option(
+    "--format", "fmt", type=click.Choice(["csv", "json"]), default="csv", help="Formato de saída."
+)
+@click.option(
+    "--img2table",
+    "use_img2table",
+    is_flag=True,
+    default=False,
+    help="Usar img2table para páginas sem tabelas nativas (requer pip install img2table).",
+)
 def tables_cmd(doc_id: str, output_dir: Path | None, fmt: str, use_img2table: bool) -> None:
     """Extrai tabelas estruturadas de um documento para CSV ou JSON.
 
@@ -4529,10 +4868,17 @@ def tables_cmd(doc_id: str, output_dir: Path | None, fmt: str, use_img2table: bo
     """
     ensure_store()
     from pdfsearchable.table_extractor import extract_tables, tables_to_csv, tables_to_json
+
     idx = load_index()
     files = idx.get("files", [])
-    match = next((f for f in files if f.get("id", "").startswith(doc_id)
-                  or doc_id.lower() in f.get("name", "").lower()), None)
+    match = next(
+        (
+            f
+            for f in files
+            if f.get("id", "").startswith(doc_id) or doc_id.lower() in f.get("name", "").lower()
+        ),
+        None,
+    )
     if not match:
         console.print(f"[red]Documento '{doc_id}' não encontrado.[/]")
         return
@@ -4564,16 +4910,25 @@ def tables_cmd(doc_id: str, output_dir: Path | None, fmt: str, use_img2table: bo
 # Gestão de contratos
 # ---------------------------------------------------------------------------
 
+
 @main.command("contracts")
-@click.option("--days", type=int, default=90,
-              help="Janela de alerta em dias (padrão: 90).")
-@click.option("--alert", is_flag=True, default=False,
-              help="Enviar alertas por e-mail (requer PDFSEARCHABLE_SMTP_HOST).")
+@click.option("--days", type=int, default=90, help="Janela de alerta em dias (padrão: 90).")
+@click.option(
+    "--alert",
+    is_flag=True,
+    default=False,
+    help="Enviar alertas por e-mail (requer PDFSEARCHABLE_SMTP_HOST).",
+)
 @click.option("--format", "fmt", type=click.Choice(["table", "json"]), default="table")
 def contracts_cmd(days: int, alert: bool, fmt: str) -> None:
     """Lista contratos indexados e alerta sobre os que estão a expirar."""
     ensure_store()
-    from pdfsearchable.contracts import check_expiring_contracts, get_contracts_summary, send_expiry_alerts
+    from pdfsearchable.contracts import (
+        check_expiring_contracts,
+        get_contracts_summary,
+        send_expiry_alerts,
+    )
+
     summary = get_contracts_summary()
     alerts = check_expiring_contracts(days_ahead=days)
     if fmt == "json":
@@ -4593,25 +4948,38 @@ def contracts_cmd(days: int, alert: bool, fmt: str) -> None:
         table = Table("Documento", "Fim", "Dias", "Auto-renov.", "Estado", box=box.SIMPLE_HEAVY)
         for a in alerts:
             c = _SCOLORS.get(a.severity, "white")
-            days_str = (f"[red]Expirado há {abs(a.days_until_expiry)}d[/]"
-                        if a.days_until_expiry < 0 else f"[{c}]{a.days_until_expiry}d[/]")
-            table.add_row(a.name, a.end_date, days_str,
-                          "[green]Sim[/]" if a.auto_renewal else "Não", f"[{c}]{a.severity}[/]")
+            days_str = (
+                f"[red]Expirado há {abs(a.days_until_expiry)}d[/]"
+                if a.days_until_expiry < 0
+                else f"[{c}]{a.days_until_expiry}d[/]"
+            )
+            table.add_row(
+                a.name,
+                a.end_date,
+                days_str,
+                "[green]Sim[/]" if a.auto_renewal else "Não",
+                f"[{c}]{a.severity}[/]",
+            )
         console.print(table)
         if alert:
             recipients_env = os.environ.get("PDFSEARCHABLE_ALERT_RECIPIENTS", "")
             recipients = [r.strip() for r in recipients_env.split(",") if r.strip()]
             if not recipients:
-                console.print("[yellow]⚠ Defina PDFSEARCHABLE_ALERT_RECIPIENTS para enviar e-mails.[/]")
+                console.print(
+                    "[yellow]⚠ Defina PDFSEARCHABLE_ALERT_RECIPIENTS para enviar e-mails.[/]"
+                )
             else:
                 smtp_host = os.environ.get("PDFSEARCHABLE_SMTP_HOST", "localhost")
                 smtp_port = int(os.environ.get("PDFSEARCHABLE_SMTP_PORT", "587"))
                 smtp_user = os.environ.get("PDFSEARCHABLE_SMTP_USER", "")
                 smtp_pass = os.environ.get("PDFSEARCHABLE_SMTP_PASS", "")
                 ok, errs = send_expiry_alerts(
-                    alerts, recipients,
-                    smtp_host=smtp_host, smtp_port=smtp_port,
-                    smtp_user=smtp_user, smtp_pass=smtp_pass,
+                    alerts,
+                    recipients,
+                    smtp_host=smtp_host,
+                    smtp_port=smtp_port,
+                    smtp_user=smtp_user,
+                    smtp_pass=smtp_pass,
                 )
                 if ok:
                     console.print(f"[green]✓ Alertas enviados para {ok} destinatário(s).[/]")
@@ -4623,11 +4991,15 @@ def contracts_cmd(days: int, alert: bool, fmt: str) -> None:
 # Correcção de tipo (loop de aprendizagem)
 # ---------------------------------------------------------------------------
 
+
 @main.command("set-type")
 @click.argument("doc_id")
 @click.argument("new_type")
-@click.option("--feedback/--no-feedback", default=True,
-              help="Salvar como exemplo de aprendizagem (padrão: sim).")
+@click.option(
+    "--feedback/--no-feedback",
+    default=True,
+    help="Salvar como exemplo de aprendizagem (padrão: sim).",
+)
 def set_type_cmd(doc_id: str, new_type: str, feedback: bool) -> None:
     """Corrige o tipo de um documento e guarda o exemplo para aprendizagem futura.
 
@@ -4637,8 +5009,14 @@ def set_type_cmd(doc_id: str, new_type: str, feedback: bool) -> None:
     ensure_store()
     idx = load_index()
     files = idx.get("files", [])
-    match = next((f for f in files if f.get("id", "").startswith(doc_id)
-                  or doc_id.lower() in f.get("name", "").lower()), None)
+    match = next(
+        (
+            f
+            for f in files
+            if f.get("id", "").startswith(doc_id) or doc_id.lower() in f.get("name", "").lower()
+        ),
+        None,
+    )
     if not match:
         console.print(f"[red]Documento '{doc_id}' não encontrado.[/]")
         return
@@ -4652,6 +5030,7 @@ def set_type_cmd(doc_id: str, new_type: str, feedback: bool) -> None:
     if feedback:
         try:
             from pdfsearchable.classifier_feedback import record_correction
+
             text = load_file_text(file_id) or ""
             record_correction(file_id, new_type, text[:500], source="manual")
             console.print("[dim]Exemplo salvo para aprendizagem futura.[/]")
@@ -4664,6 +5043,7 @@ def set_type_cmd(doc_id: str, new_type: str, feedback: bool) -> None:
 # Feedback do classificador
 # ---------------------------------------------------------------------------
 
+
 @main.command("feedback")
 @click.argument("action", type=click.Choice(["list", "clear"]), default="list")
 def feedback_cmd(action: str) -> None:
@@ -4675,13 +5055,16 @@ def feedback_cmd(action: str) -> None:
     """
     ensure_store()
     from pdfsearchable.classifier_feedback import list_examples, clear_examples, example_count
+
     if action == "clear":
         clear_examples()
         console.print("[green]✓ Exemplos de aprendizagem removidos.[/]")
         return
     examples = list_examples()
     if not examples:
-        console.print("[dim]Nenhum exemplo salvo. Use [cyan]pdfsearchable set-type[/] para corrigir classificações.[/]")
+        console.print(
+            "[dim]Nenhum exemplo salvo. Use [cyan]pdfsearchable set-type[/] para corrigir classificações.[/]"
+        )
         return
     table = Table("Arquivo", "Tipo correcto", "Origem", "Data", box=box.SIMPLE_HEAVY)
     for ex in examples:
@@ -4699,12 +5082,13 @@ def feedback_cmd(action: str) -> None:
 # Anotações
 # ---------------------------------------------------------------------------
 
+
 @main.command("annotations")
 @click.argument("doc_id")
-@click.option("--export", "do_export", is_flag=True, default=False,
-              help="Exportar anotações como JSON.")
-@click.option("--delete", "del_id", default=None,
-              help="ID da anotação a remover.")
+@click.option(
+    "--export", "do_export", is_flag=True, default=False, help="Exportar anotações como JSON."
+)
+@click.option("--delete", "del_id", default=None, help="ID da anotação a remover.")
 def annotations_cmd(doc_id: str, do_export: bool, del_id: str | None) -> None:
     """Lista, exporta ou remove anotações de um documento.
 
@@ -4712,10 +5096,17 @@ def annotations_cmd(doc_id: str, do_export: bool, del_id: str | None) -> None:
     """
     ensure_store()
     from pdfsearchable.annotations import AnnotationStore
+
     idx = load_index()
     files = idx.get("files", [])
-    match = next((f for f in files if f.get("id", "").startswith(doc_id)
-                  or doc_id.lower() in f.get("name", "").lower()), None)
+    match = next(
+        (
+            f
+            for f in files
+            if f.get("id", "").startswith(doc_id) or doc_id.lower() in f.get("name", "").lower()
+        ),
+        None,
+    )
     if not match:
         console.print(f"[red]Documento '{doc_id}' não encontrado.[/]")
         return
@@ -4746,16 +5137,23 @@ def annotations_cmd(doc_id: str, do_export: bool, del_id: str | None) -> None:
             (a.get("note") or "")[:40],
         )
     console.print(table)
-    console.print(f"[dim]{store.count(file_id)} anotação(ões) · use [cyan]--export[/] para JSON completo[/]")
+    console.print(
+        f"[dim]{store.count(file_id)} anotação(ões) · use [cyan]--export[/] para JSON completo[/]"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Duplicatas semânticas (extensão do comando duplicates)
 # ---------------------------------------------------------------------------
 
+
 @main.command("similar")
-@click.option("--threshold", type=float, default=0.92,
-              help="Limiar de similaridade cosine (0–1, padrão 0.92).")
+@click.option(
+    "--threshold",
+    type=float,
+    default=0.92,
+    help="Limiar de similaridade cosine (0–1, padrão 0.92).",
+)
 @click.option("--format", "fmt", type=click.Choice(["table", "json"]), default="table")
 def similar_cmd(threshold: float, fmt: str) -> None:
     """Detecta documentos semanticamente semelhantes (near-duplicates).
@@ -4767,7 +5165,9 @@ def similar_cmd(threshold: float, fmt: str) -> None:
     if not groups:
         emb_db = STORE_DIR / "embeddings.sqlite"
         if not emb_db.exists():
-            console.print("[yellow]⚠ Nenhum embedding disponível. Execute [cyan]pdfsearchable embed[/] primeiro.[/]")
+            console.print(
+                "[yellow]⚠ Nenhum embedding disponível. Execute [cyan]pdfsearchable embed[/] primeiro.[/]"
+            )
         else:
             console.print(f"[green]✓ Nenhum par de documentos com similaridade ≥ {threshold}.[/]")
         return
@@ -4781,7 +5181,9 @@ def similar_cmd(threshold: float, fmt: str) -> None:
     for i, grp in enumerate(groups, 1):
         console.print(f"\n[bold yellow]Grupo {i}[/] — {len(grp)} documento(s) semelhantes:")
         for f in grp:
-            console.print(f"  · [cyan]{f.get('name', '')}[/]  [dim]{f.get('id', '')[:12]}…[/]  {f.get('doc_type', '')}")
+            console.print(
+                f"  · [cyan]{f.get('name', '')}[/]  [dim]{f.get('id', '')[:12]}…[/]  {f.get('doc_type', '')}"
+            )
     console.print(f"\n[dim]{len(groups)} grupo(s) detectado(s) com limiar {threshold}[/]")
 
 

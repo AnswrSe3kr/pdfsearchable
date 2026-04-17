@@ -151,6 +151,7 @@ class TestBlankPageDetection:
 class TestDetectColumns:
     def _make_mock_page(self, blocks: list[tuple]):
         """Cria um mock simples de fitz.Page para testes de _detect_columns."""
+
         class MockRect:
             width = 595.0  # A4
 
