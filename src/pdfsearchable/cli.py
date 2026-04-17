@@ -2108,8 +2108,10 @@ def _run_http_server(host: str, port: int, open_browser: bool = False) -> None:
                     results = payload.get("results") or []
                     query = payload.get("query") or ""
                     title = payload.get("title") or "Dossiê de Resultados"
+                    import time as _time
+
                     from pdfsearchable.dossier import generate_dossier
-                    out_path = STORE_DIR / f"dossier_{int(time.time())}.pdf"
+                    out_path = STORE_DIR / f"dossier_{int(_time.time())}.pdf"
                     generate_dossier(results, out_path, title=title, query=query)
                     self._send_json(json.dumps({
                         "path": str(out_path),
@@ -4113,7 +4115,6 @@ def migrate_cmd(dry_run: bool) -> None:
     before_snapshot = _copy.deepcopy(raw)
 
     migrated = _migrate_index(raw)
-    after_version = migrated.get("version", before_version)
     after_files = len(migrated.get("files", []))
     changed = migrated != before_snapshot
 

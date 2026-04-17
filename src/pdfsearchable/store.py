@@ -986,8 +986,8 @@ def get_semantic_duplicate_groups(threshold: float = 0.92) -> list[list[dict]]:
     if not emb_db.exists():
         return []
     try:
-        from pdfsearchable.semantic_search import find_semantic_duplicates
-        groups_ids = find_semantic_duplicates(threshold)
+        from pdfsearchable.semantic_search import find_semantic_duplicate_groups
+        groups_ids = find_semantic_duplicate_groups(threshold)
         if not groups_ids:
             return []
         idx = load_index()

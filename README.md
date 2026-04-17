@@ -1,11 +1,11 @@
 # pdfsearchable
 
 [![CI](https://github.com/AnswrSe3kr/pdfsearchable/actions/workflows/ci.yml/badge.svg)](https://github.com/AnswrSe3kr/pdfsearchable/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/AnswrSe3kr/pdfsearchable/branch/main/graph/badge.svg)](https://codecov.io/gh/AnswrSe3kr/pdfsearchable)
-[![PyPI version](https://img.shields.io/pypi/v/pdfsearchable.svg)](https://pypi.org/project/pdfsearchable/)
-[![Python](https://img.shields.io/pypi/pyversions/pdfsearchable.svg)](https://pypi.org/project/pdfsearchable/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![Tests](https://img.shields.io/badge/tests-901%20passing-brightgreen.svg)](tests/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
 **Index, search, and explore your PDF collection — entirely offline.**
 

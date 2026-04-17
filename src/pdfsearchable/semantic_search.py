@@ -565,7 +565,7 @@ def semantic_search(
     return results
 
 
-def find_semantic_duplicates(
+def find_semantic_duplicate_groups(
     threshold: float = 0.92,
     *,
     model: str = "nomic-embed-text",
