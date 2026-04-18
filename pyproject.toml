@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pdfsearchable"
 version = "0.4.0"
-description = "Index, search, and explore your PDF collection — entirely offline. OCR built in, AI enrichment via Ollama, MCP server included."
+description = "Indexe, pesquise e explore a sua coleção de PDFs — totalmente offline. OCR incorporado, enriquecimento por IA via Ollama, servidor MCP incluído."
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "AnswrSe3kr" }
 ]
@@ -19,7 +19,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",

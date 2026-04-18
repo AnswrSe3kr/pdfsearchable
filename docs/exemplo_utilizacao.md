@@ -9,8 +9,8 @@ Guia prático para usar o pdfsearchable do zero ao report. Todos os exemplos fun
 Antes de tudo, verifique se todas as dependências estão instaladas:
 
 ```bash
-python setup.py --check     # Apenas verifica
-python setup.py             # Verifica e instala o que faltar
+python scripts/check_env.py --check     # Apenas verifica
+python scripts/check_env.py             # Verifica e instala o que faltar
 ```
 
 O script verifica: Python >= 3.10, Tesseract (+ idiomas OCR), Ollama (opcional), dependências Python (core e opcionais) e espaço em disco.
@@ -365,7 +365,7 @@ Ferramentas disponíveis: `list_documents`, `search_documents`, `get_document_te
 
 ```bash
 # 1. Verificar ambiente
-python setup.py --check
+python scripts/check_env.py --check
 
 # 2. Ir para a pasta dos PDFs
 cd ~/Documentos/processos/
@@ -408,7 +408,7 @@ pdfsearchable watch ~/Downloads --interval 30
 | Diagnóstico | `pdfsearchable doctor` |
 | Monitorizar | `pdfsearchable watch pasta/` |
 | Backup | `pdfsearchable backup` |
-| Verificar deps | `python setup.py --check` |
+| Verificar deps | `python scripts/check_env.py --check` |
 
 ---
 

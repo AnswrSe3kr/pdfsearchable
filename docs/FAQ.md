@@ -17,8 +17,8 @@ pip install -e .
 Ou use o script de verificação e instalação:
 
 ```bash
-python setup.py         # Verifica e instala dependências (Windows, Linux, macOS)
-python setup.py --check # Apenas verifica, sem instalar
+python scripts/check_env.py         # Verifica e instala dependências (Windows, Linux, macOS)
+python scripts/check_env.py --check # Apenas verifica, sem instalar
 ```
 
 OCR (Tesseract) e TrOCR estão incluídos nas dependências principais. Para classificação por OpenAI: `pip install -e ".[ai]"`.

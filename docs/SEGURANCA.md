@@ -80,7 +80,7 @@ Recomendação: não exponha o processo que gera o report a variáveis de ambien
 ### Sessão 2026-04-09
 26. **OCR DPI:** padrão aumentado de 150 → 300 e máximo de 300 → 600 para melhor suporte a documentos históricos.
 27. **CLI defaults simplificados:** `--recursive` e `--skip-failed` agora activos por padrão no `add`; `--open` activo por padrão no `serve`. Reduz necessidade de flags e erros de utilizador.
-28. **setup.py:** script cross-platform (Windows, Linux, macOS) para verificação e instalação de dependências. Não executa código arbitrário — apenas verifica binários do sistema e instala via pip.
+28. **scripts/check_env.py:** script cross-platform (Windows, Linux, macOS) para verificação e instalação de dependências. Não executa código arbitrário — apenas verifica binários do sistema e instala via pip.
 29. **HTR multilíngue:** suporte a 40+ idiomas com 6 modelos dedicados; cache LRU thread-safe; detecção automática de script.
 
 ## Boas práticas para o operador
